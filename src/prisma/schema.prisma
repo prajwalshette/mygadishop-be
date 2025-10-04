@@ -1,0 +1,170 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  // shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Admin {
+  id         String    @id
+  name       String
+  email      String    @unique
+  role       AdminRole
+  password   String
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+  Session    Session[]
+}
+
+model Customer {
+  id         String      @id
+  name       String
+  phone      String      @unique
+  email      String      @unique
+  address    String
+  is_deleted Boolean     @default(false)
+  vehicles   Vehicle[]
+  services   Servicing[]
+
+  created_at     DateTime         @default(now())
+  updated_at     DateTime         @updatedAt
+  VehiclePayment VehiclePayment[]
+}
+
+model Vehicle {
+  id                  String           @id
+  customer_id         String?
+  type                VehicleType
+  brand               String
+  model               String
+  year                Int
+  registration_number String           @unique
+  chassis_number      String           @unique
+  engine_number       String
+  color               String
+  mileage             Float
+  fuel_type           FuelType
+  transmission        TransmissionType
+  price               Float
+  buying_price        Float?
+  selling_price       Float?
+  vehicle_image_urls  String[]
+  vehicle_doc_urls    String[]
+  status              BikeStatus
+  buying_date         DateTime
+  selling_date        DateTime?
+  is_deleted          Boolean          @default(false)
+  created_at          DateTime         @default(now())
+  updated_at          DateTime         @updatedAt
+
+  customer       Customer?        @relation(fields: [customer_id], references: [id], onDelete: Cascade)
+  services       Servicing[]
+  VehiclePayment VehiclePayment[]
+}
+
+model Servicing {
+  id                String          @id
+  vehicle_id        String
+  customer_id       String
+  service_date      DateTime
+  service_type      String
+  description       String?
+  cost              Float
+  status            ServicingStatus
+  next_service_date DateTime?
+  is_deleted        Boolean         @default(false)
+
+  vehicle  Vehicle  @relation(fields: [vehicle_id], references: [id], onDelete: Cascade)
+  customer Customer @relation(fields: [customer_id], references: [id], onDelete: Cascade)
+}
+
+model VehiclePayment {
+  id                     String        @id
+  vehicle_id             String
+  customer_id            String
+  amount                 Float
+  method                 PaymentMethod
+  status                 PaymentStatus
+  payment_receipt_images String[]
+  message                String?
+  is_deleted             Boolean       @default(false)
+  created_at             DateTime      @default(now())
+  updated_at             DateTime      @updatedAt
+
+  vehicle  Vehicle  @relation(fields: [vehicle_id], references: [id], onDelete: Cascade)
+  customer Customer @relation(fields: [customer_id], references: [id], onDelete: Cascade)
+}
+
+model Session {
+  id          String    @id
+  admin_id    String
+  token       String    @unique
+  device_info Json?
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
+  expires_at  DateTime?
+  admin       Admin     @relation(fields: [admin_id], references: [id], onDelete: Cascade)
+}
+
+// ============= ENUM ===========
+enum AdminRole {
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum VehicleType {
+  BIKE
+  SCOTY
+}
+
+enum FuelType {
+  PETROL
+  DIESEL
+  CNG
+  ELECTRIC
+  HYBRID
+}
+
+enum TransmissionType {
+  MANUAL
+  AUTOMATIC
+}
+
+enum BikeStatus {
+  AVAILABLE // Bike is ready for sale
+  SOLD // Bike has been sold
+  MAINTENANCE // Bike is under repair/servicing
+  RENTED // Bike is currently on rent
+  RESERVED // Bike is reserved for a customer
+}
+
+enum ServicingStatus {
+  SCHEDULED // Service is booked but not started
+  IN_PROGRESS // Service is ongoing
+  COMPLETED // Service completed
+  CANCELLED // Service was cancelled
+  PENDING // Waiting for confirmation/parts
+}
+
+enum PaymentStatus {
+  PENDING // Payment initiated but not yet received
+  PARTIAL // Part payment received, balance due
+  COMPLETED // Full payment received
+  FAILED // Payment attempt failed
+  REFUNDED // Payment refunded
+  CANCELLED // Transaction cancelled
+}
+
+enum PaymentMethod {
+  CASH
+  UPI
+  CARD
+  NET_BANKING
+  EMI
+}
