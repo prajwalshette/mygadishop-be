@@ -1,126 +1,451 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
+// MyGaadiShop - Complete Database Schema
+// Prisma Schema for Second Hand Vehicle Management Platform
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-  // shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
 }
 
 generator client {
   provider = "prisma-client-js"
 }
 
-model Admin {
-  id         String    @id
+// ============= PLATFORM ADMIN (Your Team) ===========
+model PlatformAdmin {
+  id         String            @id
   name       String
-  email      String    @unique
-  role       AdminRole
+  email      String            @unique
+  phone      String?           @unique
+  role       PlatformAdminRole
   password   String
-  created_at DateTime  @default(now())
-  updated_at DateTime  @updatedAt
-  Session    Session[]
+  is_active  Boolean           @default(true)
+  is_deleted Boolean           @default(false)
+  created_at DateTime          @default(now())
+  updated_at DateTime          @updatedAt
+
+  sessions PlatformSession[]
 }
 
-model Customer {
-  id         String      @id
+model PlatformSession {
+  id          String   @id
+  admin_id    String
+  token       String   @unique
+  device_info Json?
+  ip_address  String?
+  created_at  DateTime @default(now())
+  expires_at  DateTime
+
+  admin PlatformAdmin @relation(fields: [admin_id], references: [id], onDelete: Cascade)
+}
+
+// ============= SUBSCRIPTION PLANS ===========
+model SubscriptionPlan {
+  id          String   @id
+  plan_name   String   @unique // BASIC, PREMIUM, ENTERPRISE
+  plan_code   String   @unique // basic, premium, enterprise
+  description String?
+  is_active   Boolean  @default(true)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  // Features & Limits
+  max_vehicles     Int? // null = unlimited
+  max_staff_users  Int
+  has_sms_alerts   Boolean @default(false)
+  has_whatsapp     Boolean @default(false)
+  has_analytics    Boolean @default(false)
+  has_api_access   Boolean @default(false)
+  has_multi_branch Boolean @default(false)
+  has_custom_brand Boolean @default(false)
+
+  // Relations
+  pricing       SubscriptionPricing[]
+  subscriptions ShopSubscription[]
+}
+
+model SubscriptionPricing {
+  id         String       @id
+  plan_id    String
+  duration   PlanDuration
+  price      Float // in INR
+  discount   Float        @default(0) // percentage
+  is_active  Boolean      @default(true)
+  created_at DateTime     @default(now())
+  updated_at DateTime     @updatedAt
+
+  plan SubscriptionPlan @relation(fields: [plan_id], references: [id], onDelete: Cascade)
+
+  @@unique([plan_id, duration])
+}
+
+// ============= SHOP SUBSCRIPTION ===========
+model ShopSubscription {
+  id                      String @id
+  shop_id                 String
+  plan_id                 String
+  subscription_pricing_id String
+
+  // Subscription Details
+  start_date DateTime
+  end_date   DateTime
+  status     SubscriptionStatus @default(ACTIVE)
+  auto_renew Boolean            @default(false)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  shop         Shop             @relation(fields: [shop_id], references: [id], onDelete: Cascade)
+  plan         SubscriptionPlan @relation(fields: [plan_id], references: [id])
+  transactions Transaction[]
+
+  @@index([shop_id, status])
+}
+
+// ============= SHOP OWNER & SHOP ===========
+model Shop {
+  id              String  @id
+  shop_name       String
+  owner_name      String
+  email           String  @unique
+  phone           String  @unique
+  alternate_phone String?
+  address         String
+  city            String
+  state           String
+  pincode         String
+  gstin           String? @unique
+  pan_number      String?
+  license_number  String?
+
+  // Shop Details
+  shop_logo_url    String?
+  shop_image_urls  String[]
+  shop_type        ShopType @default(BOTH)
+  established_year Int?
+
+  // Subscription & Status
+  subscription_status SubscriptionStatus    @default(TRIAL)
+  subscription_plan   SubscriptionPlanName?
+  plan_start_date     DateTime?
+  plan_end_date       DateTime?
+  is_verified         Boolean               @default(false)
+  is_active           Boolean               @default(true)
+  is_deleted          Boolean               @default(false)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  // Relations
+  shop_users    ShopUser[]
+  customers     Customer[]
+  vehicles      Vehicle[]
+  services      Servicing[]
+  payments      VehiclePayment[]
+  expenses      Expense[]
+  inquiries     Inquiry[]
+  subscriptions ShopSubscription[]
+  transactions  Transaction[]
+}
+
+// ============= TRANSACTIONS (Razorpay Payments) ===========
+model Transaction {
+  id              String  @id
+  shop_id         String
+  subscription_id String?
+
+  // Transaction Details
+  amount         Float // in INR
+  currency       String            @default("INR")
+  status         TransactionStatus @default(PENDING)
+  payment_method String? // card, upi, netbanking, wallet
+
+  // Razorpay IDs
+  razorpay_order_id   String? @unique
+  razorpay_payment_id String? @unique
+  razorpay_signature  String?
+
+  // Receipt & Invoice
+  receipt_number String? @unique
+  invoice_url    String?
+
+  // Metadata
+  description    String?
+  notes          Json?
+  failure_reason String?
+
+  // Timestamps
+  payment_date DateTime?
+  created_at   DateTime  @default(now())
+  updated_at   DateTime  @updatedAt
+
+  shop         Shop              @relation(fields: [shop_id], references: [id], onDelete: Cascade)
+  subscription ShopSubscription? @relation(fields: [subscription_id], references: [id])
+
+  @@index([shop_id, status])
+  @@index([razorpay_order_id])
+}
+
+model ShopUser {
+  id         String       @id
+  shop_id    String
   name       String
-  phone      String      @unique
-  email      String      @unique
-  address    String
-  is_deleted Boolean     @default(false)
-  vehicles   Vehicle[]
-  services   Servicing[]
+  email      String       @unique
+  phone      String       @unique
+  role       ShopUserRole @default(STAFF)
+  password   String
+  is_active  Boolean      @default(true)
+  is_deleted Boolean      @default(false)
+  created_at DateTime     @default(now())
+  updated_at DateTime     @updatedAt
 
-  created_at     DateTime         @default(now())
-  updated_at     DateTime         @updatedAt
-  VehiclePayment VehiclePayment[]
+  shop     Shop          @relation(fields: [shop_id], references: [id], onDelete: Cascade)
+  sessions ShopSession[]
+
+  @@unique([shop_id, email])
 }
 
+model ShopSession {
+  id          String   @id
+  user_id     String
+  token       String   @unique
+  device_info Json?
+  ip_address  String?
+  created_at  DateTime @default(now())
+  expires_at  DateTime
+
+  user ShopUser @relation(fields: [user_id], references: [id], onDelete: Cascade)
+}
+
+// ============= CUSTOMERS ===========
+model Customer {
+  id              String  @id
+  shop_id         String
+  name            String
+  phone           String
+  email           String?
+  alternate_phone String?
+  address         String?
+  city            String?
+  state           String?
+  pincode         String?
+
+  // Documents
+  aadhar_number   String?
+  pan_number      String?
+  driving_license String?
+  document_urls   String[]
+
+  customer_type CustomerType @default(BUYER)
+  is_deleted    Boolean      @default(false)
+  created_at    DateTime     @default(now())
+  updated_at    DateTime     @updatedAt
+
+  shop      Shop             @relation(fields: [shop_id], references: [id], onDelete: Cascade)
+  vehicles  Vehicle[]
+  services  Servicing[]
+  payments  VehiclePayment[]
+  inquiries Inquiry[]
+
+  @@unique([shop_id, phone])
+}
+
+// ============= VEHICLES ===========
 model Vehicle {
-  id                  String           @id
-  customer_id         String?
+  id          String  @id
+  shop_id     String
+  customer_id String?
+
+  // Vehicle Basic Info
   type                VehicleType
   brand               String
   model               String
+  variant             String?
   year                Int
-  registration_number String           @unique
-  chassis_number      String           @unique
+  registration_number String
+  chassis_number      String
   engine_number       String
   color               String
   mileage             Float
-  fuel_type           FuelType
-  transmission        TransmissionType
-  price               Float
-  buying_price        Float?
-  selling_price       Float?
-  vehicle_image_urls  String[]
-  vehicle_doc_urls    String[]
-  status              BikeStatus
-  buying_date         DateTime
-  selling_date        DateTime?
-  is_deleted          Boolean          @default(false)
-  created_at          DateTime         @default(now())
-  updated_at          DateTime         @updatedAt
 
-  customer       Customer?        @relation(fields: [customer_id], references: [id], onDelete: Cascade)
-  services       Servicing[]
-  VehiclePayment VehiclePayment[]
+  // Technical Details
+  fuel_type            FuelType
+  transmission         TransmissionType
+  engine_capacity      Int? // in CC
+  ownership            OwnershipType    @default(FIRST)
+  insurance_valid_till DateTime?
+
+  // Pricing
+  buying_price   Float?
+  selling_price  Float?
+  expected_price Float?
+
+  // Media
+  vehicle_image_urls String[]
+  vehicle_doc_urls   String[]
+
+  // Status & Dates
+  status       VehicleStatus
+  buying_date  DateTime?
+  selling_date DateTime?
+
+  // Features & Description
+  features    String[]
+  description String?
+
+  is_featured Boolean  @default(false)
+  is_deleted  Boolean  @default(false)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  shop     Shop             @relation(fields: [shop_id], references: [id], onDelete: Cascade)
+  customer Customer?        @relation(fields: [customer_id], references: [id])
+  services Servicing[]
+  payments VehiclePayment[]
+
+  @@unique([shop_id, registration_number])
+  @@unique([shop_id, chassis_number])
 }
 
+// ============= SERVICING ===========
 model Servicing {
-  id                String          @id
-  vehicle_id        String
-  customer_id       String
-  service_date      DateTime
-  service_type      String
-  description       String?
-  cost              Float
+  id          String @id
+  shop_id     String
+  vehicle_id  String
+  customer_id String
+
+  service_date   DateTime
+  service_type   String
+  description    String?
+  parts_replaced String[]
+  labor_cost     Float    @default(0)
+  parts_cost     Float    @default(0)
+  total_cost     Float
+
   status            ServicingStatus
   next_service_date DateTime?
-  is_deleted        Boolean         @default(false)
+  technician_name   String?
 
+  service_images String[]
+  is_deleted     Boolean  @default(false)
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  shop     Shop     @relation(fields: [shop_id], references: [id], onDelete: Cascade)
   vehicle  Vehicle  @relation(fields: [vehicle_id], references: [id], onDelete: Cascade)
   customer Customer @relation(fields: [customer_id], references: [id], onDelete: Cascade)
 }
 
+// ============= PAYMENTS ===========
 model VehiclePayment {
-  id                     String        @id
-  vehicle_id             String
-  customer_id            String
-  amount                 Float
-  method                 PaymentMethod
-  status                 PaymentStatus
-  payment_receipt_images String[]
-  message                String?
-  is_deleted             Boolean       @default(false)
-  created_at             DateTime      @default(now())
-  updated_at             DateTime      @updatedAt
+  id          String @id
+  shop_id     String
+  vehicle_id  String
+  customer_id String
 
+  amount       Float
+  payment_type PaymentType   @default(VEHICLE_SALE)
+  method       PaymentMethod
+  status       PaymentStatus
+
+  transaction_id         String?
+  payment_receipt_images String[]
+  notes                  String?
+
+  is_deleted Boolean  @default(false)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  shop     Shop     @relation(fields: [shop_id], references: [id], onDelete: Cascade)
   vehicle  Vehicle  @relation(fields: [vehicle_id], references: [id], onDelete: Cascade)
   customer Customer @relation(fields: [customer_id], references: [id], onDelete: Cascade)
 }
 
-model Session {
-  id          String    @id
-  admin_id    String
-  token       String    @unique
-  device_info Json?
-  created_at  DateTime  @default(now())
-  updated_at  DateTime  @updatedAt
-  expires_at  DateTime?
-  admin       Admin     @relation(fields: [admin_id], references: [id], onDelete: Cascade)
+// ============= EXPENSES ===========
+model Expense {
+  id      String @id
+  shop_id String
+
+  expense_type   ExpenseType
+  category       String
+  amount         Float
+  description    String?
+  payment_method PaymentMethod
+
+  bill_number  String?
+  bill_images  String[]
+  expense_date DateTime
+
+  is_deleted Boolean  @default(false)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  shop Shop @relation(fields: [shop_id], references: [id], onDelete: Cascade)
 }
 
-// ============= ENUM ===========
-enum AdminRole {
-  ADMIN
+// ============= INQUIRIES ===========
+model Inquiry {
+  id          String  @id
+  shop_id     String
+  customer_id String?
+
+  customer_name  String
+  customer_phone String
+  customer_email String?
+
+  inquiry_type InquiryType
+  vehicle_type VehicleType?
+  budget_min   Float?
+  budget_max   Float?
+  message      String?
+
+  status         InquiryStatus @default(NEW)
+  follow_up_date DateTime?
+  notes          String?
+
+  is_deleted Boolean  @default(false)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  shop     Shop      @relation(fields: [shop_id], references: [id], onDelete: Cascade)
+  customer Customer? @relation(fields: [customer_id], references: [id])
+}
+
+// ============= ENUMS ===========
+enum PlatformAdminRole {
   SUPER_ADMIN
+  ADMIN
+  SUPPORT
+}
+
+enum ShopUserRole {
+  OWNER
+  MANAGER
+  STAFF
+}
+
+enum ShopType {
+  BIKE
+  CAR
+  BOTH
+}
+
+enum SubscriptionPlanName {
+  FREE
+  BASIC
+  PREMIUM
+  ENTERPRISE
+}
+
+enum CustomerType {
+  BUYER
+  SELLER
+  BOTH
 }
 
 enum VehicleType {
   BIKE
-  SCOTY
+  SCOOTER
+  CAR
 }
 
 enum FuelType {
@@ -134,31 +459,39 @@ enum FuelType {
 enum TransmissionType {
   MANUAL
   AUTOMATIC
+  SEMI_AUTOMATIC
 }
 
-enum BikeStatus {
-  AVAILABLE // Bike is ready for sale
-  SOLD // Bike has been sold
-  MAINTENANCE // Bike is under repair/servicing
-  RENTED // Bike is currently on rent
-  RESERVED // Bike is reserved for a customer
+enum OwnershipType {
+  FIRST
+  SECOND
+  THIRD
+  FOURTH_PLUS
+}
+
+enum VehicleStatus {
+  AVAILABLE
+  SOLD
+  MAINTENANCE
+  RESERVED
+  ON_HOLD
 }
 
 enum ServicingStatus {
-  SCHEDULED // Service is booked but not started
-  IN_PROGRESS // Service is ongoing
-  COMPLETED // Service completed
-  CANCELLED // Service was cancelled
-  PENDING // Waiting for confirmation/parts
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  PENDING
 }
 
 enum PaymentStatus {
-  PENDING // Payment initiated but not yet received
-  PARTIAL // Part payment received, balance due
-  COMPLETED // Full payment received
-  FAILED // Payment attempt failed
-  REFUNDED // Payment refunded
-  CANCELLED // Transaction cancelled
+  PENDING
+  PARTIAL
+  COMPLETED
+  FAILED
+  REFUNDED
+  CANCELLED
 }
 
 enum PaymentMethod {
@@ -166,5 +499,65 @@ enum PaymentMethod {
   UPI
   CARD
   NET_BANKING
+  CHEQUE
   EMI
+}
+
+enum PaymentType {
+  VEHICLE_SALE
+  VEHICLE_PURCHASE
+  SERVICE
+  ADVANCE
+  REFUND
+}
+
+enum ExpenseType {
+  RENT
+  SALARY
+  UTILITY
+  MAINTENANCE
+  MARKETING
+  TRANSPORT
+  MISCELLANEOUS
+}
+
+enum InquiryType {
+  BUYING
+  SELLING
+  SERVICE
+  GENERAL
+}
+
+enum InquiryStatus {
+  NEW
+  CONTACTED
+  FOLLOW_UP
+  CONVERTED
+  CLOSED
+  LOST
+}
+
+enum PlanDuration {
+  ONE_MONTH
+  THREE_MONTHS
+  SIX_MONTHS
+  ONE_YEAR
+}
+
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  EXPIRED
+  SUSPENDED
+  CANCELLED
+  PAYMENT_PENDING
+}
+
+enum TransactionStatus {
+  PENDING
+  PROCESSING
+  SUCCESS
+  FAILED
+  REFUNDED
+  CANCELLED
 }
