@@ -56,6 +56,7 @@ model User {
   sessions UserSession[]
 
   @@unique([shop_id, email])
+  @@index([shop_id, role])
 }
 
 model UserSession {
@@ -115,7 +116,6 @@ model Shop {
 model SubscriptionPlan {
   id              String  @id
   plan_name       String  @unique // BASIC, PREMIUM, ENTERPRISE
-  plan_code       String  @unique // basic, premium, enterprise
   description     String?
   is_active       Boolean @default(true)
   // Features & Limits
@@ -124,9 +124,7 @@ model SubscriptionPlan {
   // has_sms_alerts   Boolean @default(false)
   // has_whatsapp     Boolean @default(false)
   // has_analytics    Boolean @default(false)
-  // has_api_access   Boolean @default(false)
   // has_multi_branch Boolean @default(false)
-  // has_custom_brand Boolean @default(false)
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
@@ -149,6 +147,7 @@ model SubscriptionPricing {
   plan SubscriptionPlan @relation(fields: [plan_id], references: [id], onDelete: Cascade)
 
   @@unique([plan_id, duration])
+  @@index([plan_id]) 
 }
 
 // ============= SHOP SUBSCRIPTION ===========
@@ -235,6 +234,7 @@ model Customer {
   payments VehiclePayment[]
 
   @@unique([shop_id, phone])
+  @@index([shop_id, customer_type])
 }
 
 // ============= VEHICLES ===========
@@ -290,6 +290,9 @@ model Vehicle {
 
   @@unique([shop_id, registration_number])
   @@unique([shop_id, chassis_number])
+
+  @@index([shop_id, status])
+  @@index([shop_id, customer_id])
 }
 
 // ============= SERVICING ===========
@@ -319,6 +322,10 @@ model Servicing {
   shop     Shop     @relation(fields: [shop_id], references: [id], onDelete: Cascade)
   vehicle  Vehicle  @relation(fields: [vehicle_id], references: [id], onDelete: Cascade)
   customer Customer @relation(fields: [customer_id], references: [id], onDelete: Cascade)
+
+  @@index([shop_id, status])
+  @@index([shop_id, vehicle_id])
+  @@index([shop_id, customer_id])
 }
 
 // ============= PAYMENTS ===========
@@ -344,6 +351,10 @@ model VehiclePayment {
   shop     Shop     @relation(fields: [shop_id], references: [id], onDelete: Cascade)
   vehicle  Vehicle  @relation(fields: [vehicle_id], references: [id], onDelete: Cascade)
   customer Customer @relation(fields: [customer_id], references: [id], onDelete: Cascade)
+
+  @@index([shop_id, status])
+  @@index([shop_id, vehicle_id])
+  @@index([shop_id, customer_id])
 }
 
 // ============= ENUMS ===========

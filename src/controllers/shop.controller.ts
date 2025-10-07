@@ -1,20 +1,29 @@
 import { NextFunction, Request, Response } from 'express';
 import { Container } from 'typedi';
-import { User } from '@interfaces/users.interface';
-import { CustomerService } from '@/services/customer.service';
-import { ICustomer } from '@/interfaces/customer.interface';
 import { RequestWithUser } from '@/interfaces/auth.interface';
+import { ShopService } from '@/services/shop.service';
+import { IShop } from '@/interfaces/shop.interface';
 
 export class ShopController {
-  public customerService = Container.get(CustomerService);
+  public shopService = Container.get(ShopService);
 
-  public addNewCustomer = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
+  public editShopDetails = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
     try {
       const shop_id = request.user.shop_id;
-      const customerData: ICustomer = request.body;
+      const shopData: IShop = request.body;
 
-      const customer = await this.customerService.addNewCustomer(customerData, shop_id);
-      response.status(200).json({ data: customer, message: 'New Customer Add successfully.' });
+      const shop = await this.shopService.editShopDetails(shopData, shop_id);
+      response.status(200).json({ data: shop, message: 'Shop Details Update Successfully.' });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  public getShopDetails = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
+    try {
+      const shop_id = request.user.shop_id;
+      const shop = await this.shopService.getShopDetails(shop_id);
+      response.status(200).json({ data: shop, message: 'Shop Details Featch Successfully.' });
     } catch (error) {
       next(error);
     }

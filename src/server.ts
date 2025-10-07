@@ -6,6 +6,7 @@ import { CustomerRoute } from './routes/customer.route';
 import { ServicingRoute } from './routes/servicing.route';
 import { PaymentRoute } from './routes/payment.route';
 import { DashboardRoute } from './routes/dashboard.route';
+import { ShopRoute } from './routes/shop.route';
 
 ValidateEnv();
 
@@ -16,6 +17,7 @@ const app = new App([
     new ServicingRoute(),
     new PaymentRoute(),
     new DashboardRoute(),
+    new ShopRoute(),
 ]);
 
 app.listen();
