@@ -1,8 +1,13 @@
 export interface User {
-  id?: number;
+  id?: string;
   email: string;
   password: string;
   role?: UserRole;
+  name?: string;
+  phone?: string;
+  is_active?: boolean;
+  is_deleted?: boolean;
+  shop_id?: string;
 }
 
 export interface AdminUser {
@@ -11,6 +16,9 @@ export interface AdminUser {
   role?: AdminRole;
   password: string;
   name?: string;
+  phone?: string;
+  is_active?: boolean;
+  is_deleted?: boolean;
 }
 
 export interface ShopUserResponseDTO {

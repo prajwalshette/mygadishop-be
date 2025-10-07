@@ -3,14 +3,14 @@ import { Container } from 'typedi';
 import { VehicleService } from '@/services/vehicle.service';
 import { IVehicle } from '@/interfaces/vehicle.interface';
 import { ulid } from 'ulid';
-import { RequestWithAdmin } from '@/interfaces/auth.interface';
+import { RequestWithUser } from '@/interfaces/auth.interface';
 import { HttpException } from '@/exceptions/HttpException';
 import { uploadVehicleMedia, uploadVehicleDocMedia } from '@/services/aws.service';
 
 export class VehicleController {
   public vehicleService = Container.get(VehicleService);
 
-  public createVehicle = async (request: RequestWithAdmin, response: Response, next: NextFunction): Promise<void> => {
+  public createVehicle = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
     try {
       const vehicleData: IVehicle = request.body;
       const vehicle_id = ulid();
@@ -45,7 +45,7 @@ export class VehicleController {
     }
   };
 
-  public updateVehicle = async (request: RequestWithAdmin, response: Response, next: NextFunction): Promise<void> => {
+  public updateVehicle = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
     try {
       const vehicleId: string = request.params.id;
       const vehicleData: Partial<IVehicle> = request.body;
@@ -97,7 +97,7 @@ export class VehicleController {
     }
   };
 
-  public getVehicleById = async (request: RequestWithAdmin, response: Response, next: NextFunction): Promise<void> => {
+  public getVehicleById = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
     try {
       const vehicleId: string = request.params.id;
       const vehicle = await this.vehicleService.getVehicleById(vehicleId);
@@ -112,7 +112,7 @@ export class VehicleController {
     }
   };
 
-  public getAllVehicle = async (request: RequestWithAdmin, response: Response, next: NextFunction): Promise<void> => {
+  public getAllVehicle = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
     try {
       const { page_number, page_size } = request.query;
 
@@ -126,7 +126,7 @@ export class VehicleController {
     }
   };
 
-  public deleteVehicle = async (request: RequestWithAdmin, response: Response, next: NextFunction): Promise<void> => {
+  public deleteVehicle = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
     try {
       const vehicleId: string = request.params.id;
       await this.vehicleService.deleteVehicle(vehicleId);
@@ -137,7 +137,7 @@ export class VehicleController {
     }
   };
 
-  private async handleVehicleMediaUpload(request: RequestWithAdmin, response: Response, vehicle_id: string): Promise<string[]> {
+  private async handleVehicleMediaUpload(request: RequestWithUser, response: Response, vehicle_id: string): Promise<string[]> {
   try {
     // Access files from request.files, not request.vehicleFiles
     const files = (request.files as { [fieldname: string]: Express.Multer.File[] }).vehicleFiles as Express.Multer.File[];
@@ -155,7 +155,7 @@ export class VehicleController {
       const tempRequest = {
         ...request,
         file: file,
-      } as RequestWithAdmin;
+      } as RequestWithUser;
 
       const uploadResult = await uploadVehicleMedia(tempRequest, response, 'file', vehicle_id);
       vehicleFilesUrls.push(uploadResult.fileUrl);
@@ -167,7 +167,7 @@ export class VehicleController {
   }
 }
 
-private async handleVehicleDocMediaUpload(request: RequestWithAdmin, response: Response, vehicle_id: string): Promise<string[]> {
+private async handleVehicleDocMediaUpload(request: RequestWithUser, response: Response, vehicle_id: string): Promise<string[]> {
   try {
     // Access files from request.files, not request.vehicleDocFiles
     const files = (request.files as { [fieldname: string]: Express.Multer.File[] }).vehicleDocFiles as Express.Multer.File[];
@@ -185,7 +185,7 @@ private async handleVehicleDocMediaUpload(request: RequestWithAdmin, response: R
       const tempRequest = {
         ...request,
         file: file,
-      } as RequestWithAdmin;
+      } as RequestWithUser;
 
       const uploadResult = await uploadVehicleDocMedia(tempRequest, response, 'file', vehicle_id);
       vehicleDocFilesUrls.push(uploadResult.fileUrl);

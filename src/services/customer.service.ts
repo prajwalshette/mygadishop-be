@@ -2,7 +2,7 @@ import { Prisma, PrismaClient } from '@prisma/client';
 import { Service } from 'typedi';
 import { HttpException } from '@/exceptions/HttpException';
 import prisma from '@/database';
-import { ICustomer } from '@/interfaces/customer.interface';
+import { CustomerType, ICustomer } from '@/interfaces/customer.interface';
 import { formatPrismaError } from '@/exceptions/prismaException';
 import { ulid } from 'ulid';
 
@@ -10,7 +10,7 @@ import { ulid } from 'ulid';
 export class CustomerService {
   private prisma = prisma;
 
-  public async addNewCustomer(customerData: ICustomer): Promise<ICustomer> {
+  public async addNewCustomer(customerData: ICustomer, shop_id): Promise<ICustomer> {
     try {
       const isExistCustomer = await this.prisma.customer.findFirst({
         where: { phone: customerData.id, email: customerData.email, is_deleted: false },
@@ -22,10 +22,11 @@ export class CustomerService {
       const newCustomer = await this.prisma.customer.create({
         data: {
           id: ulid(),
+          shop_id,
           ...customerData,
         },
       });
-      return newCustomer;
+      return {...newCustomer, customer_type: newCustomer.customer_type as CustomerType };
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -52,7 +53,7 @@ export class CustomerService {
           ...customerData,
         },
       });
-      return customer;
+      return {...customer, customer_type: customer.customer_type as CustomerType };
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -78,7 +79,11 @@ export class CustomerService {
         where: { is_deleted: false },
       });
 
-      return { customers, customerCount };
+      const mappedCustomers = customers.map(customer => ({
+        ...customer,
+        customer_type: customer.customer_type as CustomerType,
+      }));
+      return { customers: mappedCustomers, customerCount };
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -96,7 +101,7 @@ export class CustomerService {
       if (!customer) {
         throw new HttpException(404, `customer not fount with provided id: ${customer_id}`);
       }
-      return customer;
+      return { ...customer, customer_type: customer.customer_type as CustomerType };
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;

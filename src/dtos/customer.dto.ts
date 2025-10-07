@@ -1,4 +1,5 @@
-import { IsEmail, IsString, IsNotEmpty } from 'class-validator';
+import { IsEmail, IsString, IsNotEmpty, IsEnum, IsOptional } from 'class-validator';
+import { CustomerType } from '@interfaces/customer.interface';
 
 export class CreateCustomerDto {
   @IsString()
@@ -16,4 +17,20 @@ export class CreateCustomerDto {
   @IsString()
   @IsNotEmpty()
   public address: string;
+
+  @IsString()
+  @IsOptional()
+  public city: string;
+
+  @IsString()
+  @IsOptional()
+  public state: string;
+  
+  @IsString()
+  @IsOptional()
+  public pincode: string;
+
+  @IsEnum(CustomerType)
+  @IsNotEmpty()
+  public customer_type: CustomerType;
 }

@@ -2,6 +2,7 @@
 export enum VehicleType {
   BIKE = "BIKE",
   SCOTY = "SCOTY",
+  CAR = "CAR",
 }
 
 export enum FuelType {
@@ -15,6 +16,7 @@ export enum FuelType {
 export enum TransmissionType {
   MANUAL = "MANUAL",
   AUTOMATIC = "AUTOMATIC",
+  SEMI_AUTOMATIC = "SEMI_AUTOMATIC",
 }
 
 export enum BikeStatus {
@@ -22,7 +24,8 @@ export enum BikeStatus {
   SOLD = "SOLD",
   MAINTENANCE = "MAINTENANCE",
   RENTED = "RENTED",
-  RESERVED = "RESERVED",
+  BOOKED = "BOOKED",
+  ON_HOLD = "ON_HOLD",
 }
 
 

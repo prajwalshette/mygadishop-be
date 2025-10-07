@@ -32,7 +32,7 @@ export class AuthService {
       const cookie = this.createCookie(tokenData);
 
       // Create session entry
-      await this.prisma.session.create({
+      await this.prisma.adminSession.create({
         data: {
           id: session_id,
           admin_id: findAdminUser.id,
@@ -98,11 +98,11 @@ export class AuthService {
 
       if (!session_id) throw new HttpException(401, 'Invalid token payload');
 
-      const existingSession = await prisma.session.findUnique({
+      const existingSession = await prisma.userSession.findUnique({
         where: { id: session_id },
       });
 
-      await prisma.session.delete({
+      await prisma.userSession.delete({
         where: { id: session_id },
       });
     } catch (error) {
@@ -119,7 +119,7 @@ export class AuthService {
 
   public async createTempUser(userData: CreateUserDto): Promise<{ cookie: string; token: string }> {
     try {
-      const findUser = await this.prisma.shopUser.findUnique({ where: { email: userData.email } });
+      const findUser = await this.prisma.user.findUnique({ where: { email: userData.email } });
       if (findUser) throw new HttpException(409, `This email ${findUser.email} was already registered`);
 
       const tokenData = this.createOnboardTempToken(userData.email);
@@ -154,7 +154,7 @@ export class AuthService {
         throw new HttpException(400, `Shop already exists with email: ${onboardDetails.email}`);
       }
 
-      const existingUser = await this.prisma.shopUser.findUnique({
+      const existingUser = await this.prisma.user.findUnique({
         where: { email },
       });
 
@@ -195,7 +195,7 @@ export class AuthService {
         // Create user
         const tempUser = await onboardTempTokenCache.getOnboardTempToken(email, 'onboardTempToken');
         if (!tempUser) throw new HttpException(400, 'Temporary user data not found. Please restart the onboarding process.');
-        const createdUser = await tx.shopUser.create({
+        const createdUser = await tx.user.create({
           data: {
             id: ulid(),
             email,
@@ -219,7 +219,7 @@ export class AuthService {
 
         tokenData = this.createUserToken(shop.id, user.id, session_id);
 
-        await tx.shopSession.create({
+        await tx.userSession.create({
           data: {
             id: session_id,
             user_id: user.id,

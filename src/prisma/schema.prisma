@@ -11,22 +11,23 @@ generator client {
 }
 
 // ============= PLATFORM ADMIN (Your Team) ===========
-model PlatformAdmin {
-  id         String            @id
-  name       String
-  email      String            @unique
-  phone      String?           @unique
-  role       PlatformAdminRole
-  password   String
-  is_active  Boolean           @default(true)
-  is_deleted Boolean           @default(false)
-  created_at DateTime          @default(now())
-  updated_at DateTime          @updatedAt
+model Admin {
+  id          String            @id
+  name        String
+  email       String            @unique
+  phone       String?           @unique
+  role        PlatformAdminRole
+  password    String
+  permissions String[]
+  is_active   Boolean           @default(true)
+  is_deleted  Boolean           @default(false)
+  created_at  DateTime          @default(now())
+  updated_at  DateTime          @updatedAt
 
-  sessions PlatformSession[]
+  sessions AdminSession[]
 }
 
-model PlatformSession {
+model AdminSession {
   id          String   @id
   admin_id    String
   token       String   @unique
@@ -35,10 +36,10 @@ model PlatformSession {
   created_at  DateTime @default(now())
   expires_at  DateTime
 
-  admin PlatformAdmin @relation(fields: [admin_id], references: [id], onDelete: Cascade)
+  admin Admin @relation(fields: [admin_id], references: [id], onDelete: Cascade)
 }
 
-model ShopUser {
+model User {
   id         String       @id
   shop_id    String
   name       String?
@@ -52,23 +53,35 @@ model ShopUser {
   updated_at DateTime     @updatedAt
 
   shop     Shop          @relation(fields: [shop_id], references: [id], onDelete: Cascade)
-  sessions ShopSession[]
+  sessions UserSession[]
 
   @@unique([shop_id, email])
 }
 
+model UserSession {
+  id          String   @id
+  user_id     String
+  token       String   @unique
+  device_info Json?
+  ip_address  String?
+  created_at  DateTime @default(now())
+  expires_at  DateTime
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+}
+
 // ============= SHOP OWNER & SHOP ===========
 model Shop {
-  id              String  @id
-  shop_name       String
-  owner_name      String
-  email           String  @unique
-  phone           String  @unique
-  address         String
-  city            String
-  state           String
-  pincode         String
-  gstin           String? @unique
+  id         String  @id
+  shop_name  String
+  owner_name String
+  email      String  @unique
+  phone      String  @unique
+  address    String
+  city       String
+  state      String
+  pincode    String
+  gstin      String? @unique
 
   // Shop Details
   website_url      String?
@@ -89,7 +102,7 @@ model Shop {
   updated_at DateTime @updatedAt
 
   // Relations
-  shop_users    ShopUser[]
+  users         User[]
   customers     Customer[]
   vehicles      Vehicle[]
   services      Servicing[]
@@ -199,18 +212,6 @@ model Transaction {
   @@index([razorpay_order_id])
 }
 
-model ShopSession {
-  id          String   @id
-  user_id     String
-  token       String   @unique
-  device_info Json?
-  ip_address  String?
-  created_at  DateTime @default(now())
-  expires_at  DateTime
-
-  user ShopUser @relation(fields: [user_id], references: [id], onDelete: Cascade)
-}
-
 // ============= CUSTOMERS ===========
 model Customer {
   id              String  @id
@@ -218,17 +219,10 @@ model Customer {
   name            String
   phone           String
   email           String?
-  alternate_phone String?
   address         String?
   city            String?
   state           String?
   pincode         String?
-
-  // Documents
-  aadhar_number   String?
-  pan_number      String?
-  driving_license String?
-  document_urls   String[]
 
   customer_type CustomerType @default(BUYER)
   is_deleted    Boolean      @default(false)
@@ -373,7 +367,6 @@ enum ShopType {
   BOTH
 }
 
-
 enum SubscriptionPlanName {
   FREE
   BASIC
@@ -418,7 +411,7 @@ enum VehicleStatus {
   AVAILABLE
   SOLD
   MAINTENANCE
-  RESERVED
+  BOOKED
   ON_HOLD
 }
 

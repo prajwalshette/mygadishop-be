@@ -3,23 +3,24 @@ import { Container } from 'typedi';
 import { User } from '@interfaces/users.interface';
 import { CustomerService } from '@/services/customer.service';
 import { ICustomer } from '@/interfaces/customer.interface';
-import { RequestWithAdmin } from '@/interfaces/auth.interface';
+import { RequestWithUser } from '@/interfaces/auth.interface';
 
 export class CustomerController {
   public customerService = Container.get(CustomerService);
 
-  public addNewCustomer = async (request: RequestWithAdmin, response: Response, next: NextFunction): Promise<void> => {
+  public addNewCustomer = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
     try {
+      const shop_id = request.user.shop_id;
       const customerData: ICustomer = request.body;
 
-      const customer = await this.customerService.addNewCustomer(customerData);
+      const customer = await this.customerService.addNewCustomer(customerData, shop_id);
       response.status(200).json({ data: customer, message: 'New Customer Add successfully.' });
     } catch (error) {
       next(error);
     }
   };
 
-  public updateCustomer = async (request: RequestWithAdmin, response: Response, next: NextFunction): Promise<void> => {
+  public updateCustomer = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
     try {
       const customer_id = request.params.id;
       if (!customer_id) {
@@ -34,7 +35,7 @@ export class CustomerController {
     }
   };
 
-  public getAllCustomer = async (request: RequestWithAdmin, response: Response, next: NextFunction): Promise<void> => {
+  public getAllCustomer = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
     try {
       const { page_number, page_size } = request.query;
 
@@ -48,7 +49,7 @@ export class CustomerController {
     }
   };
 
-  public getCustomer = async (request: RequestWithAdmin, response: Response, next: NextFunction): Promise<void> => {
+  public getCustomer = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
     try {
       const customer_id = request.params.id;
       const customers = await this.customerService.getCustomer(customer_id);
@@ -58,7 +59,7 @@ export class CustomerController {
     }
   };
 
-  public deleteCustomer = async (request: RequestWithAdmin, response: Response, next: NextFunction): Promise<void> => {
+  public deleteCustomer = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
     try {
       const customer_id = request.params.id;
       const customers = await this.customerService.deleteCustomer(customer_id);

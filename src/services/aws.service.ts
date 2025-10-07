@@ -1,9 +1,6 @@
 import { Request } from 'express';
-import axios from 'axios';
-import multer from 'multer';
-import { RequestWithAdmin } from '@/interfaces/auth.interface';
+import { RequestWithUser } from '@/interfaces/auth.interface';
 import { S3Client, PutObjectCommand, GetObjectCommand} from '@aws-sdk/client-s3';
-import multerS3 from 'multer-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { AWS_REGION, S3_ACCESS_KEY_ID, S3_BUCKET_NAME, S3_SECRET_KEY } from '@/config';
 import { ulid } from 'ulid';
@@ -28,7 +25,7 @@ type VehicleUrlData = {
 
 // Vehicle Media Upload Function
 export const uploadVehicleMedia = async (
-  request: RequestWithAdmin,
+  request: RequestWithUser,
   response: any,
   fieldName: string,
   vehicle_id: string,
@@ -62,7 +59,7 @@ export const uploadVehicleMedia = async (
 
 // Vehicle Document Upload Function
 export const uploadVehicleDocMedia = async (
-  request: RequestWithAdmin,
+  request: RequestWithUser,
   response: any,
   fieldName: string,
   vehicle_id: string,
@@ -95,7 +92,7 @@ export const uploadVehicleDocMedia = async (
 };
 
 export const uploadVehiclePaymentMedia = async (
-  request: RequestWithAdmin,
+  request: RequestWithUser,
   response: any,
   fieldName: string,
   vehicle_id: string,

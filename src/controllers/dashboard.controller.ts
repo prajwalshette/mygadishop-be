@@ -8,7 +8,7 @@ export class DashboardController {
 
   public getShopDashboardStats = async (request: RequestWithUser, response: Response, next: NextFunction) => {
     try {
-       const stats = await this.dashboardService.getShopDashboardStats();
+      const stats = await this.dashboardService.getShopDashboardStats();
       response.status(200).json({
         success: true,
         data: stats

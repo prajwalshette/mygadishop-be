@@ -1,5 +1,5 @@
 import { Request } from 'express';
-import { AdminUser } from '@interfaces/users.interface';
+import { AdminUser, User } from '@interfaces/users.interface';
 
 export interface DataStoredInToken {
   id: string;
@@ -21,12 +21,17 @@ export interface TokenData {
   expiresIn: number;
 }
 
-export interface RequestWithUser extends Request {
+export interface RequestWithAdminUser extends Request {
   user: AdminUser;
 }
 
 export interface RequestWithAdmin extends Request {
   admin: AdminUser;
+  session_id: string;
+}
+
+export interface RequestWithUser extends Request {
+  user: User;
   session_id: string;
 
   // Extended properties for file uploads
@@ -42,6 +47,8 @@ export interface RequestWithAdmin extends Request {
     paymentReceiptFiles?: Express.Multer.File[];
   };
 }
+
+
 
 export interface RequestWithOnboardTempUser extends Request {
   email: string;
