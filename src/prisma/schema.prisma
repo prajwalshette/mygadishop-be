@@ -38,25 +38,85 @@ model PlatformSession {
   admin PlatformAdmin @relation(fields: [admin_id], references: [id], onDelete: Cascade)
 }
 
+model ShopUser {
+  id         String       @id
+  shop_id    String
+  name       String?
+  email      String       @unique
+  phone      String?      @unique
+  role       ShopUserRole @default(STAFF)
+  password   String
+  is_active  Boolean      @default(true)
+  is_deleted Boolean      @default(false)
+  created_at DateTime     @default(now())
+  updated_at DateTime     @updatedAt
+
+  shop     Shop          @relation(fields: [shop_id], references: [id], onDelete: Cascade)
+  sessions ShopSession[]
+
+  @@unique([shop_id, email])
+}
+
+// ============= SHOP OWNER & SHOP ===========
+model Shop {
+  id              String  @id
+  shop_name       String
+  owner_name      String
+  email           String  @unique
+  phone           String  @unique
+  address         String
+  city            String
+  state           String
+  pincode         String
+  gstin           String? @unique
+
+  // Shop Details
+  website_url      String?
+  shop_logo_url    String?
+  shop_type        ShopType @default(BOTH)
+  established_year Int?
+
+  // Subscription & Status
+  subscription_status SubscriptionStatus    @default(TRIAL)
+  subscription_plan   SubscriptionPlanName?
+  plan_start_date     DateTime?
+  plan_end_date       DateTime?
+  is_verified         Boolean               @default(false)
+  is_active           Boolean               @default(true)
+  is_deleted          Boolean               @default(false)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  // Relations
+  shop_users    ShopUser[]
+  customers     Customer[]
+  vehicles      Vehicle[]
+  services      Servicing[]
+  payments      VehiclePayment[]
+  subscriptions ShopSubscription[]
+  transactions  Transaction[]
+}
+
 // ============= SUBSCRIPTION PLANS ===========
 model SubscriptionPlan {
-  id          String   @id
-  plan_name   String   @unique // BASIC, PREMIUM, ENTERPRISE
-  plan_code   String   @unique // basic, premium, enterprise
-  description String?
-  is_active   Boolean  @default(true)
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
-
+  id              String  @id
+  plan_name       String  @unique // BASIC, PREMIUM, ENTERPRISE
+  plan_code       String  @unique // basic, premium, enterprise
+  description     String?
+  is_active       Boolean @default(true)
   // Features & Limits
-  max_vehicles     Int? // null = unlimited
-  max_staff_users  Int
-  has_sms_alerts   Boolean @default(false)
-  has_whatsapp     Boolean @default(false)
-  has_analytics    Boolean @default(false)
-  has_api_access   Boolean @default(false)
-  has_multi_branch Boolean @default(false)
-  has_custom_brand Boolean @default(false)
+  max_vehicles    Int? // null = unlimited
+  max_staff_users Int
+  // has_sms_alerts   Boolean @default(false)
+  // has_whatsapp     Boolean @default(false)
+  // has_analytics    Boolean @default(false)
+  // has_api_access   Boolean @default(false)
+  // has_multi_branch Boolean @default(false)
+  // has_custom_brand Boolean @default(false)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
   // Relations
   pricing       SubscriptionPricing[]
@@ -101,52 +161,6 @@ model ShopSubscription {
   @@index([shop_id, status])
 }
 
-// ============= SHOP OWNER & SHOP ===========
-model Shop {
-  id              String  @id
-  shop_name       String
-  owner_name      String
-  email           String  @unique
-  phone           String  @unique
-  alternate_phone String?
-  address         String
-  city            String
-  state           String
-  pincode         String
-  gstin           String? @unique
-  pan_number      String?
-  license_number  String?
-
-  // Shop Details
-  shop_logo_url    String?
-  shop_image_urls  String[]
-  shop_type        ShopType @default(BOTH)
-  established_year Int?
-
-  // Subscription & Status
-  subscription_status SubscriptionStatus    @default(TRIAL)
-  subscription_plan   SubscriptionPlanName?
-  plan_start_date     DateTime?
-  plan_end_date       DateTime?
-  is_verified         Boolean               @default(false)
-  is_active           Boolean               @default(true)
-  is_deleted          Boolean               @default(false)
-
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
-
-  // Relations
-  shop_users    ShopUser[]
-  customers     Customer[]
-  vehicles      Vehicle[]
-  services      Servicing[]
-  payments      VehiclePayment[]
-  expenses      Expense[]
-  inquiries     Inquiry[]
-  subscriptions ShopSubscription[]
-  transactions  Transaction[]
-}
-
 // ============= TRANSACTIONS (Razorpay Payments) ===========
 model Transaction {
   id              String  @id
@@ -185,25 +199,6 @@ model Transaction {
   @@index([razorpay_order_id])
 }
 
-model ShopUser {
-  id         String       @id
-  shop_id    String
-  name       String
-  email      String       @unique
-  phone      String       @unique
-  role       ShopUserRole @default(STAFF)
-  password   String
-  is_active  Boolean      @default(true)
-  is_deleted Boolean      @default(false)
-  created_at DateTime     @default(now())
-  updated_at DateTime     @updatedAt
-
-  shop     Shop          @relation(fields: [shop_id], references: [id], onDelete: Cascade)
-  sessions ShopSession[]
-
-  @@unique([shop_id, email])
-}
-
 model ShopSession {
   id          String   @id
   user_id     String
@@ -240,11 +235,10 @@ model Customer {
   created_at    DateTime     @default(now())
   updated_at    DateTime     @updatedAt
 
-  shop      Shop             @relation(fields: [shop_id], references: [id], onDelete: Cascade)
-  vehicles  Vehicle[]
-  services  Servicing[]
-  payments  VehiclePayment[]
-  inquiries Inquiry[]
+  shop     Shop             @relation(fields: [shop_id], references: [id], onDelete: Cascade)
+  vehicles Vehicle[]
+  services Servicing[]
+  payments VehiclePayment[]
 
   @@unique([shop_id, phone])
 }
@@ -360,56 +354,6 @@ model VehiclePayment {
   customer Customer @relation(fields: [customer_id], references: [id], onDelete: Cascade)
 }
 
-// ============= EXPENSES ===========
-model Expense {
-  id      String @id
-  shop_id String
-
-  expense_type   ExpenseType
-  category       String
-  amount         Float
-  description    String?
-  payment_method PaymentMethod
-
-  bill_number  String?
-  bill_images  String[]
-  expense_date DateTime
-
-  is_deleted Boolean  @default(false)
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
-
-  shop Shop @relation(fields: [shop_id], references: [id], onDelete: Cascade)
-}
-
-// ============= INQUIRIES ===========
-model Inquiry {
-  id          String  @id
-  shop_id     String
-  customer_id String?
-
-  customer_name  String
-  customer_phone String
-  customer_email String?
-
-  inquiry_type InquiryType
-  vehicle_type VehicleType?
-  budget_min   Float?
-  budget_max   Float?
-  message      String?
-
-  status         InquiryStatus @default(NEW)
-  follow_up_date DateTime?
-  notes          String?
-
-  is_deleted Boolean  @default(false)
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
-
-  shop     Shop      @relation(fields: [shop_id], references: [id], onDelete: Cascade)
-  customer Customer? @relation(fields: [customer_id], references: [id])
-}
-
 // ============= ENUMS ===========
 enum PlatformAdminRole {
   SUPER_ADMIN
@@ -424,10 +368,11 @@ enum ShopUserRole {
 }
 
 enum ShopType {
-  BIKE
-  CAR
+  TWO_WHEELER
+  FOUR_WHEELER
   BOTH
 }
+
 
 enum SubscriptionPlanName {
   FREE
@@ -509,32 +454,6 @@ enum PaymentType {
   SERVICE
   ADVANCE
   REFUND
-}
-
-enum ExpenseType {
-  RENT
-  SALARY
-  UTILITY
-  MAINTENANCE
-  MARKETING
-  TRANSPORT
-  MISCELLANEOUS
-}
-
-enum InquiryType {
-  BUYING
-  SELLING
-  SERVICE
-  GENERAL
-}
-
-enum InquiryStatus {
-  NEW
-  CONTACTED
-  FOLLOW_UP
-  CONVERTED
-  CLOSED
-  LOST
 }
 
 enum PlanDuration {

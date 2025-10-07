@@ -6,6 +6,16 @@ export interface DataStoredInToken {
   session_id: string;
 }
 
+export interface DataStoredInUserToken {
+  user_id: string;
+  session_id: string;
+  shop_id: string;
+}
+
+export interface DataStoredInOnboardTempToken {
+  email: string;
+}
+
 export interface TokenData {
   token: string;
   expiresIn: number;
@@ -31,5 +41,9 @@ export interface RequestWithAdmin extends Request {
    paymentReceiptFiles?: {
     paymentReceiptFiles?: Express.Multer.File[];
   };
+}
+
+export interface RequestWithOnboardTempUser extends Request {
+  email: string;
 }
 
