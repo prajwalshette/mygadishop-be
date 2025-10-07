@@ -1,3 +1,33 @@
+export interface ISubscriptionPlan {
+  id?: string;
+  plan_name: SubscriptionPlanName;
+  description: string | null;
+  is_active: boolean;
+  max_vehicles?: number | null;
+  max_staff_users: number;
+}
+
+export interface ISubscriptionPricing {
+  id: string;
+  plan_id: string;
+  duration: PlanDuration;
+  price: number;
+  discount: number;
+  is_active: boolean;
+}
+
+export interface ShopSubscription {
+  id: string;
+  shop_id: string;
+  plan_id: string;
+  subscription_pricing_id: string;
+  start_date: Date;
+  end_date: Date;
+  status: SubscriptionStatus;
+  auto_renew: boolean;
+}
+
+// ======================= ENUMS =======================
 export enum SubscriptionStatus {
   TRIAL = "TRIAL",
   ACTIVE = "ACTIVE",
@@ -12,4 +42,11 @@ export enum SubscriptionPlanName {
   BASIC = "BASIC",
   PREMIUM = "PREMIUM",
   ENTERPRISE = "ENTERPRISE"
+}
+
+export enum PlanDuration {
+  ONE_MONTH = "ONE_MONTH",
+  THREE_MONTHS = "THREE_MONTHS",
+  SIX_MONTHS = "SIX_MONTHS",
+  ONE_YEAR = "ONE_YEAR"
 }

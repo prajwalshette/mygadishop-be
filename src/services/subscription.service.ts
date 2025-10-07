@@ -4,32 +4,37 @@ import { HttpException } from '@/exceptions/HttpException';
 import prisma from '@/database';
 import { formatPrismaError } from '@/exceptions/prismaException';
 import { ulid } from 'ulid';
+import { ISubscriptionPlan, SubscriptionPlanName } from '@/interfaces/subscription.interface';
 
 @Service()
-export class Service {
+export class SubscriptionService {
   private prisma = prisma;
 
-  // Create
-  public async createVehiclePayment(paymentData: IVehiclePayment): Promise<IVehiclePayment> {
+  public async createSubscriptionPlan(planData: ISubscriptionPlan): Promise<ISubscriptionPlan> {
     try {
-      const payment = await this.prisma.vehiclePayment.create({
-        data: {
-          id: ulid(),
-          amount: paymentData.amount,
-          method: paymentData.method,
-          status: paymentData.status,
-          payment_receipt_images: paymentData.payment_receipt_images,
-          message: paymentData.message,
-          ...paymentData,
-          customer_id: paymentData.customer_id,
-          vehicle_id: paymentData.vehicle_id,
-        },
+      const isExistPlan = await this.prisma.subscriptionPlan.findFirst({
+        where: { plan_name: planData.plan_name },
       });
 
-      return { ...payment, status: payment.status as PaymentStatus, method: payment.method as PaymentMethod };
-    } catch (error: any) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError) throw formatPrismaError(error);
-      throw new HttpException(500, `Error creating payment: ${error.message}`);
+      if (isExistPlan) {
+        throw new HttpException(404, `${planData.plan_name} Plan already exists`);
+      }
+      const newPlan = await this.prisma.subscriptionPlan.create({
+        data: {
+          id: ulid(),
+          ...planData,
+        },
+      });
+      return {...newPlan, plan_name: newPlan.plan_name as SubscriptionPlanName};
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        throw formatPrismaError(error);
+      }
+      throw new HttpException(500, `Error Add New Subscription Plan: ${error.message}`);
     }
   }
+
 }
