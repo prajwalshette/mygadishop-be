@@ -265,7 +265,6 @@ model Vehicle {
   // Pricing
   buying_price   Float?
   selling_price  Float?
-  expected_price Float?
 
   // Media
   vehicle_image_urls String[]
@@ -280,7 +279,6 @@ model Vehicle {
   features    String[]
   description String?
 
-  is_featured Boolean  @default(false)
   is_deleted  Boolean  @default(false)
   created_at  DateTime @default(now())
   updated_at  DateTime @updatedAt

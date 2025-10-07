@@ -4,7 +4,7 @@ import { HttpException } from '@/exceptions/HttpException';
 import prisma from '@/database';
 import { formatPrismaError } from '@/exceptions/prismaException';
 import { ulid } from 'ulid';
-import { FuelType, IVehicle, VehicleType, TransmissionType, BikeStatus } from '@/interfaces/vehicle.interface';
+import { FuelType, IVehicle, VehicleType, TransmissionType, BikeStatus, OwnershipType } from '@/interfaces/vehicle.interface';
 import { generateVehiclePresignedUrls } from './aws.service';
 import { getCachedVehiclePresignedUrls } from '@/utils/cacheVehiclePresignedUrl';
 
@@ -12,10 +12,10 @@ import { getCachedVehiclePresignedUrls } from '@/utils/cacheVehiclePresignedUrl'
 export class VehicleService {
   private prisma = prisma;
 
-  public async createVehicle(vehicleData: IVehicle): Promise<IVehicle> {
+  public async createVehicle(vehicleData: IVehicle, shop_id: string): Promise<IVehicle> {
     try {
       const isExistVehicle = await this.prisma.vehicle.findFirst({
-        where: { registration_number: vehicleData.registration_number, chassis_number: vehicleData.chassis_number, is_deleted: false },
+        where: { registration_number: vehicleData.registration_number, chassis_number: vehicleData.chassis_number, is_deleted: false, shop_id: shop_id },
       });
 
       if (isExistVehicle) {
@@ -27,10 +27,12 @@ export class VehicleService {
       const vehicle = await this.prisma.vehicle.create({
         data: {
           id: ulid(),
+          shop_id: shop_id,
           ...vehicleData,
           selling_date: vehicleData.selling_date ? new Date(vehicleData.selling_date) : null,
           buying_date: vehicleData.buying_date ? new Date(vehicleData.buying_date) : null,
-        },
+          insurance_valid_till: new Date(vehicleData.insurance_valid_till),
+        }as Prisma.VehicleUncheckedCreateInput,
       });
       return {
         ...vehicle,
@@ -38,6 +40,7 @@ export class VehicleService {
         fuel_type: vehicle.fuel_type as FuelType,
         transmission: vehicle.transmission as TransmissionType,
         status: vehicle.status as BikeStatus,
+        ownership: vehicleData.ownership as OwnershipType,
       };
     } catch (error) {
       if (error instanceof HttpException) {
@@ -94,7 +97,7 @@ export class VehicleService {
           updated_at: new Date(),
           selling_date: vehicleData.selling_date ? new Date(vehicleData.selling_date) : existingVehicle.selling_date,
           buying_date: vehicleData.buying_date ? new Date(vehicleData.buying_date) : existingVehicle.buying_date,
-        },
+        }as Prisma.VehicleUncheckedCreateInput,
       });
 
       return {
@@ -103,6 +106,7 @@ export class VehicleService {
         fuel_type: updatedVehicle.fuel_type as FuelType,
         transmission: updatedVehicle.transmission as TransmissionType,
         status: updatedVehicle.status as BikeStatus,
+        ownership: updatedVehicle.ownership as OwnershipType,
       };
     } catch (error) {
       if (error instanceof HttpException) {
@@ -148,6 +152,7 @@ export class VehicleService {
           status: vehicle.status as BikeStatus,
           vehicle_image_urls: presignedUrls?.imageUrls || vehicle.vehicle_image_urls || [],
           vehicle_doc_urls: presignedUrls?.docUrls || vehicle.vehicle_doc_urls || [],
+          ownership: vehicle.ownership as OwnershipType,
         };
       } catch (urlError) {
         console.error(`Error processing URLs for vehicle ${vehicleId}:`, urlError);
@@ -157,6 +162,7 @@ export class VehicleService {
           fuel_type: vehicle.fuel_type as FuelType,
           transmission: vehicle.transmission as TransmissionType,
           status: vehicle.status as BikeStatus,
+          ownership: vehicle.ownership as OwnershipType,
           // Fallback to original URLs
           vehicle_image_urls: vehicle.vehicle_image_urls || [],
           vehicle_doc_urls: vehicle.vehicle_doc_urls || [],

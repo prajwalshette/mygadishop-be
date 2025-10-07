@@ -1,5 +1,5 @@
 import { IsString, IsNotEmpty, IsOptional, IsEnum, IsNumber, IsArray, IsDateString } from 'class-validator';
-import { VehicleType, FuelType, TransmissionType, BikeStatus } from '@interfaces/vehicle.interface';
+import { VehicleType, FuelType, TransmissionType, BikeStatus, OwnershipType } from '@interfaces/vehicle.interface';
 
 export class CreateVehicleDto {
   @IsString()
@@ -17,6 +17,10 @@ export class CreateVehicleDto {
   @IsString()
   @IsNotEmpty()
   model: string;
+
+  @IsString()
+  @IsOptional()
+  variant?: string;
 
   @IsNumber()
   @IsNotEmpty()
@@ -49,6 +53,18 @@ export class CreateVehicleDto {
   @IsEnum(TransmissionType)
   @IsNotEmpty()
   transmission: TransmissionType;
+
+  @IsNumber()
+  @IsOptional()
+  engine_capacity?: number;
+
+  @IsEnum(OwnershipType)
+  @IsNotEmpty()
+  ownership: OwnershipType;
+
+  @IsDateString()
+  @IsNotEmpty()
+  insurance_valid_till: Date;
 
   @IsNumber()
   @IsNotEmpty()

@@ -28,6 +28,7 @@ export const uploadVehicleMedia = async (
   request: RequestWithUser,
   response: any,
   fieldName: string,
+  shop_id: string,
   vehicle_id: string,
 ): Promise<{ fileUrl: string }> => {
   try {
@@ -37,7 +38,7 @@ export const uploadVehicleMedia = async (
 
     const file = request.file;
     const fileName = generateFileName(request, file);
-    const key = `data/vehicles/${vehicle_id}/media/${fileName}`;
+    const key = `data/${shop_id}/vehicles/${vehicle_id}/media/${fileName}`;
 
     const uploadParams = {
       Bucket: S3_BUCKET_NAME,
@@ -62,6 +63,7 @@ export const uploadVehicleDocMedia = async (
   request: RequestWithUser,
   response: any,
   fieldName: string,
+  shop_id: string,
   vehicle_id: string,
 ): Promise<{ fileUrl: string }> => {
   try {
@@ -71,7 +73,7 @@ export const uploadVehicleDocMedia = async (
 
     const file = request.file;
     const fileName = generateFileName(request, file);
-    const key = `data/vehicles/${vehicle_id}/documents/${fileName}`;
+    const key = `data/${shop_id}/vehicles/${vehicle_id}/documents/${fileName}`;
 
     const uploadParams = {
       Bucket: S3_BUCKET_NAME,
@@ -95,6 +97,7 @@ export const uploadVehiclePaymentMedia = async (
   request: RequestWithUser,
   response: any,
   fieldName: string,
+  shop_id: string,
   vehicle_id: string,
   payment_id: string,
 ): Promise<{ fileUrl: string }> => {
@@ -105,7 +108,7 @@ export const uploadVehiclePaymentMedia = async (
 
     const file = request.file;
     const fileName = generateFileName(request, file);
-    const key = `data/vehicles-payment/${vehicle_id}/${payment_id}/${fileName}`;
+    const key = `data/${shop_id}/vehicles-payment/${vehicle_id}/${payment_id}/${fileName}`;
 
     const uploadParams = {
       Bucket: S3_BUCKET_NAME,

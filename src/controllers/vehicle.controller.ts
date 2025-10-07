@@ -14,6 +14,7 @@ export class VehicleController {
     try {
       const vehicleData: IVehicle = request.body;
       const vehicle_id = ulid();
+      const shop_id = request.user.shop_id;
 
       let vehicle_image_urls: string[] = [];
       let vehicle_doc_urls: string[] = [];
@@ -23,12 +24,12 @@ export class VehicleController {
 
       // Upload vehicle media files if present
       if (files && files.vehicleFiles && files.vehicleFiles.length > 0) {
-        vehicle_image_urls = await this.handleVehicleMediaUpload(request, response, vehicle_id);
+        vehicle_image_urls = await this.handleVehicleMediaUpload(request, response, shop_id, vehicle_id);
       }
 
       // Upload vehicle document files if present
       if (files && files.vehicleDocFiles && files.vehicleDocFiles.length > 0) {
-        vehicle_doc_urls = await this.handleVehicleDocMediaUpload(request, response, vehicle_id);
+        vehicle_doc_urls = await this.handleVehicleDocMediaUpload(request, response, shop_id, vehicle_id);
       }
 
       const vehicleDataWithMedia: IVehicle = {
@@ -36,9 +37,10 @@ export class VehicleController {
         id: vehicle_id,
         vehicle_doc_urls: vehicle_doc_urls,
         vehicle_image_urls: vehicle_image_urls,
+        
       };
 
-      const vehicle = await this.vehicleService.createVehicle(vehicleDataWithMedia);
+      const vehicle = await this.vehicleService.createVehicle(vehicleDataWithMedia, shop_id);
       response.status(201).json({ data: vehicle, message: 'Successfully Add New Vehicle' });
     } catch (error) {
       next(error);
@@ -49,6 +51,7 @@ export class VehicleController {
     try {
       const vehicleId: string = request.params.id;
       const vehicleData: Partial<IVehicle> = request.body;
+      const shop_id = request.user.shop_id;
 
       // Check if vehicle exists
       const existingVehicle = await this.vehicleService.getVehicleById(vehicleId);
@@ -62,7 +65,7 @@ export class VehicleController {
 
       // Upload new vehicle media files if present
       if (request.vehicleFiles && request.vehicleFiles.vehicleFiles) {
-        const newImageUrls = await this.handleVehicleMediaUpload(request, response, vehicleId);
+        const newImageUrls = await this.handleVehicleMediaUpload(request, response, shop_id, vehicleId);
 
         // You can choose to append or replace existing images
         if (request.body.replaceImages === 'true') {
@@ -74,7 +77,7 @@ export class VehicleController {
 
       // Upload new vehicle document files if present
       if (request.vehicleDocFiles && request.vehicleDocFiles.vehicleDocFiles) {
-        const newDocUrls = await this.handleVehicleDocMediaUpload(request, response, vehicleId);
+        const newDocUrls = await this.handleVehicleDocMediaUpload(request, response, shop_id,  vehicleId);
 
         // You can choose to append or replace existing documents
         if (request.body.replaceDocuments === 'true') {
@@ -137,7 +140,7 @@ export class VehicleController {
     }
   };
 
-  private async handleVehicleMediaUpload(request: RequestWithUser, response: Response, vehicle_id: string): Promise<string[]> {
+  private async handleVehicleMediaUpload(request: RequestWithUser, response: Response, shop_id: string, vehicle_id: string): Promise<string[]> {
   try {
     // Access files from request.files, not request.vehicleFiles
     const files = (request.files as { [fieldname: string]: Express.Multer.File[] }).vehicleFiles as Express.Multer.File[];
@@ -157,7 +160,7 @@ export class VehicleController {
         file: file,
       } as RequestWithUser;
 
-      const uploadResult = await uploadVehicleMedia(tempRequest, response, 'file', vehicle_id);
+      const uploadResult = await uploadVehicleMedia(tempRequest, response, 'file', shop_id, vehicle_id);
       vehicleFilesUrls.push(uploadResult.fileUrl);
     }
 
@@ -167,7 +170,7 @@ export class VehicleController {
   }
 }
 
-private async handleVehicleDocMediaUpload(request: RequestWithUser, response: Response, vehicle_id: string): Promise<string[]> {
+private async handleVehicleDocMediaUpload(request: RequestWithUser, response: Response, shop_id: string, vehicle_id: string): Promise<string[]> {
   try {
     // Access files from request.files, not request.vehicleDocFiles
     const files = (request.files as { [fieldname: string]: Express.Multer.File[] }).vehicleDocFiles as Express.Multer.File[];
@@ -187,7 +190,7 @@ private async handleVehicleDocMediaUpload(request: RequestWithUser, response: Re
         file: file,
       } as RequestWithUser;
 
-      const uploadResult = await uploadVehicleDocMedia(tempRequest, response, 'file', vehicle_id);
+      const uploadResult = await uploadVehicleDocMedia(tempRequest, response, 'file', shop_id, vehicle_id);
       vehicleDocFilesUrls.push(uploadResult.fileUrl);
     }
 
