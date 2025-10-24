@@ -3,7 +3,7 @@ import { compare, hash } from 'bcrypt';
 import { sign } from 'jsonwebtoken';
 import { Service } from 'typedi';
 import { SECRET_KEY } from '@config';
-import { CreateUserDto, LoginAdminUserDto } from '@dtos/users.dto';
+import { CreateUserDto, LoginAdminUserDto, LoginUserDto } from '@dtos/users.dto';
 import { HttpException } from '@exceptions/HttpException';
 import { DataStoredInOnboardTempToken, DataStoredInToken, DataStoredInUserToken, TokenData } from '@interfaces/auth.interface';
 import { AdminRole, AdminUser, ShopUserResponseDTO, User, UserRole } from '@interfaces/users.interface';
@@ -117,6 +117,44 @@ export class AuthService {
     }
   }
 
+    public async loginUser(userData: LoginUserDto): Promise<{ cookie: string; findUser: User; token: string }> {
+    try {
+      const findUser = await this.prisma.user.findUnique({ where: { email: userData.email } });
+      if (!findUser) throw new HttpException(409, `This email ${userData.email} was not found`);
+
+      const isPasswordMatching: boolean = await compare(userData.password, findUser.password);
+      if (!isPasswordMatching) throw new HttpException(409, 'Password is not matching');
+
+      // Generate session token
+      const session_id = ulid();
+      const tokenData = this.createUserToken(findUser.shop_id, findUser.id, session_id);
+      const cookie = this.createCookie(tokenData);
+
+      // Create session entry
+      await this.prisma.userSession.create({
+        data: {
+          id: session_id,
+          user_id: findUser.id,
+          token: tokenData.token,
+          device_info: userData.device_info as any,
+          expires_at: new Date(Date.now() + tokenData.expiresIn * 1000),
+        },
+      });
+
+      delete  findUser.password;
+
+      return { cookie, findUser: { ...findUser, role: findUser.role as UserRole}, token: tokenData.token };
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        throw formatPrismaError(error);
+      }
+      throw new HttpException(500, `Error User Login: ${error.message}`);
+    }
+  }
+
   public async createTempUser(userData: CreateUserDto): Promise<{ cookie: string; token: string }> {
     try {
       const findUser = await this.prisma.user.findUnique({ where: { email: userData.email } });
@@ -224,8 +262,9 @@ export class AuthService {
             id: session_id,
             user_id: user.id,
             token: tokenData.token,
-            device_info: undefined,
+            device_info: onboardDetails.device_info as any,
             expires_at: new Date(Date.now() + tokenData.expiresIn * 1000),
+            ip_address: onboardDetails.ip_address,
           },
         });
       });

@@ -4,6 +4,7 @@ import { RequestWithAdmin, RequestWithOnboardTempUser } from '@/interfaces/auth.
 import { User, AdminUser } from '@interfaces/users.interface';
 import { AuthService } from '@services/auth.service';
 import { OnboardShopDto } from '@/dtos/onboard.dto';
+import { LoginUserDto } from '@/dtos/users.dto';
 
 export class AuthController {
   public auth = Container.get(AuthService);
@@ -51,6 +52,18 @@ export class AuthController {
         success: true,
         message: 'Logout successfully',
       });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  public loginUser = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
+    try {
+      const userData: LoginUserDto = request.body;
+      const { cookie, token } = await this.auth.loginUser(userData);
+
+      response.setHeader('Set-Cookie', [cookie]);
+      response.status(200).json({ data: { token: token }, message: 'Login' });
     } catch (error) {
       next(error);
     }

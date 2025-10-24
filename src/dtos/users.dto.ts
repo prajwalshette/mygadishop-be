@@ -1,4 +1,4 @@
-import { IsEmail, IsString, IsNotEmpty, MinLength, MaxLength, IsEnum, IsOptional} from 'class-validator';
+import { IsEmail, IsString, IsNotEmpty, MinLength, MaxLength, IsEnum, IsOptional, IsJSON} from 'class-validator';
 import { AdminRole } from '@/interfaces/users.interface';
 
 export class CreateUserDto {
@@ -11,6 +11,26 @@ export class CreateUserDto {
   @MaxLength(32)
   public password: string;
 }
+
+export class LoginUserDto {
+  @IsEmail()
+  public email: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MinLength(9)
+  @MaxLength(32)
+  public password: string;
+
+  @IsJSON()
+  @IsOptional()
+  public device_info?: Object;
+
+  @IsString()
+  @IsOptional()
+  public ip_address?: string;
+}
+
 
 export class UpdateUserDto {
   @IsString()
