@@ -1,4 +1,4 @@
-import { IsEmail, IsString, IsNotEmpty, IsOptional, IsJSON } from 'class-validator';
+import { IsEmail, IsString, IsNotEmpty, IsOptional, IsJSON, IsObject } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class OnboardShopDto {
@@ -38,7 +38,7 @@ export class OnboardShopDto {
   @IsNotEmpty()
   public pincode: string;
 
-  @IsJSON()
+  @IsObject()
   @IsOptional()
   public device_info?: Object;
 

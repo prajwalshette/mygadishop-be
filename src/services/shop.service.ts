@@ -57,4 +57,33 @@ export class ShopService {
       throw new HttpException(500, `Error Edit Shop Details: ${error.message}`);
     }
   }
+
+  public async getAllShop(pageNumber: number, pageSize: number): Promise<any> {
+    try {
+      const skip = (pageNumber - 1) * pageSize;
+      const shops = await this.prisma.shop.findMany({
+        orderBy: { created_at: 'desc' },
+        skip,
+        take: pageSize,
+      });
+
+      const shopCount = await this.prisma.shop.count({});
+
+      return {
+        shops: shops.map(shop => ({
+          ...shop,
+          subscription_plan: shop.subscription_plan as SubscriptionPlanName,
+          subscription_status: shop.subscription_status as SubscriptionStatus,
+          shop_type: shop.shop_type as ShopType,
+        })),
+        shopCount,
+      };
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        throw formatPrismaError(error);
+      }
+      throw new HttpException(500, `Error fetching shop: ${error.message}`);
+    }
+    
+  }
 }

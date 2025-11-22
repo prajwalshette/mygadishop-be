@@ -29,4 +29,18 @@ export class ShopController {
     }
   };
 
+  public getAllShop = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { page_number, page_size } = request.query;
+
+      const pageNumber = page_number ? Number(page_number) : 1;
+      const pageSize = page_size ? Number(page_size) : 5;
+      const shops = await this.shopService.getAllShop(pageNumber, pageSize);
+
+      response.status(200).json({ data: { ...shops }, message: 'Successfully Retrieved Shop' });
+    } catch (error) {
+      next(error);
+    }
+  };
+
 }

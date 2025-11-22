@@ -12,7 +12,7 @@ export interface ISubscriptionPricing {
   plan_id: string;
   duration: PlanDuration;
   price: number;
-  discount: number;
+  discount?: number;
   is_active: boolean;
 }
 

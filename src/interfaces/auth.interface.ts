@@ -33,6 +33,7 @@ export interface RequestWithAdmin extends Request {
 export interface RequestWithUser extends Request {
   user: User;
   session_id: string;
+  shop_id: string;
 
   // Extended properties for file uploads
   vehicleFiles?: {
