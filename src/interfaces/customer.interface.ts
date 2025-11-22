@@ -9,8 +9,7 @@ export interface ICustomer {
   state?: string;
   pincode?: string;
   customer_type?: CustomerType;
-  is_verified: boolean;
-  is_active: boolean;
+
   deleted_at?: Date | null;
 }
 

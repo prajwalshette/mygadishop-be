@@ -1,4 +1,3 @@
-import { Prisma, PrismaClient } from '@prisma/client';
 import { Service } from 'typedi';
 import { HttpException } from '@/exceptions/HttpException';
 import { NotFoundException } from '@/exceptions/NotFoundException';
