@@ -2,7 +2,7 @@ import { NextFunction, Request, Response } from 'express';
 import { Container } from 'typedi';
 import { PaymentService } from '@/services/payment.service';
 import { IVehiclePayment } from '@/interfaces/vehiclePayment.interface';
-import { RequestWithAdmin } from '@/interfaces/auth.interface';
+import { RequestWithAdmin, RequestWithUser } from '@/interfaces/auth.interface';
 import { ulid } from 'ulid';
 import { uploadVehiclePaymentMedia } from '@/services/aws.service';
 import { HttpException } from '@/exceptions/HttpException';
@@ -14,7 +14,7 @@ export class PaymentController {
   private prisma = prisma;
 
   // Create
-  public createVehiclePayment = async (request: RequestWithAdmin, response: Response, next: NextFunction): Promise<void> => {
+  public createVehiclePayment = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
     try {
       const vehiclePaymentData: CreateVehiclePaymentDto = request.body;
       const payment_id = ulid();
@@ -71,7 +71,7 @@ export class PaymentController {
   };
 
   // Update
-  public updateVehiclePayment = async (request: RequestWithAdmin, response: Response, next: NextFunction): Promise<void> => {
+  public updateVehiclePayment = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
     try {
       const { id } = request.params;
       const vehiclePaymentData: UpdateVehiclePaymentDto = request.body;
@@ -121,7 +121,7 @@ export class PaymentController {
   };
 
   private async handleVehiclePaymentMediaUpload(
-    request: RequestWithAdmin,
+    request: RequestWithUser,
     response: Response,
     vehicle_id: string,
     payment_id: string,
@@ -131,8 +131,8 @@ export class PaymentController {
       const vehiclePaymentFilesUrls: string[] = [];
 
       for (const file of files) {
-        const tempRequest = { ...request, file } as RequestWithAdmin;
-        const uploadResult = await uploadVehiclePaymentMedia(tempRequest, response, 'file', vehicle_id, payment_id);
+        const tempRequest = { ...request, file } as RequestWithUser;
+        const uploadResult = await uploadVehiclePaymentMedia(tempRequest, response, 'file', request.shop_id, vehicle_id, payment_id);
         vehiclePaymentFilesUrls.push(uploadResult.fileUrl);
       }
 
