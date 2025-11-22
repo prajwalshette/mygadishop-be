@@ -1,7 +1,6 @@
 import { existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
-import winston from 'winston';
-import winstonDaily from 'winston-daily-rotate-file';
+import pino from 'pino';
 import { LOG_DIR } from '@config';
 
 // logs dir
@@ -11,55 +10,61 @@ if (!existsSync(logDir)) {
   mkdirSync(logDir);
 }
 
-// Define log format
-// const logFormat = winston.format.printf(({ timestamp, level, message }) => `${timestamp} ${level}: ${message}`);
-const logFormat = winston.format.printf(({ timestamp, level, message, ...meta }) => {
-  const metaString = Object.keys(meta).length ? JSON.stringify(meta) : '';
-  return `${timestamp} ${level}: ${message} ${metaString}`;
+// Create separate log directories
+const debugLogDir = join(logDir, 'debug');
+const errorLogDir = join(logDir, 'error');
+
+if (!existsSync(debugLogDir)) {
+  mkdirSync(debugLogDir, { recursive: true });
+}
+
+if (!existsSync(errorLogDir)) {
+  mkdirSync(errorLogDir, { recursive: true });
+}
+
+// Get current date for log filename
+const getCurrentDate = () => new Date().toISOString().split('T')[0];
+
+// Pino configuration
+const logger = pino({
+  level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
+  timestamp: pino.stdTimeFunctions.isoTime,
+  transport: {
+    targets: [
+      // Console transport with pretty printing
+      {
+        target: 'pino-pretty',
+        level: 'debug',
+        options: {
+          colorize: true,
+          translateTime: 'yyyy-mm-dd HH:MM:ss',
+          ignore: 'pid,hostname',
+          singleLine: false,
+        },
+      },
+      // Debug log file - logs everything (debug and above)
+      {
+        target: 'pino/file',
+        level: 'debug',
+        options: {
+          destination: join(debugLogDir, `${getCurrentDate()}.log`),
+          mkdir: true,
+        },
+      },
+      // Error log file - logs only errors
+      {
+        target: 'pino/file',
+        level: 'error',
+        options: {
+          destination: join(errorLogDir, `${getCurrentDate()}.log`),
+          mkdir: true,
+        },
+      },
+    ],
+  },
 });
 
-/*
- * Log Level
- * error: 0, warn: 1, info: 2, http: 3, verbose: 4, debug: 5, silly: 6
- */
-const logger = winston.createLogger({
-  format: winston.format.combine(
-    winston.format.timestamp({
-      format: 'YYYY-MM-DD HH:mm:ss',
-    }),
-    logFormat,
-  ),
-  transports: [
-    // debug log setting
-    new winstonDaily({
-      level: 'debug',
-      datePattern: 'YYYY-MM-DD',
-      dirname: logDir + '/debug', // log file /logs/debug/*.log in save
-      filename: `%DATE%.log`,
-      maxFiles: 30, // 30 Days saved
-      json: false,
-      zippedArchive: true,
-    }),
-    // error log setting
-    new winstonDaily({
-      level: 'error',
-      datePattern: 'YYYY-MM-DD',
-      dirname: logDir + '/error', // log file /logs/error/*.log in save
-      filename: `%DATE%.log`,
-      maxFiles: 30, // 30 Days saved
-      handleExceptions: true,
-      json: false,
-      zippedArchive: true,
-    }),
-  ],
-});
-
-logger.add(
-  new winston.transports.Console({
-    format: winston.format.combine(winston.format.splat(), winston.format.colorize()),
-  }),
-);
-
+// Stream for Morgan or other HTTP loggers
 const stream = {
   write: (message: string) => {
     logger.info(message.substring(0, message.lastIndexOf('\n')));
