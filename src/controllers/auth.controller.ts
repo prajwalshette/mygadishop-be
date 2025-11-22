@@ -1,17 +1,19 @@
 import { NextFunction, Request, Response } from 'express';
 import { Container } from 'typedi';
 import { RequestWithAdmin, RequestWithOnboardTempUser } from '@/interfaces/auth.interface';
-import { User, AdminUser } from '@interfaces/users.interface';
 import { AuthService } from '@services/auth.service';
-import { OnboardShopDto } from '@/dtos/onboard.dto';
-import { LoginUserDto } from '@/dtos/users.dto';
+import { LoginDto } from '@/schemas/auth.schema';
+import { OnboardShopDto } from '@/schemas/onboard.schema';
 
 export class AuthController {
   public auth = Container.get(AuthService);
 
+  // -----------------------------
+  // ADMIN LOGIN - Authenticate admin user
+  // -----------------------------
   public adminLogIn = async (request: RequestWithAdmin, response: Response, next: NextFunction): Promise<void> => {
     try {
-      const adminUserData: AdminUser = request.body;
+      const adminUserData = request.body;
       const { cookie, findAdminUser, token } = await this.auth.adminLogIn(adminUserData);
 
       response.setHeader('Set-Cookie', [cookie]);
@@ -21,9 +23,12 @@ export class AuthController {
     }
   };
 
+  // -----------------------------
+  // ADD ADMIN USER - Create new admin user
+  // -----------------------------
   public addAdminUser = async (request: RequestWithAdmin, response: Response, next: NextFunction): Promise<void> => {
     try {
-      const adminUserData: AdminUser = request.body;
+      const adminUserData = request.body;
       const adminUser = await this.auth.addAdminUser(adminUserData);
 
       response.status(200).json({ data: adminUser, message: 'New Admin Add Sucessfully' });
@@ -32,6 +37,9 @@ export class AuthController {
     }
   };
 
+  // -----------------------------
+  // LOGOUT - Invalidate user session
+  // -----------------------------
   public logOut = async (request: RequestWithAdmin, response: Response, next: NextFunction) => {
     try {
       const session_id = request.session_id;
@@ -57,34 +65,44 @@ export class AuthController {
     }
   };
 
-  public loginUser = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
+  // -----------------------------
+  // UNIFIED LOGIN - Handles both existing users and new user creation
+  // -----------------------------
+  public login = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
     try {
-      const userData: LoginUserDto = request.body;
-      const { cookie, token } = await this.auth.loginUser(userData);
+      const userData: LoginDto = request.body;
+      const result = await this.auth.login(userData);
 
-      response.setHeader('Set-Cookie', [cookie]);
-      response.status(200).json({ data: { token: token }, message: 'Login' });
+      response.setHeader('Set-Cookie', [result.cookie]);
+
+      if (result.newUser) {
+        // New user - needs to complete onboarding
+        response.status(200).json({ 
+          data: { newUser: true }, 
+          message: 'Account created. Please complete onboarding.' 
+        });
+      } else {
+        // Existing user - logged in successfully
+        response.status(200).json({ 
+          data: { 
+            newUser: false,
+            user: result.user 
+          }, 
+          message: 'Login successful' 
+        });
+      }
     } catch (error) {
       next(error);
     }
   };
 
-  public createTempUser = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
-    try {
-      const userData: User = request.body;
-      const { cookie, token } = await this.auth.createTempUser(userData);
-
-      response.setHeader('Set-Cookie', [cookie]);
-      response.status(200).json({ data: { token: token }, message: 'SUCESS' });
-    } catch (error) {
-      next(error);
-    }
-  };
-
+  // -----------------------------
+  // ONBOARD SHOP - Complete shop onboarding process
+  // -----------------------------
   public onboardShop = async (request: RequestWithOnboardTempUser, response: Response, next: NextFunction) => {
     try {
       const email = request.email;
-      const onboardDetails = request.body as OnboardShopDto;
+      const onboardDetails: OnboardShopDto = request.body;
       const result = await this.auth.onboardShop(onboardDetails, email);
 
       response.setHeader('Set-Cookie', [result.cookie]);
@@ -109,7 +127,6 @@ export class AuthController {
             email: result.user.email,
             role: result.user.role,
           },
-          token: result.token,
         },
       });
     } catch (error) {

@@ -3,28 +3,44 @@ import { compare, hash } from 'bcrypt';
 import { sign } from 'jsonwebtoken';
 import { Service } from 'typedi';
 import { SECRET_KEY } from '@config';
-import { CreateUserDto, LoginAdminUserDto, LoginUserDto } from '@dtos/users.dto';
 import { HttpException } from '@exceptions/HttpException';
+import { NotFoundException } from '@exceptions/NotFoundException';
+import { ConflictException } from '@exceptions/ConflictException';
+import { UnauthorizedException } from '@exceptions/UnauthorizedException';
+import { BadRequestException } from '@exceptions/BadRequestException';
 import { DataStoredInOnboardTempToken, DataStoredInToken, DataStoredInUserToken, TokenData } from '@interfaces/auth.interface';
 import { AdminRole, AdminUser, ShopUserResponseDTO, User, UserRole } from '@interfaces/users.interface';
 import prisma from '@/database';
 import { ulid } from 'ulid';
-import { formatPrismaError } from '@/exceptions/prismaException';
 import { onboardTempTokenCache } from '@/utils/onboardTempTokenCache';
-import { OnboardShopDto } from '@/dtos/onboard.dto';
 import { IShop, ShopType } from '@/interfaces/shop.interface';
+import { LoginDto } from '@/schemas/auth.schema';
+import { OnboardShopDto } from '@/schemas/onboard.schema';
+import { AdminLoginDto, AddAdminDto } from '@/schemas/admin.schema';
+import { logger } from '@utils/logger';
 
 @Service()
 export class AuthService {
   private prisma = prisma;
 
-  public async adminLogIn(adminUserData: LoginAdminUserDto): Promise<{ cookie: string; findAdminUser: AdminUser; token: string }> {
+  // -----------------------------
+  // ADMIN LOGIN - Authenticate admin user and create session
+  // -----------------------------
+  public async adminLogIn(adminUserData: AdminLoginDto): Promise<{ cookie: string; findAdminUser: AdminUser; token: string }> {
     try {
       const findAdminUser = await this.prisma.admin.findUnique({ where: { email: adminUserData.email } });
-      if (!findAdminUser) throw new HttpException(409, `This email ${adminUserData.email} was not found`);
+      
+      if (!findAdminUser) {
+        logger.warn(`Admin login failed: Email not found - ${adminUserData.email}`);
+        throw new NotFoundException(`Admin with email ${adminUserData.email} was not found`);
+      }
 
       const isPasswordMatching: boolean = await compare(adminUserData.password, findAdminUser.password);
-      if (!isPasswordMatching) throw new HttpException(409, 'Password is not matching');
+      
+      if (!isPasswordMatching) {
+        logger.warn(`Admin login failed: Invalid password for email - ${adminUserData.email}`);
+        throw new UnauthorizedException('Invalid credentials');
+      }
 
       // Generate session token
       const session_id = ulid();
@@ -44,22 +60,26 @@ export class AuthService {
 
       delete findAdminUser.password;
 
+      logger.info(`Admin logged in successfully: ${adminUserData.email}`);
       return { cookie, findAdminUser: { ...findAdminUser, role: findAdminUser.role as AdminRole }, token: tokenData.token };
     } catch (error) {
-      if (error instanceof HttpException) {
-        throw error;
-      }
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        throw formatPrismaError(error);
-      }
-      throw new HttpException(500, `Error Admin Login: ${error.message}`);
+      if (error instanceof HttpException) throw error;
+      logger.error(`Admin login error for ${adminUserData.email}: ${error.message}`);
+      throw error;
     }
   }
 
-  public async addAdminUser(adminUserData: AdminUser): Promise<AdminUser> {
+  // -----------------------------
+  // ADD ADMIN USER - Create new admin user account
+  // -----------------------------
+  public async addAdminUser(adminUserData: AddAdminDto): Promise<AdminUser> {
     try {
       const findAdminUser = await this.prisma.admin.findUnique({ where: { email: adminUserData.email } });
-      if (findAdminUser) throw new HttpException(409, `This email ${adminUserData.email} admin already exist`);
+      
+      if (findAdminUser) {
+        logger.warn(`Add admin failed: Email already exists - ${adminUserData.email}`);
+        throw new ConflictException(`Admin with email ${adminUserData.email} already exists`);
+      }
 
       const hashedPassword = await hash(adminUserData.password, 10);
 
@@ -80,23 +100,29 @@ export class AuthService {
         },
       });
 
+      logger.info(`Admin user created successfully: ${adminUserData.email}`);
       return { ...admin, role: admin.role as AdminRole };
     } catch (error) {
-      if (error instanceof HttpException) {
-        throw error;
-      }
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        throw formatPrismaError(error);
-      }
-      throw new HttpException(500, `Error Add New Admin: ${error.message}`);
+      if (error instanceof HttpException) throw error;
+      logger.error(`Add admin user error for ${adminUserData.email}: ${error.message}`);
+      throw error;
     }
   }
 
+  // -----------------------------
+  // LOGOUT - Invalidate user session
+  // -----------------------------
   public async logout(token: string, session_id: string): Promise<void> {
     try {
-      if (!token) throw new HttpException(401, 'No token provided');
+      if (!token) {
+        logger.warn('Logout failed: No token provided');
+        throw new UnauthorizedException('No token provided');
+      }
 
-      if (!session_id) throw new HttpException(401, 'Invalid token payload');
+      if (!session_id) {
+        logger.warn('Logout failed: Invalid token payload');
+        throw new UnauthorizedException('Invalid token payload');
+      }
 
       const existingSession = await prisma.userSession.findUnique({
         where: { id: session_id },
@@ -105,61 +131,59 @@ export class AuthService {
       await prisma.userSession.delete({
         where: { id: session_id },
       });
+
+      logger.info(`User logged out successfully: session ${session_id}`);
     } catch (error) {
-      const statusCode = error instanceof HttpException ? error.status : 500;
-      const message = error instanceof HttpException ? error.message : 'Unexpected logout error';
-
-      const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 23);
-
-      console.error(`${timestamp} error: [POST] /api/v1/auth/logout >> StatusCode:: ${statusCode}, Message:: ${message}`);
-
-      throw new HttpException(statusCode, message);
+      if (error instanceof HttpException) throw error;
+      logger.error(`Logout error for session ${session_id}: ${error.message}`);
+      throw error;
     }
   }
 
-    public async loginUser(userData: LoginUserDto): Promise<{ cookie: string; findUser: User; token: string }> {
+  // -----------------------------
+  // UNIFIED LOGIN - Handles both existing users and new user creation
+  // -----------------------------
+  public async login(userData: LoginDto): Promise<{ cookie: string; newUser: boolean; user?: User }> {
     try {
       const findUser = await this.prisma.user.findUnique({ where: { email: userData.email } });
-      if (!findUser) throw new HttpException(409, `This email ${userData.email} was not found`);
 
-      const isPasswordMatching: boolean = await compare(userData.password, findUser.password);
-      if (!isPasswordMatching) throw new HttpException(409, 'Password is not matching');
+      // Case 1: User exists - Login
+      if (findUser) {
+        const isPasswordMatching: boolean = await compare(userData.password, findUser.password);
+        
+        if (!isPasswordMatching) {
+          logger.warn(`User login failed: Invalid password for email - ${userData.email}`);
+          throw new UnauthorizedException('Invalid credentials');
+        }
 
-      // Generate session token
-      const session_id = ulid();
-      const tokenData = this.createUserToken(findUser.shop_id, findUser.id, session_id);
-      const cookie = this.createCookie(tokenData);
+        // Generate session token
+        const session_id = ulid();
+        const tokenData = this.createUserToken(findUser.shop_id, findUser.id, session_id);
+        const cookie = this.createCookie(tokenData);
 
-      // Create session entry
-      await this.prisma.userSession.create({
-        data: {
-          id: session_id,
-          user_id: findUser.id,
-          token: tokenData.token,
-          device_info: userData.device_info as any,
-          expires_at: new Date(Date.now() + tokenData.expiresIn * 1000),
-        },
-      });
+        // Create session entry
+        await this.prisma.userSession.create({
+          data: {
+            id: session_id,
+            user_id: findUser.id,
+            token: tokenData.token,
+            device_info: userData.device_info as any,
+            ip_address: userData.ip_address,
+            expires_at: new Date(Date.now() + tokenData.expiresIn * 1000),
+          },
+        });
 
-      delete  findUser.password;
+        delete findUser.password;
 
-      return { cookie, findUser: { ...findUser, role: findUser.role as UserRole}, token: tokenData.token };
-    } catch (error) {
-      if (error instanceof HttpException) {
-        throw error;
+        logger.info(`User logged in successfully: ${userData.email}`);
+        return { 
+          cookie, 
+          newUser: false, 
+          user: { ...findUser, role: findUser.role as UserRole } 
+        };
       }
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        throw formatPrismaError(error);
-      }
-      throw new HttpException(500, `Error User Login: ${error.message}`);
-    }
-  }
 
-  public async createTempUser(userData: CreateUserDto): Promise<{ cookie: string; token: string }> {
-    try {
-      const findUser = await this.prisma.user.findUnique({ where: { email: userData.email } });
-      if (findUser) throw new HttpException(409, `This email ${findUser.email} was already registered`);
-
+      // Case 2: User doesn't exist - Create temp user for onboarding
       const tokenData = this.createOnboardTempToken(userData.email);
       const cookie = this.createCookie(tokenData);
 
@@ -167,29 +191,33 @@ export class AuthService {
 
       await onboardTempTokenCache.setOnboardTempToken(userData.email, hashedPassword, tokenData.token, 'onboardTempToken');
 
-      return { cookie, token: tokenData.token };
+      logger.info(`New temp user created for onboarding: ${userData.email}`);
+      return { 
+        cookie, 
+        newUser: true 
+      };
     } catch (error) {
-      if (error instanceof HttpException) {
-        throw error;
-      }
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        throw formatPrismaError(error);
-      }
-      throw new HttpException(500, `Error Temp User Creation: ${error.message}`);
+      if (error instanceof HttpException) throw error;
+      logger.error(`Login error for ${userData.email}: ${error.message}`);
+      throw error;
     }
   }
 
+  // -----------------------------
+  // ONBOARD SHOP - Complete shop onboarding and create user account
+  // -----------------------------
   public async onboardShop(
     onboardDetails: OnboardShopDto,
     email: string,
-  ): Promise<{ shop: IShop; user: ShopUserResponseDTO; token: string; cookie: string }> {
+  ): Promise<{ shop: IShop; user: ShopUserResponseDTO; cookie: string }> {
     try {
       const existingShop = await this.prisma.shop.findUnique({
         where: { email: onboardDetails.email },
       });
 
       if (existingShop) {
-        throw new HttpException(400, `Shop already exists with email: ${onboardDetails.email}`);
+        logger.warn(`Shop onboarding failed: Shop email already exists - ${onboardDetails.email}`);
+        throw new ConflictException(`Shop already exists with email: ${onboardDetails.email}`);
       }
 
       const existingUser = await this.prisma.user.findUnique({
@@ -197,7 +225,8 @@ export class AuthService {
       });
 
       if (existingUser) {
-        throw new HttpException(400, `User already exists with email: ${email}`);
+        logger.warn(`Shop onboarding failed: User email already exists - ${email}`);
+        throw new ConflictException(`User already exists with email: ${email}`);
       }
 
       let shop: IShop;
@@ -205,7 +234,7 @@ export class AuthService {
       let tokenData: { token: string; expiresIn: number };
 
       await this.prisma.$transaction(async tx => {
-        // Create brand
+        // Create shop
         const createdShop = await tx.shop.create({
           data: {
             id: ulid(),
@@ -232,7 +261,12 @@ export class AuthService {
 
         // Create user
         const tempUser = await onboardTempTokenCache.getOnboardTempToken(email, 'onboardTempToken');
-        if (!tempUser) throw new HttpException(400, 'Temporary user data not found. Please restart the onboarding process.');
+        
+        if (!tempUser) {
+          logger.warn(`Shop onboarding failed: Temp user data not found for ${email}`);
+          throw new BadRequestException('Temporary user data not found. Please restart the onboarding process.');
+        }
+        
         const createdUser = await tx.user.create({
           data: {
             id: ulid(),
@@ -273,13 +307,12 @@ export class AuthService {
 
       await onboardTempTokenCache.deleteOnboardTempToken(email, 'onboardTempToken');
 
-      return { shop, user, token: tokenData.token, cookie };
+      logger.info(`Shop onboarded successfully: ${onboardDetails.shop_name} (${email})`);
+      return { shop, user, cookie };
     } catch (error) {
       if (error instanceof HttpException) throw error;
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        throw formatPrismaError(error);
-      }
-      throw new HttpException(500, `Failed to onboard Shop: ${error.message}`);
+      logger.error(`Shop onboarding error for ${email}: ${error.message}`);
+      throw error;
     }
   }
 

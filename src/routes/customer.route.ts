@@ -2,8 +2,8 @@ import { Router } from 'express';
 import { CustomerController } from '@/controllers/customer.controller';
 import { Routes } from '@interfaces/routes.interface';
 import { AuthMiddleware } from '@middlewares/auth.middleware';
-import { ValidationMiddleware } from '@middlewares/validation.middleware';
-import { CreateCustomerDto } from '@/dtos/customer.dto';
+import { ValidateRequest } from '@middlewares/validation.middleware';
+import { createCustomerSchema, updateCustomerSchema, customerIdParamSchema, getCustomerQuerySchema } from '@/schemas/customer.schema';
 
 export class CustomerRoute implements Routes {
   public path = '/customer';
@@ -15,11 +15,14 @@ export class CustomerRoute implements Routes {
   }
 
   private initializeRoutes() {
-    this.router.post(`${this.path}/add-customer`, [AuthMiddleware, ValidationMiddleware(CreateCustomerDto)], this.customerController.addNewCustomer);
-    this.router.put(`${this.path}/update-customer/:id`, [AuthMiddleware], this.customerController.updateCustomer);
-    this.router.get(`${this.path}/get-all-customer`, [AuthMiddleware], this.customerController.getAllCustomer);
-    this.router.get(`${this.path}/get-customer/:id`, [AuthMiddleware], this.customerController.getCustomer);
-    this.router.delete(`${this.path}/delete-customer/:id`, [AuthMiddleware], this.customerController.deleteCustomer);
-
+    this.router.post(`${this.path}/add-customer`, [AuthMiddleware, ValidateRequest({ body: createCustomerSchema })], this.customerController.addNewCustomer);
+    
+    this.router.put(`${this.path}/update-customer/:id`, [AuthMiddleware, ValidateRequest({ body: updateCustomerSchema, params: customerIdParamSchema })], this.customerController.updateCustomer);
+    
+    this.router.get(`${this.path}/get-all-customer`, [AuthMiddleware, ValidateRequest({ query: getCustomerQuerySchema })], this.customerController.getAllCustomer);
+    
+    this.router.get(`${this.path}/get-customer/:id`, [AuthMiddleware, ValidateRequest({ params: customerIdParamSchema })], this.customerController.getCustomer);
+    
+    this.router.delete(`${this.path}/delete-customer/:id`, [AuthMiddleware, ValidateRequest({ params: customerIdParamSchema })], this.customerController.deleteCustomer);
   }
 }

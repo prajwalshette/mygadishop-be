@@ -1,17 +1,24 @@
 import { Prisma, PrismaClient } from '@prisma/client';
 import { Service } from 'typedi';
 import { HttpException } from '@/exceptions/HttpException';
+import { NotFoundException } from '@/exceptions/NotFoundException';
+import { ConflictException } from '@/exceptions/ConflictException';
+import { BadRequestException } from '@/exceptions/BadRequestException';
 import prisma from '@/database';
-import { formatPrismaError } from '@/exceptions/prismaException';
 import { ulid } from 'ulid';
 import { FuelType, IVehicle, VehicleType, TransmissionType, BikeStatus, OwnershipType } from '@/interfaces/vehicle.interface';
 import { generateVehiclePresignedUrls } from './aws.service';
 import { getCachedVehiclePresignedUrls } from '@/utils/cacheVehiclePresignedUrl';
+import { logger } from '@utils/logger';
+import { CreateVehicleDto, UpdateVehicleDto, GetVehicleQueryDto } from '@/schemas/vehicle.schema';
 
 @Service()
 export class VehicleService {
   private prisma = prisma;
 
+  // -----------------------------
+  // CREATE VEHICLE - Add new vehicle to inventory
+  // -----------------------------
   public async createVehicle(vehicleData: IVehicle, shop_id: string): Promise<IVehicle> {
     try {
       const isExistVehicle = await this.prisma.vehicle.findFirst({
@@ -19,11 +26,12 @@ export class VehicleService {
       });
 
       if (isExistVehicle) {
-        throw new HttpException(
-          404,
-          `Vehicle alredy exist registration_number: ${vehicleData.registration_number}, chassis_number: ${vehicleData.chassis_number}`,
+        logger.warn(`Create vehicle failed: Vehicle already exists - Registration: ${vehicleData.registration_number}, Chassis: ${vehicleData.chassis_number}`);
+        throw new ConflictException(
+          `Vehicle already exists with registration_number: ${vehicleData.registration_number}, chassis_number: ${vehicleData.chassis_number}`,
         );
       }
+      
       const vehicle = await this.prisma.vehicle.create({
         data: {
           id: ulid(),
@@ -34,6 +42,8 @@ export class VehicleService {
           insurance_valid_till: new Date(vehicleData.insurance_valid_till),
         }as Prisma.VehicleUncheckedCreateInput,
       });
+      
+      logger.info(`Vehicle created successfully: ${vehicle.registration_number} (${vehicle.id})`);
       return {
         ...vehicle,
         type: vehicle.type as VehicleType,
@@ -43,16 +53,15 @@ export class VehicleService {
         ownership: vehicleData.ownership as OwnershipType,
       };
     } catch (error) {
-      if (error instanceof HttpException) {
-        throw error;
-      }
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        throw formatPrismaError(error);
-      }
-      throw new HttpException(500, `Error create vehicle: ${error.message}`);
+      if (error instanceof HttpException) throw error;
+      logger.error(`Create vehicle error: ${error.message}`);
+      throw error;
     }
   }
 
+  // -----------------------------
+  // UPDATE VEHICLE - Modify existing vehicle details
+  // -----------------------------
   public async updateVehicle(vehicleId: string, vehicleData: Partial<IVehicle>): Promise<IVehicle> {
     try {
       // Check if vehicle exists and is not deleted
@@ -64,7 +73,8 @@ export class VehicleService {
       });
 
       if (!existingVehicle) {
-        throw new HttpException(404, `Vehicle not found with id: ${vehicleId}`);
+        logger.warn(`Update vehicle failed: Vehicle not found - ${vehicleId}`);
+        throw new NotFoundException(`Vehicle not found with id: ${vehicleId}`);
       }
 
       // Check if registration_number or chassis_number is being updated and already exists
@@ -83,7 +93,8 @@ export class VehicleService {
         });
 
         if (duplicateVehicle) {
-          throw new HttpException(409, `Vehicle already exists with the same registration_number or chassis_number`);
+          logger.warn(`Update vehicle failed: Duplicate registration/chassis number`);
+          throw new ConflictException(`Vehicle already exists with the same registration_number or chassis_number`);
         }
       }
 
@@ -100,6 +111,7 @@ export class VehicleService {
         }as Prisma.VehicleUncheckedCreateInput,
       });
 
+      logger.info(`Vehicle updated successfully: ${updatedVehicle.registration_number} (${vehicleId})`);
       return {
         ...updatedVehicle,
         type: updatedVehicle.type as VehicleType,
@@ -109,16 +121,15 @@ export class VehicleService {
         ownership: updatedVehicle.ownership as OwnershipType,
       };
     } catch (error) {
-      if (error instanceof HttpException) {
-        throw error;
-      }
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        throw formatPrismaError(error);
-      }
-      throw new HttpException(500, `Error updating vehicle: ${error.message}`);
+      if (error instanceof HttpException) throw error;
+      logger.error(`Update vehicle error for ${vehicleId}: ${error.message}`);
+      throw error;
     }
   }
 
+  // -----------------------------
+  // GET VEHICLE BY ID - Retrieve single vehicle
+  // -----------------------------
   public async getVehicleById(vehicleId: string): Promise<IVehicle | null> {
     try {
       const vehicle = await this.prisma.vehicle.findFirst({
@@ -144,6 +155,7 @@ export class VehicleService {
           );
         }
 
+        logger.info(`Vehicle retrieved successfully: ${vehicleId}`);
         return {
           ...vehicle,
           type: vehicle.type as VehicleType,
@@ -169,30 +181,61 @@ export class VehicleService {
         };
       }
     } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        throw formatPrismaError(error);
-      }
-      throw new HttpException(500, `Error fetching vehicle: ${error.message}`);
+      logger.error(`Get vehicle error for ${vehicleId}: ${error.message}`);
+      throw error;
     }
   }
 
-  public async getAllVehicle(pageNumber: number, pageSize: number): Promise<any> {
+  // -----------------------------
+  // GET ALL VEHICLES - Retrieve paginated vehicle list
+  // -----------------------------
+  public async getAllVehicle(query: GetVehicleQueryDto, shop_id: string): Promise<any> {
+    const { page, limit, search, status, type, sortBy, sortOrder } = query;
+    
     try {
-      const skip = (pageNumber - 1) * pageSize;
-      const vehicles = await this.prisma.vehicle.findMany({
-        where: {
-          is_deleted: false,
-        },
-        orderBy: { created_at: 'desc' },
-        skip,
-        take: pageSize,
-      });
+      const skip = (page - 1) * limit;
 
-      const vehiclesCount = await this.prisma.vehicle.count({
-        where: {
-          is_deleted: false,
-        },
-      });
+      // Build where clause with filters
+      const whereClause: any = {
+        shop_id: shop_id,
+        is_deleted: false,
+      };
+
+      // Add search filter (searches across multiple fields)
+      if (search) {
+        whereClause.OR = [
+          { brand: { contains: search, mode: 'insensitive' } },
+          { model: { contains: search, mode: 'insensitive' } },
+          { variant: { contains: search, mode: 'insensitive' } },
+          { registration_number: { contains: search, mode: 'insensitive' } },
+          { chassis_number: { contains: search, mode: 'insensitive' } },
+          { engine_number: { contains: search, mode: 'insensitive' } },
+        ];
+      }
+
+      // Add status filter
+      if (status) {
+        whereClause.status = status;
+      }
+
+      // Add type filter
+      if (type) {
+        whereClause.type = type;
+      }
+
+      // Fetch vehicles and total count in parallel using Promise.all
+      const [vehicles, total] = await Promise.all([
+        this.prisma.vehicle.findMany({
+          where: whereClause,
+          orderBy: { [sortBy]: sortOrder },
+          skip,
+          take: limit,
+        }),
+        this.prisma.vehicle.count({ where: whereClause }),
+      ]);
+
+      // Calculate total pages
+      const totalPages = Math.ceil(total / limit);
 
       // Process vehicles to add presigned URLs
       const vehiclesWithPresignedUrls = await Promise.all(
@@ -218,6 +261,7 @@ export class VehicleService {
               fuel_type: vehicle.fuel_type as FuelType,
               transmission: vehicle.transmission as TransmissionType,
               status: vehicle.status as BikeStatus,
+              ownership: vehicle.ownership as OwnershipType,
               vehicle_image_urls: presignedUrls?.imageUrls || [],
               vehicle_doc_urls: presignedUrls?.docUrls || [],
             };
@@ -230,6 +274,7 @@ export class VehicleService {
               fuel_type: vehicle.fuel_type as FuelType,
               transmission: vehicle.transmission as TransmissionType,
               status: vehicle.status as BikeStatus,
+              ownership: vehicle.ownership as OwnershipType,
               // Fallback to original URLs
               vehicle_image_urls: vehicle.vehicle_image_urls || [],
               vehicle_doc_urls: vehicle.vehicle_doc_urls || [],
@@ -238,18 +283,26 @@ export class VehicleService {
         }),
       );
 
+      logger.info(`Retrieved ${total} vehicles (page ${page}, limit ${limit}, filters: ${JSON.stringify({ search, status, type })})`);
+      
       return {
         vehicles: vehiclesWithPresignedUrls,
-        vehiclesCount,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages,
+        },
       };
     } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        throw formatPrismaError(error);
-      }
-      throw new HttpException(500, `Error fetching vehicle: ${error.message}`);
+      logger.error(`Get all vehicles error: ${error.message}`);
+      throw error;
     }
   }
 
+  // -----------------------------
+  // DELETE VEHICLE - Soft delete vehicle from inventory
+  // -----------------------------
   public async deleteVehicle(vehicleId: string): Promise<boolean> {
     try {
       const existingVehicle = await this.prisma.vehicle.findFirst({
@@ -260,7 +313,8 @@ export class VehicleService {
       });
 
       if (!existingVehicle) {
-        throw new HttpException(404, `Vehicle not found with id: ${vehicleId}`);
+        logger.warn(`Delete vehicle failed: Vehicle not found - ${vehicleId}`);
+        throw new NotFoundException(`Vehicle not found with id: ${vehicleId}`);
       }
 
       await this.prisma.vehicle.update({
@@ -271,15 +325,12 @@ export class VehicleService {
         },
       });
 
+      logger.info(`Vehicle deleted successfully: ${vehicleId}`);
       return true;
     } catch (error) {
-      if (error instanceof HttpException) {
-        throw error;
-      }
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        throw formatPrismaError(error);
-      }
-      throw new HttpException(500, `Error deleting vehicle: ${error.message}`);
+      if (error instanceof HttpException) throw error;
+      logger.error(`Delete vehicle error for ${vehicleId}: ${error.message}`);
+      throw error;
     }
   }
 }

@@ -4,12 +4,17 @@ import { VehicleService } from '@/services/vehicle.service';
 import { IVehicle } from '@/interfaces/vehicle.interface';
 import { ulid } from 'ulid';
 import { RequestWithUser } from '@/interfaces/auth.interface';
-import { HttpException } from '@/exceptions/HttpException';
+import { NotFoundException } from '@/exceptions/NotFoundException';
+import { BadRequestException } from '@/exceptions/BadRequestException';
 import { uploadVehicleMedia, uploadVehicleDocMedia } from '@/services/aws.service';
+import { CreateVehicleDto, GetVehicleQueryDto } from '@/schemas/vehicle.schema';
 
 export class VehicleController {
   public vehicleService = Container.get(VehicleService);
 
+  // -----------------------------
+  // CREATE VEHICLE - Handle vehicle creation with file uploads
+  // -----------------------------
   public createVehicle = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
     try {
       const vehicleData: IVehicle = request.body;
@@ -47,6 +52,9 @@ export class VehicleController {
     }
   };
 
+  // -----------------------------
+  // UPDATE VEHICLE - Handle vehicle updates with file uploads
+  // -----------------------------
   public updateVehicle = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
     try {
       const vehicleId: string = request.params.id;
@@ -56,7 +64,7 @@ export class VehicleController {
       // Check if vehicle exists
       const existingVehicle = await this.vehicleService.getVehicleById(vehicleId);
       if (!existingVehicle) {
-        throw new HttpException(404, `Vehicle not found with id: ${vehicleId}`);
+        throw new NotFoundException(`Vehicle not found with id: ${vehicleId}`);
       }
 
       // Handle file uploads
@@ -100,13 +108,16 @@ export class VehicleController {
     }
   };
 
+  // -----------------------------
+  // GET VEHICLE BY ID - Retrieve single vehicle details
+  // -----------------------------
   public getVehicleById = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
     try {
       const vehicleId: string = request.params.id;
       const vehicle = await this.vehicleService.getVehicleById(vehicleId);
 
       if (!vehicle) {
-        throw new HttpException(404, `Vehicle not found with id: ${vehicleId}`);
+        throw new NotFoundException(`Vehicle not found with id: ${vehicleId}`);
       }
 
       response.status(200).json({ data: vehicle, message: 'Successfully Retrieved Vehicle' });
@@ -115,20 +126,26 @@ export class VehicleController {
     }
   };
 
+  // -----------------------------
+  // GET ALL VEHICLES - Retrieve paginated vehicle list
+  // -----------------------------
   public getAllVehicle = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
     try {
-      const { page_number, page_size } = request.query;
+      // Query is validated by ValidateRequest middleware
+      const query = request.query as unknown as GetVehicleQueryDto;
+      const shop_id = request.user.shop_id;
 
-      const pageNumber = page_number ? Number(page_number) : 1;
-      const pageSize = page_size ? Number(page_size) : 5;
-      const vehicles = await this.vehicleService.getAllVehicle(pageNumber, pageSize);
+      const result = await this.vehicleService.getAllVehicle(query, shop_id);
 
-      response.status(200).json({ data: { ...vehicles }, message: 'Successfully Retrieved Vehicles' });
+      response.status(200).json({ data: result, message: 'Successfully Retrieved Vehicles' });
     } catch (error) {
       next(error);
     }
   };
 
+  // -----------------------------
+  // DELETE VEHICLE - Soft delete vehicle
+  // -----------------------------
   public deleteVehicle = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
     try {
       const vehicleId: string = request.params.id;
@@ -140,6 +157,9 @@ export class VehicleController {
     }
   };
 
+  // -----------------------------
+  // HELPER: Handle vehicle media upload
+  // -----------------------------
   private async handleVehicleMediaUpload(request: RequestWithUser, response: Response, shop_id: string, vehicle_id: string): Promise<string[]> {
   try {
     // Access files from request.files, not request.vehicleFiles
@@ -166,10 +186,13 @@ export class VehicleController {
 
     return vehicleFilesUrls;
   } catch (uploadError) {
-    throw new HttpException(500, `Failed to upload Vehicle media: ${uploadError.message}`);
+    throw new BadRequestException(`Failed to upload Vehicle media: ${uploadError.message}`);
   }
 }
 
+// -----------------------------
+// HELPER: Handle vehicle document upload
+// -----------------------------
 private async handleVehicleDocMediaUpload(request: RequestWithUser, response: Response, shop_id: string, vehicle_id: string): Promise<string[]> {
   try {
     // Access files from request.files, not request.vehicleDocFiles
@@ -196,7 +219,7 @@ private async handleVehicleDocMediaUpload(request: RequestWithUser, response: Re
 
     return vehicleDocFilesUrls;
   } catch (uploadError) {
-    throw new HttpException(500, `Failed to upload Vehicle Doc: ${uploadError.message}`);
+    throw new BadRequestException(`Failed to upload Vehicle Doc: ${uploadError.message}`);
   }
 }
 }

@@ -2,8 +2,8 @@ import { Router } from 'express';
 import { VehicleController } from '@/controllers/vehicle.controller';
 import { Routes } from '@interfaces/routes.interface';
 import { AuthMiddleware } from '@middlewares/auth.middleware';
-import { ValidationMiddleware } from '@middlewares/validation.middleware';
-import { CreateVehicleDto, UpdateVehicleDto} from '@/dtos/vehicle.dto';
+import { ValidationMiddleware, ValidateRequest} from '@middlewares/validation.middleware';
+import { createVehicleSchema, updateVehicleSchema, VehicleIdParamSchema, getVehicleQuerySchema} from '@/schemas/vehicle.schema';
 import multer from 'multer';
 
 export class VehicleRoute implements Routes {
@@ -51,7 +51,7 @@ export class VehicleRoute implements Routes {
           { name: 'vehicleDocFiles', maxCount: 10 }, // For vehicle documents
         ]),
         ParseJsonFieldsMiddleware(['year', 'mileage', 'price', 'buying_price', 'selling_price']),
-        ValidationMiddleware(CreateVehicleDto),
+        ValidationMiddleware(createVehicleSchema, 'body'),
       ],
       this.vehicleController.createVehicle,
     );
@@ -67,7 +67,7 @@ export class VehicleRoute implements Routes {
           { name: 'vehicleDocFiles', maxCount: 10 }, // For vehicle documents
         ]),
         ParseJsonFieldsMiddleware(['year', 'mileage', 'price', 'buying_price', 'selling_price', 'vehicle_image_urls', 'vehicle_doc_urls']),
-        ValidationMiddleware(UpdateVehicleDto, true), // skipMissingProperties: true for partial updates
+        ValidateRequest({body: updateVehicleSchema, params: VehicleIdParamSchema}),
       ],
       this.vehicleController.updateVehicle,
     );
@@ -75,20 +75,20 @@ export class VehicleRoute implements Routes {
     // Get Vehicle by ID
     this.router.get(
       `${this.path}/get-vehicle/:id`,
-      [AuthMiddleware],
+      [AuthMiddleware, ValidateRequest({params: VehicleIdParamSchema})],
       this.vehicleController.getVehicleById,
     );
 
      this.router.get(
       `${this.path}/get-all-vehicle`,
-      [AuthMiddleware],
+      [AuthMiddleware, ValidateRequest({query: getVehicleQuerySchema})],
       this.vehicleController.getAllVehicle,
     );
 
     // Delete Vehicle (Soft delete)
     this.router.delete(
       `${this.path}/delete-vehicle/:id`,
-      [AuthMiddleware],
+      [AuthMiddleware, ValidateRequest({params: VehicleIdParamSchema})],
       this.vehicleController.deleteVehicle,
     );
 
