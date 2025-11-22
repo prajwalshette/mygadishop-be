@@ -1,114 +1,137 @@
 import { Prisma } from '@prisma/client';
 import { Service } from 'typedi';
 import { HttpException } from '@/exceptions/HttpException';
+import { NotFoundException } from '@/exceptions/NotFoundException';
 import prisma from '@/database';
-import { IVehiclePayment, PaymentMethod } from '@/interfaces/vehiclePayment.interface';
-import { formatPrismaError } from '@/exceptions/prismaException';
+import { IVehiclePayment, PaymentMethod, PaymentType } from '@/interfaces/vehiclePayment.interface';
 import { ulid } from 'ulid';
 import { PaymentStatus } from '@/interfaces/vehiclePayment.interface';
+import { CreateVehiclePaymentDto, UpdateVehiclePaymentDto, GetAllPaymentsQueryDto } from '@/schemas/payment.schema';
+import { logger } from '@utils/logger';
 
 @Service()
 export class PaymentService {
   private prisma = prisma;
 
-  // Create
-  public async createVehiclePayment(paymentData: IVehiclePayment): Promise<IVehiclePayment> {
+  // -----------------------------
+  // CREATE VEHICLE PAYMENT - Create new payment record
+  // -----------------------------
+  public async createVehiclePayment(paymentData: CreateVehiclePaymentDto): Promise<IVehiclePayment> {
     try {
       const payment = await this.prisma.vehiclePayment.create({
         data: {
           id: ulid(),
+          shop_id: paymentData.shop_id,
+          vehicle_id: paymentData.vehicle_id,
+          customer_id: paymentData.customer_id,
           amount: paymentData.amount,
+          payment_type: paymentData.payment_type,
           method: paymentData.method,
           status: paymentData.status,
-          payment_receipt_images: paymentData.payment_receipt_images,
-          message: paymentData.message,
-          ...paymentData,
-          customer_id: paymentData.customer_id,
-          vehicle_id: paymentData.vehicle_id,
+          transaction_id: paymentData.transaction_id,
+          payment_receipt_images: paymentData.payment_receipt_images || [],
+          notes: paymentData.notes,
         },
       });
 
-      return { ...payment, status: payment.status as PaymentStatus, method: payment.method as PaymentMethod };
+      logger.info(`Payment created successfully: ${payment.id}`);
+      return { ...payment, status: payment.status as PaymentStatus, method: payment.method as PaymentMethod, payment_type: payment.payment_type as PaymentType };
     } catch (error: any) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError) throw formatPrismaError(error);
-      throw new HttpException(500, `Error creating payment: ${error.message}`);
+      if (error instanceof HttpException) throw error;
+      logger.error(`Create payment error: ${error.message}`);
+      throw error;
     }
   }
 
-  // Get all
-  public async getAllVehiclePayments(pageNumber: number, pageSize: number): Promise<{ payments: IVehiclePayment[]; paymentCount: number }> {
+  // -----------------------------
+  // GET ALL VEHICLE PAYMENTS - Retrieve paginated payment list
+  // -----------------------------
+  public async getAllVehiclePayments(query: GetAllPaymentsQueryDto): Promise<any> {
     try {
-      const skip = (pageNumber - 1) * pageSize;
+      const { page, limit } = query;
+      const skip = (page - 1) * limit;
       const payments = await this.prisma.vehiclePayment.findMany({
         where: { is_deleted: false },
         orderBy: { created_at: 'desc' },
         skip,
-        take: pageSize,
+        take: limit,
         include: { vehicle: true, customer: true },
       });
       const paymentCount = await this.prisma.vehiclePayment.count({ where: { is_deleted: false } });
+      
+      logger.info(`Retrieved ${paymentCount} payments (page ${page}, limit ${limit})`);
       return {
         payments: payments.map(payment => ({
           ...payment,
           method: payment.method as PaymentMethod,
           status: payment.status as PaymentStatus,
+          payment_type: payment.payment_type as PaymentType,
         })),
-        paymentCount: paymentCount,
+        pagination: {
+          page: page,
+          limit: limit,
+          total: paymentCount,
+          totalPages: Math.ceil(paymentCount / limit),
+        },
       };
     } catch (error: any) {
-      if (error instanceof HttpException) {
-        throw error;
-      }
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        throw formatPrismaError(error);
-      }
-      throw new HttpException(500, `Error fetching payments: ${error.message}`);
+      if (error instanceof HttpException) throw error;
+      logger.error(`Get all payments error: ${error.message}`);
+      throw error;
     }
   }
 
-  // Get by ID
+  // -----------------------------
+  // GET VEHICLE PAYMENT BY ID - Retrieve single payment record
+  // -----------------------------
   public async getVehiclePaymentById(id: string): Promise<IVehiclePayment> {
     try {
       const payment = await this.prisma.vehiclePayment.findFirst({
         where: { id, is_deleted: false },
         include: { vehicle: true, customer: true },
       });
-      if (!payment) throw new HttpException(404, 'Payment not found');
-      return { ...payment, status: payment.status as PaymentStatus, method: payment.method as PaymentMethod };
+      
+      if (!payment) {
+        logger.warn(`Get payment failed: Payment not found - ${id}`);
+        throw new NotFoundException('Payment not found');
+      }
+      
+      logger.info(`Payment retrieved successfully: ${id}`);
+      return { ...payment, status: payment.status as PaymentStatus, method: payment.method as PaymentMethod, payment_type: payment.payment_type as PaymentType };
     } catch (error: any) {
-      if (error instanceof HttpException) {
-        throw error;
-      }
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        throw formatPrismaError(error);
-      }
-      throw new HttpException(500, `Error fetching payment: ${error.message}`);
+      if (error instanceof HttpException) throw error;
+      logger.error(`Get payment error for ${id}: ${error.message}`);
+      throw error;
     }
   }
 
+  // -----------------------------
+  // GET PAYMENTS BY VEHICLE ID - Retrieve all payments for a vehicle
+  // -----------------------------
   public async getAllPaymentsByVehicleId(vehicle_id: string): Promise<IVehiclePayment[]> {
     try {
       const payments = await this.prisma.vehiclePayment.findMany({
         where: { vehicle_id, is_deleted: false },
       });
+      
+      logger.info(`Retrieved ${payments.length} payments for vehicle: ${vehicle_id}`);
       return payments.map(payment => ({
         ...payment,
         method: payment.method as PaymentMethod,
         status: payment.status as PaymentStatus,
+        payment_type: payment.payment_type as PaymentType,
       }));
     } catch (error: any) {
-      if (error instanceof HttpException) {
-        throw error;
-      }
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        throw formatPrismaError(error);
-      }
-      throw new HttpException(500, `Error fetching payment by vehicle id: ${error.message}`);
+      if (error instanceof HttpException) throw error;
+      logger.error(`Get payments by vehicle error for ${vehicle_id}: ${error.message}`);
+      throw error;
     }
   }
 
-  // Update
-  public async updateVehiclePayment(id: string, paymentData: Partial<IVehiclePayment>): Promise<IVehiclePayment> {
+  // -----------------------------
+  // UPDATE VEHICLE PAYMENT - Modify existing payment record
+  // -----------------------------
+  public async updateVehiclePayment(id: string, paymentData: UpdateVehiclePaymentDto): Promise<IVehiclePayment> {
     try {
       const payment = await this.prisma.vehiclePayment.update({
         where: { id },
@@ -117,34 +140,39 @@ export class PaymentService {
         },
       });
 
-      return { ...payment, status: payment.status as PaymentStatus, method: payment.method as PaymentMethod };
+      logger.info(`Payment updated successfully: ${id}`);
+      return { ...payment, status: payment.status as PaymentStatus, method: payment.method as PaymentMethod, payment_type: payment.payment_type as PaymentType };
     } catch (error: any) {
-      if (error.code === 'P2025') throw new HttpException(404, 'Payment not found');
-      if (error instanceof HttpException) {
-        throw error;
+      if (error instanceof HttpException) throw error;
+      if (error.code === 'P2025') {
+        logger.warn(`Update payment failed: Payment not found - ${id}`);
+        throw new NotFoundException('Payment not found');
       }
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        throw formatPrismaError(error);
-      }
-      throw new HttpException(500, `Error updating payment: ${error.message}`);
+      logger.error(`Update payment error for ${id}: ${error.message}`);
+      throw error;
     }
   }
 
-  // Delete
+  // -----------------------------
+  // DELETE VEHICLE PAYMENT - Soft delete payment record
+  // -----------------------------
   public async deleteVehiclePayment(id: string): Promise<any> {
     try {
       const payment = await this.prisma.vehiclePayment.findUnique({ where: { id } });
-      if (!payment) throw new HttpException(404, 'Payment not found');
+      
+      if (!payment) {
+        logger.warn(`Delete payment failed: Payment not found - ${id}`);
+        throw new NotFoundException('Payment not found');
+      }
+      
       await this.prisma.vehiclePayment.update({ where: { id }, data: { is_deleted: true } });
+      
+      logger.info(`Payment deleted successfully: ${id}`);
       return true;
     } catch (error: any) {
-      if (error instanceof HttpException) {
-        throw error;
-      }
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        throw formatPrismaError(error);
-      }
-      throw new HttpException(500, `Error deleting payment: ${error.message}`);
+      if (error instanceof HttpException) throw error;
+      logger.error(`Delete payment error for ${id}: ${error.message}`);
+      throw error;
     }
   }
 }

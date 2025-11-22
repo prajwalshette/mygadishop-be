@@ -7,6 +7,7 @@ import { ulid } from 'ulid';
 import { uploadVehiclePaymentMedia } from '@/services/aws.service';
 import { HttpException } from '@/exceptions/HttpException';
 import prisma from '@/database';
+import { CreateVehiclePaymentDto, UpdateVehiclePaymentDto, GetAllPaymentsQueryDto } from '@/schemas/payment.schema';
 
 export class PaymentController {
   public paymentService = Container.get(PaymentService);
@@ -15,7 +16,7 @@ export class PaymentController {
   // Create
   public createVehiclePayment = async (request: RequestWithAdmin, response: Response, next: NextFunction): Promise<void> => {
     try {
-      const vehiclePaymentData: IVehiclePayment = request.body;
+      const vehiclePaymentData: CreateVehiclePaymentDto = request.body;
       const payment_id = ulid();
 
       let payment_receipt_images: string[] = [];
@@ -24,9 +25,8 @@ export class PaymentController {
         payment_receipt_images = await this.handleVehiclePaymentMediaUpload(request, response, vehiclePaymentData.vehicle_id, payment_id);
       }
 
-      const vehiclePaymentDataWithMedia: IVehiclePayment = {
+      const vehiclePaymentDataWithMedia: CreateVehiclePaymentDto = {
         ...vehiclePaymentData,
-        id: payment_id,
         payment_receipt_images: payment_receipt_images,
       };
 
@@ -40,12 +40,8 @@ export class PaymentController {
   // Get all
   public getAllVehiclePayments = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
     try {
-      const { page_number, page_size } = request.query;
-
-      const pageNumber = page_number ? Number(page_number) : 1;
-      const pageSize = page_size ? Number(page_size) : 5;
-
-      const payments = await this.paymentService.getAllVehiclePayments(pageNumber, pageSize);
+      const query: GetAllPaymentsQueryDto = request.query as any;
+      const payments = await this.paymentService.getAllVehiclePayments(query);
 
       response.status(200).json({ data: { ...payments }, message: 'Payments fetched successfully' });
     } catch (error) {
@@ -78,7 +74,7 @@ export class PaymentController {
   public updateVehiclePayment = async (request: RequestWithAdmin, response: Response, next: NextFunction): Promise<void> => {
     try {
       const { id } = request.params;
-      const vehiclePaymentData: Partial<IVehiclePayment> = request.body;
+      const vehiclePaymentData: UpdateVehiclePaymentDto = request.body;
 
       const existingPayment = await this.prisma.vehiclePayment.findUnique({ where: { id } });
       if (!existingPayment) {
@@ -100,7 +96,7 @@ export class PaymentController {
         }
       }
 
-      const vehiclePaymentDataWithMedia: Partial<IVehiclePayment> = {
+      const vehiclePaymentDataWithMedia: UpdateVehiclePaymentDto = {
         ...vehiclePaymentData,
         payment_receipt_images: payment_receipt_images,
       };

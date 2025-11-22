@@ -1,29 +1,37 @@
 import { Prisma } from '@prisma/client';
 import { Service } from 'typedi';
 import { HttpException } from '@/exceptions/HttpException';
+import { NotFoundException } from '@/exceptions/NotFoundException';
 import prisma from '@/database';
-import { formatPrismaError } from '@/exceptions/prismaException';
 import { IShop, ShopType } from '@/interfaces/shop.interface';
 import { SubscriptionPlanName, SubscriptionStatus } from '@/interfaces/subscription.interface';
+import { UpdateShopDto, GetAllShopsQueryDto } from '@/schemas/shop.schema';
+import { logger } from '@utils/logger';
 
 @Service()
 export class ShopService {
   private prisma = prisma;
 
-  public async editShopDetails(shopData: IShop, shop_id: string): Promise<IShop> {
+  // -----------------------------
+  // EDIT SHOP DETAILS - Update shop information
+  // -----------------------------
+  public async editShopDetails(shopData: UpdateShopDto, shop_id: string): Promise<IShop> {
     try {
       const shop = await this.prisma.shop.findFirst({
         where: { id: shop_id, is_deleted: false, is_active: true },
       });
 
       if (!shop) {
-        throw new HttpException(404, 'Shop not found');
+        logger.warn(`Edit shop failed: Shop not found - ${shop_id}`);
+        throw new NotFoundException('Shop not found');
       }
+      
       const updatedShop = await this.prisma.shop.update({
         where: { id: shop_id },
         data: shopData,
       });
 
+      logger.info(`Shop details updated successfully: ${updatedShop.shop_name} (${shop_id})`);
       return {
         ...updatedShop,
         subscription_plan: updatedShop.subscription_plan as SubscriptionPlanName,
@@ -31,11 +39,15 @@ export class ShopService {
         shop_type: updatedShop.shop_type as ShopType,
       };
     } catch (error: any) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError) throw formatPrismaError(error);
-      throw new HttpException(500, `Error Edit Shop Details: ${error.message}`);
+      if (error instanceof HttpException) throw error;
+      logger.error(`Edit shop details error for ${shop_id}: ${error.message}`);
+      throw error;
     }
   }
 
+  // -----------------------------
+  // GET SHOP DETAILS - Retrieve shop information
+  // -----------------------------
   public async getShopDetails(shop_id: string): Promise<IShop> {
     try {
       const shop = await this.prisma.shop.findFirst({
@@ -43,9 +55,11 @@ export class ShopService {
       });
 
       if (!shop) {
-        throw new HttpException(404, 'Shop not found');
+        logger.warn(`Get shop failed: Shop not found - ${shop_id}`);
+        throw new NotFoundException('Shop not found');
       }
 
+      logger.info(`Shop details retrieved successfully: ${shop_id}`);
       return {
         ...shop,
         subscription_plan: shop.subscription_plan as SubscriptionPlanName,
@@ -53,22 +67,29 @@ export class ShopService {
         shop_type: shop.shop_type as ShopType,
       };
     } catch (error: any) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError) throw formatPrismaError(error);
-      throw new HttpException(500, `Error Edit Shop Details: ${error.message}`);
+      if (error instanceof HttpException) throw error;
+      logger.error(`Get shop details error for ${shop_id}: ${error.message}`);
+      throw error;
     }
   }
 
-  public async getAllShop(pageNumber: number, pageSize: number): Promise<any> {
+  // -----------------------------
+  // GET ALL SHOPS - Retrieve paginated shop list (Admin)
+  // -----------------------------
+  public async getAllShop(query: GetAllShopsQueryDto): Promise<any> {
     try {
-      const skip = (pageNumber - 1) * pageSize;
+      const { page, limit } = query;
+      const skip = (page - 1) * limit;
+      
       const shops = await this.prisma.shop.findMany({
         orderBy: { created_at: 'desc' },
         skip,
-        take: pageSize,
+        take: limit,
       });
 
       const shopCount = await this.prisma.shop.count({});
 
+      logger.info(`Retrieved ${shopCount} shops (page ${page}, limit ${limit})`);
       return {
         shops: shops.map(shop => ({
           ...shop,
@@ -76,14 +97,17 @@ export class ShopService {
           subscription_status: shop.subscription_status as SubscriptionStatus,
           shop_type: shop.shop_type as ShopType,
         })),
-        shopCount,
+        pagination: {
+          page: page,
+          limit: limit,
+          total: shopCount,
+          totalPages: Math.ceil(shopCount / limit),
+        },
       };
-    } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        throw formatPrismaError(error);
-      }
-      throw new HttpException(500, `Error fetching shop: ${error.message}`);
+    } catch (error: any) {
+      if (error instanceof HttpException) throw error;
+      logger.error(`Get all shops error: ${error.message}`);
+      throw error;
     }
-    
   }
 }

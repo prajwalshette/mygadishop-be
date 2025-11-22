@@ -3,7 +3,7 @@ import { ShopController } from '@/controllers/shop.controller';
 import { Routes } from '@interfaces/routes.interface';
 import { AuthMiddleware } from '@middlewares/auth.middleware';
 import { ValidationMiddleware } from '@middlewares/validation.middleware';
-import { UpdateShopDto } from '@/dtos/shop.dto';
+import { updateShopSchema, getAllShopsQuerySchema } from '@/schemas/shop.schema';
 import { AdminAuthMiddleware } from '@/middlewares/adminAuth.middleware';
 
 export class ShopRoute implements Routes {
@@ -16,11 +16,11 @@ export class ShopRoute implements Routes {
   }
 
   private initializeRoutes() {
-    this.router.put(`${this.path}/update-details`, [AuthMiddleware, ValidationMiddleware(UpdateShopDto)], this.shopController.editShopDetails);
+    this.router.put(`${this.path}/update-details`, [AuthMiddleware, ValidationMiddleware(updateShopSchema, 'body')], this.shopController.editShopDetails);
     this.router.get(`${this.path}/details`, [AuthMiddleware], this.shopController.getShopDetails);
 
 
     //Admin Routes can be added here in future
-    this.router.get(`${this.path}/get-all`, [AdminAuthMiddleware], this.shopController.getAllShop);
+    this.router.get(`${this.path}/get-all`, [AdminAuthMiddleware, ValidationMiddleware(getAllShopsQuerySchema, 'query')], this.shopController.getAllShop);
 }
 }

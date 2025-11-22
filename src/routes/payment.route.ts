@@ -4,7 +4,13 @@ import { Routes } from '@interfaces/routes.interface';
 import { AuthMiddleware } from '@middlewares/auth.middleware';
 import { ValidationMiddleware } from '@middlewares/validation.middleware';
 import multer from 'multer';
-import { CreateVehiclePaymentDto, UpdateVehiclePaymentDto } from '@/dtos/payment.dto';
+import { 
+  createVehiclePaymentSchema, 
+  updateVehiclePaymentSchema, 
+  getAllPaymentsQuerySchema,
+  paymentIdParamSchema,
+  vehicleIdParamSchema
+} from '@/schemas/payment.schema';
 
 export class PaymentRoute implements Routes {
   public path = '/payment';
@@ -42,18 +48,19 @@ export class PaymentRoute implements Routes {
       [
         AuthMiddleware,
         upload.fields([{ name: 'paymentReceiptFiles', maxCount: 10 }]),
-        ValidationMiddleware(CreateVehiclePaymentDto),
+        ValidationMiddleware(createVehiclePaymentSchema, 'body'),
       ],
       this.paymentController.createVehiclePayment,
     );
 
     // 👉 Update Vehicle Payment
     this.router.put(
-      `${this.path}update-vehicle-payment/:id`,
+      `${this.path}/update-vehicle-payment/:id`,
       [
         AuthMiddleware,
         upload.fields([{ name: 'paymentReceiptFiles', maxCount: 10 }]),
-        ValidationMiddleware(UpdateVehiclePaymentDto, true), // true => partial validation
+        ValidationMiddleware(paymentIdParamSchema, 'params'),
+        ValidationMiddleware(updateVehiclePaymentSchema, 'body'),
       ],
       this.paymentController.updateVehiclePayment,
     );
@@ -61,27 +68,27 @@ export class PaymentRoute implements Routes {
     // 👉 Get All Vehicle Payments
     this.router.get(
       `${this.path}/get-all`,
-      [AuthMiddleware],
+      [AuthMiddleware, ValidationMiddleware(getAllPaymentsQuerySchema, 'query')],
       this.paymentController.getAllVehiclePayments,
     );
 
      this.router.get(
       `${this.path}/get-vehicle-payments/:vehicle_id`,
-      [AuthMiddleware],
+      [AuthMiddleware, ValidationMiddleware(vehicleIdParamSchema, 'params')],
       this.paymentController.getAllPaymentsByVehicleId,
     );
 
     // 👉 Get Vehicle Payment By ID
     this.router.get(
       `${this.path}/:id`,
-      [AuthMiddleware],
+      [AuthMiddleware, ValidationMiddleware(paymentIdParamSchema, 'params')],
       this.paymentController.getVehiclePaymentById,
     );
 
     // 👉 Delete Vehicle Payment
     this.router.delete(
       `${this.path}/delete-vehicle-payment/:id`,
-      [AuthMiddleware],
+      [AuthMiddleware, ValidationMiddleware(paymentIdParamSchema, 'params')],
       this.paymentController.deleteVehiclePayment,
     );
   }

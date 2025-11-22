@@ -10,12 +10,15 @@ export enum ServicingStatus {
 
 export interface IServicing {
   id: string;
+  shop_id: string;
   vehicle_id: string;
   customer_id: string;
   service_date: Date;
   service_type: string;
   description?: string;
-  cost: number;
+  labor_cost: number;
+  parts_cost: number;
+  total_cost: number;
   status: ServicingStatus;
   next_service_date?: Date;
 }

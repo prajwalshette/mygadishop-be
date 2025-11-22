@@ -2,11 +2,14 @@ import { NextFunction, Request, Response } from 'express';
 import { Container } from 'typedi';
 import { ServicingService } from '@/services/servicing.service';
 import { IServicing } from '@/interfaces/servicing.interface';
+import { GetServicingQueryDto } from '@/schemas/servicing.schema';
 
 export class ServicingController {
   public servicingService = Container.get(ServicingService);
 
-  // Create
+  // -----------------------------
+  // CREATE SERVICING - Create new servicing record
+  // -----------------------------
   public createServicing = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
     try {
       const servicingData: IServicing = request.body;
@@ -17,22 +20,24 @@ export class ServicingController {
     }
   };
 
-  // Get all
+  // -----------------------------
+  // GET ALL SERVICINGS - Retrieve paginated servicing list
+  // -----------------------------
   public getServicings = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
     try {
-      const { page_number, page_size } = request.query;
+      // Query is validated by ValidateRequest middleware
+      const query = request.query as unknown as GetServicingQueryDto;
 
-      const pageNumber = page_number ? Number(page_number) : 1;
-      const pageSize = page_size ? Number(page_size) : 10;
-
-      const servicings = await this.servicingService.getServicings(pageNumber, pageSize);
-      response.status(200).json({ data: {...servicings}, message: 'Servicings fetched successfully' });
+      const result = await this.servicingService.getServicings(query);
+      response.status(200).json({ data: result, message: 'Servicings fetched successfully' });
     } catch (error) {
       next(error);
     }
   };
 
-  // Get by ID
+  // -----------------------------
+  // GET SERVICING BY ID - Retrieve single servicing record
+  // -----------------------------
   public getServicingById = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
     try {
       const { id } = request.params;
@@ -43,7 +48,9 @@ export class ServicingController {
     }
   };
 
-  // Update
+  // -----------------------------
+  // UPDATE SERVICING - Modify existing servicing record
+  // -----------------------------
   public updateServicing = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
     try {
       const { id } = request.params;
@@ -55,7 +62,9 @@ export class ServicingController {
     }
   };
 
-  // Delete
+  // -----------------------------
+  // DELETE SERVICING - Soft delete servicing record
+  // -----------------------------
   public deleteServicing = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
     try {
       const { id } = request.params;

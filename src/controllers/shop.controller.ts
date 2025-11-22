@@ -2,7 +2,7 @@ import { NextFunction, Request, Response } from 'express';
 import { Container } from 'typedi';
 import { RequestWithUser } from '@/interfaces/auth.interface';
 import { ShopService } from '@/services/shop.service';
-import { IShop } from '@/interfaces/shop.interface';
+import { UpdateShopDto, GetAllShopsQueryDto } from '@/schemas/shop.schema';
 
 export class ShopController {
   public shopService = Container.get(ShopService);
@@ -10,7 +10,7 @@ export class ShopController {
   public editShopDetails = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
     try {
       const shop_id = request.user.shop_id;
-      const shopData: IShop = request.body;
+      const shopData: UpdateShopDto = request.body;
 
       const shop = await this.shopService.editShopDetails(shopData, shop_id);
       response.status(200).json({ data: shop, message: 'Shop Details Update Successfully.' });
@@ -31,11 +31,8 @@ export class ShopController {
 
   public getAllShop = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
     try {
-      const { page_number, page_size } = request.query;
-
-      const pageNumber = page_number ? Number(page_number) : 1;
-      const pageSize = page_size ? Number(page_size) : 5;
-      const shops = await this.shopService.getAllShop(pageNumber, pageSize);
+      const query: GetAllShopsQueryDto = request.query as any;
+      const shops = await this.shopService.getAllShop(query);
 
       response.status(200).json({ data: { ...shops }, message: 'Successfully Retrieved Shop' });
     } catch (error) {

@@ -16,16 +16,27 @@ export enum PaymentMethod {
   EMI = "EMI",
 }
 
+export enum PaymentType {
+  VEHICLE_SALE = "VEHICLE_SALE",
+  VEHICLE_PURCHASE = "VEHICLE_PURCHASE",
+  SERVICE = "SERVICE",
+  ADVANCE = "ADVANCE",
+  REFUND = "REFUND",
+}
 
 export interface IVehiclePayment {
   id: string;
+  shop_id: string;
   vehicle_id: string;
   customer_id: string;
   amount: number;
+  payment_type: PaymentType;
   method: PaymentMethod;
   status: PaymentStatus;
+  transaction_id?: string;
   payment_receipt_images: string[];
-  message?: string;
+  notes?: string;
+  is_deleted: boolean;
   created_at: Date;
   updated_at: Date;
 }
