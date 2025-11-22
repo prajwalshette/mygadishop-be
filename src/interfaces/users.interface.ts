@@ -6,7 +6,7 @@ export interface User {
   name?: string;
   phone?: string;
   is_active?: boolean;
-  is_deleted?: boolean;
+  deleted_at?: Date | null;
   shop_id?: string;
 }
 
@@ -18,7 +18,7 @@ export interface AdminUser {
   name?: string;
   phone?: string;
   is_active?: boolean;
-  is_deleted?: boolean;
+  deleted_at?: Date | null;
 }
 
 export interface ShopUserResponseDTO {
@@ -29,7 +29,7 @@ export interface ShopUserResponseDTO {
   phone?: string;
   role: UserRole;
   is_active: boolean;
-  is_deleted: boolean;
+  deleted_at: Date | null;
 }
 
 export enum AdminRole {

@@ -26,7 +26,7 @@ export interface IShop {
   plan_end_date?: Date | null;
   is_verified: boolean;
   is_active: boolean;
-  is_deleted: boolean;
+  deleted_at: Date | null;
 }
 
 export enum ShopType {

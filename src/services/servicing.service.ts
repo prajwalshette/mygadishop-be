@@ -165,7 +165,7 @@ export class ServicingService {
   // -----------------------------
   public async deleteServicing(id: string): Promise<any> {
     try {
-      const servicing = await this.prisma.servicing.update({ where: { id }, data: { is_deleted: true } });
+      const servicing = await this.prisma.servicing.update({ where: { id }, data: { deleted_at: new Date() } });
       
       logger.info(`Servicing deleted successfully: ${id}`);
       return true;

@@ -22,13 +22,13 @@ export class DashboardService {
       const [currentMonthVehicles, lastMonthVehicles] = await Promise.all([
         this.prisma.vehicle.count({
           where: {
-            is_deleted: false,
+            deleted_at: null,
             created_at: { gte: startOfCurrentMonth }
           }
         }),
         this.prisma.vehicle.count({
           where: {
-            is_deleted: false,
+            deleted_at: null,
             created_at: {
               gte: startOfLastMonth,
               lt: startOfCurrentMonth
@@ -38,7 +38,7 @@ export class DashboardService {
       ]);
 
       const totalVehicles = await this.prisma.vehicle.count({
-        where: { is_deleted: false }
+        where: { deleted_at: null }
       });
 
       const vehiclePercentageChange = lastMonthVehicles > 0 
@@ -49,13 +49,13 @@ export class DashboardService {
       const [currentMonthCustomers, lastMonthCustomers] = await Promise.all([
         this.prisma.customer.count({
           where: {
-            is_deleted: false,
+            deleted_at: null,
             created_at: { gte: startOfCurrentMonth }
           }
         }),
         this.prisma.customer.count({
           where: {
-            is_deleted: false,
+            deleted_at: null,
             created_at: {
               gte: startOfLastMonth,
               lt: startOfCurrentMonth
@@ -65,7 +65,7 @@ export class DashboardService {
       ]);
 
       const totalCustomers = await this.prisma.customer.count({
-        where: { is_deleted: false }
+        where: { deleted_at: null }
       });
 
       const customerPercentageChange = lastMonthCustomers > 0
@@ -76,19 +76,19 @@ export class DashboardService {
       const [completedServices, inProgressServices, pendingServices] = await Promise.all([
         this.prisma.servicing.count({
           where: {
-            is_deleted: false,
+            deleted_at: null,
             status: 'COMPLETED'
           }
         }),
         this.prisma.servicing.count({
           where: {
-            is_deleted: false,
+            deleted_at: null,
             status: 'IN_PROGRESS'
           }
         }),
         this.prisma.servicing.count({
           where: {
-            is_deleted: false,
+            deleted_at: null,
             status: 'PENDING'
           }
         })
@@ -97,7 +97,7 @@ export class DashboardService {
       // Monthly Revenue
       const currentMonthPayments = await this.prisma.vehiclePayment.aggregate({
         where: {
-          is_deleted: false,
+          deleted_at: null,
           status: 'COMPLETED',
           created_at: { gte: startOfCurrentMonth }
         },
@@ -106,7 +106,7 @@ export class DashboardService {
 
       const lastMonthPayments = await this.prisma.vehiclePayment.aggregate({
         where: {
-          is_deleted: false,
+          deleted_at: null,
           status: 'COMPLETED',
           created_at: {
             gte: startOfLastMonth,
@@ -126,7 +126,7 @@ export class DashboardService {
       // Total Revenue (All Time)
       const totalRevenueData = await this.prisma.vehiclePayment.aggregate({
         where: {
-          is_deleted: false,
+          deleted_at: null,
           status: 'COMPLETED'
         },
         _sum: { amount: true }
@@ -135,7 +135,7 @@ export class DashboardService {
       // Current Year Revenue
       const currentYearRevenue = await this.prisma.vehiclePayment.aggregate({
         where: {
-          is_deleted: false,
+          deleted_at: null,
           status: 'COMPLETED',
           created_at: { gte: startOfYear }
         },
@@ -145,7 +145,7 @@ export class DashboardService {
       // Last Year Revenue
       const lastYearRevenue = await this.prisma.vehiclePayment.aggregate({
         where: {
-          is_deleted: false,
+          deleted_at: null,
           status: 'COMPLETED',
           created_at: {
             gte: startOfLastYear,
@@ -165,7 +165,7 @@ export class DashboardService {
 
       // Recent Activities
       const recentServices = await this.prisma.servicing.findMany({
-        where: { is_deleted: false },
+        where: { deleted_at: null },
         include: {
           vehicle: true,
           customer: true
@@ -175,13 +175,13 @@ export class DashboardService {
       });
 
       const recentVehicles = await this.prisma.vehicle.findMany({
-        where: { is_deleted: false },
+        where: { deleted_at: null },
         orderBy: { created_at: 'desc' },
         take: 5
       });
 
       const recentCustomers = await this.prisma.customer.findMany({
-        where: { is_deleted: false },
+        where: { deleted_at: null },
         orderBy: { created_at: 'desc' },
         take: 5
       });
@@ -261,7 +261,7 @@ export class DashboardService {
 
       // Get unique cities from customer addresses (simplified)
       const customers = await this.prisma.customer.findMany({
-        where: { is_deleted: false },
+        where: { deleted_at: null },
         select: { address: true }
       });
 

@@ -251,7 +251,7 @@ export class AuthService {
             subscription_status: SubscriptionStatus.TRIAL,
             is_verified: false,
             is_active: true,
-            is_deleted: false,
+            deleted_at: null,
           },
         });
         shop = {
@@ -281,7 +281,7 @@ export class AuthService {
             role: true,
             shop_id: true,
             is_active: true,
-            is_deleted: true,
+            deleted_at: new Date(),
           },
         });
 

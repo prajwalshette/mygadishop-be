@@ -22,7 +22,7 @@ export class VehicleService {
   public async createVehicle(vehicleData: IVehicle, shop_id: string): Promise<IVehicle> {
     try {
       const isExistVehicle = await this.prisma.vehicle.findFirst({
-        where: { registration_number: vehicleData.registration_number, chassis_number: vehicleData.chassis_number, is_deleted: false, shop_id: shop_id },
+        where: { registration_number: vehicleData.registration_number, chassis_number: vehicleData.chassis_number, deleted_at: null, shop_id: shop_id },
       });
 
       if (isExistVehicle) {
@@ -68,7 +68,7 @@ export class VehicleService {
       const existingVehicle = await this.prisma.vehicle.findFirst({
         where: {
           id: vehicleId,
-          is_deleted: false,
+          deleted_at: null,
         },
       });
 
@@ -87,7 +87,7 @@ export class VehicleService {
             ],
             AND: [
               { id: { not: vehicleId } }, // Exclude current vehicle
-              { is_deleted: false },
+              { deleted_at: null },
             ],
           },
         });
@@ -135,7 +135,7 @@ export class VehicleService {
       const vehicle = await this.prisma.vehicle.findFirst({
         where: {
           id: vehicleId,
-          is_deleted: false,
+          deleted_at: null,
         },
       });
 
@@ -198,7 +198,7 @@ export class VehicleService {
       // Build where clause with filters
       const whereClause: any = {
         shop_id: shop_id,
-        is_deleted: false,
+        deleted_at: null,
       };
 
       // Add search filter (searches across multiple fields)
@@ -308,7 +308,7 @@ export class VehicleService {
       const existingVehicle = await this.prisma.vehicle.findFirst({
         where: {
           id: vehicleId,
-          is_deleted: false,
+          deleted_at: null,
         },
       });
 
@@ -320,7 +320,7 @@ export class VehicleService {
       await this.prisma.vehicle.update({
         where: { id: vehicleId },
         data: {
-          is_deleted: true,
+          deleted_at: new Date(),
           updated_at: new Date(),
         },
       });

@@ -35,7 +35,7 @@ export class PaymentService {
       });
 
       logger.info(`Payment created successfully: ${payment.id}`);
-      return { ...payment, status: payment.status as PaymentStatus, method: payment.method as PaymentMethod, payment_type: payment.payment_type as PaymentType };
+      return { ...payment, status: payment.status as PaymentStatus, method: payment.method as PaymentMethod, payment_type: payment.payment_type as PaymentType, deleted_at: payment.deleted_at };
     } catch (error: any) {
       if (error instanceof HttpException) throw error;
       logger.error(`Create payment error: ${error.message}`);
@@ -51,13 +51,13 @@ export class PaymentService {
       const { page, limit } = query;
       const skip = (page - 1) * limit;
       const payments = await this.prisma.vehiclePayment.findMany({
-        where: { is_deleted: false },
+        where: { deleted_at: null },
         orderBy: { created_at: 'desc' },
         skip,
         take: limit,
         include: { vehicle: true, customer: true },
       });
-      const paymentCount = await this.prisma.vehiclePayment.count({ where: { is_deleted: false } });
+      const paymentCount = await this.prisma.vehiclePayment.count({ where: { deleted_at: null } });
       
       logger.info(`Retrieved ${paymentCount} payments (page ${page}, limit ${limit})`);
       return {
@@ -66,6 +66,7 @@ export class PaymentService {
           method: payment.method as PaymentMethod,
           status: payment.status as PaymentStatus,
           payment_type: payment.payment_type as PaymentType,
+          deleted_at: payment.deleted_at,
         })),
         pagination: {
           page: page,
@@ -87,7 +88,7 @@ export class PaymentService {
   public async getVehiclePaymentById(id: string): Promise<IVehiclePayment> {
     try {
       const payment = await this.prisma.vehiclePayment.findFirst({
-        where: { id, is_deleted: false },
+        where: { id, deleted_at: null },
         include: { vehicle: true, customer: true },
       });
       
@@ -97,7 +98,7 @@ export class PaymentService {
       }
       
       logger.info(`Payment retrieved successfully: ${id}`);
-      return { ...payment, status: payment.status as PaymentStatus, method: payment.method as PaymentMethod, payment_type: payment.payment_type as PaymentType };
+      return { ...payment, status: payment.status as PaymentStatus, method: payment.method as PaymentMethod, payment_type: payment.payment_type as PaymentType, deleted_at: payment.deleted_at };
     } catch (error: any) {
       if (error instanceof HttpException) throw error;
       logger.error(`Get payment error for ${id}: ${error.message}`);
@@ -111,7 +112,7 @@ export class PaymentService {
   public async getAllPaymentsByVehicleId(vehicle_id: string): Promise<IVehiclePayment[]> {
     try {
       const payments = await this.prisma.vehiclePayment.findMany({
-        where: { vehicle_id, is_deleted: false },
+        where: { vehicle_id, deleted_at: null },
       });
       
       logger.info(`Retrieved ${payments.length} payments for vehicle: ${vehicle_id}`);
@@ -141,7 +142,7 @@ export class PaymentService {
       });
 
       logger.info(`Payment updated successfully: ${id}`);
-      return { ...payment, status: payment.status as PaymentStatus, method: payment.method as PaymentMethod, payment_type: payment.payment_type as PaymentType };
+      return { ...payment, status: payment.status as PaymentStatus, method: payment.method as PaymentMethod, payment_type: payment.payment_type as PaymentType, deleted_at: payment.deleted_at };
     } catch (error: any) {
       if (error instanceof HttpException) throw error;
       if (error.code === 'P2025') {
@@ -165,7 +166,7 @@ export class PaymentService {
         throw new NotFoundException('Payment not found');
       }
       
-      await this.prisma.vehiclePayment.update({ where: { id }, data: { is_deleted: true } });
+      await this.prisma.vehiclePayment.update({ where: { id }, data: { deleted_at: new Date() } });
       
       logger.info(`Payment deleted successfully: ${id}`);
       return true;

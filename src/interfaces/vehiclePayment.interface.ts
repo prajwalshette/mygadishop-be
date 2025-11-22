@@ -36,7 +36,7 @@ export interface IVehiclePayment {
   transaction_id?: string;
   payment_receipt_images: string[];
   notes?: string;
-  is_deleted: boolean;
+  deleted_at: Date | null;
   created_at: Date;
   updated_at: Date;
 }

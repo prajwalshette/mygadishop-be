@@ -21,7 +21,7 @@ model Admin {
   password    String
   permissions String[]
   is_active   Boolean           @default(true)
-  is_deleted  Boolean           @default(false)
+  deleted_at  DateTime?
   created_at  DateTime          @default(now())
   updated_at  DateTime          @updatedAt
 
@@ -49,7 +49,7 @@ model User {
   role       ShopUserRole @default(STAFF)
   password   String
   is_active  Boolean      @default(true)
-  is_deleted Boolean      @default(false)
+  deleted_at DateTime?
   created_at DateTime     @default(now())
   updated_at DateTime     @updatedAt
 
@@ -98,7 +98,7 @@ model Shop {
   plan_end_date       DateTime?
   is_verified         Boolean               @default(false)
   is_active           Boolean               @default(true)
-  is_deleted          Boolean               @default(false)
+  deleted_at          DateTime?
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
@@ -224,7 +224,7 @@ model Customer {
   pincode         String?
 
   customer_type CustomerType @default(BUYER)
-  is_deleted    Boolean      @default(false)
+  deleted_at    DateTime?
   created_at    DateTime     @default(now())
   updated_at    DateTime     @updatedAt
 
@@ -279,7 +279,7 @@ model Vehicle {
   features    String[]
   description String?
 
-  is_deleted  Boolean  @default(false)
+  deleted_at  DateTime?
   created_at  DateTime @default(now())
   updated_at  DateTime @updatedAt
 
@@ -315,7 +315,7 @@ model Servicing {
   technician_name   String?
 
   service_images String[]
-  is_deleted     Boolean  @default(false)
+  deleted_at     DateTime?
   created_at     DateTime @default(now())
   updated_at     DateTime @updatedAt
 
@@ -344,7 +344,7 @@ model VehiclePayment {
   payment_receipt_images String[]
   notes                  String?
 
-  is_deleted Boolean  @default(false)
+  deleted_at DateTime?
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 

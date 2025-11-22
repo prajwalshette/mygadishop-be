@@ -1,4 +1,3 @@
-
 export interface ICustomer {
   id?: string;
   shop_id?: string;
@@ -10,7 +9,9 @@ export interface ICustomer {
   state?: string;
   pincode?: string;
   customer_type?: CustomerType;
-  is_deleted?: boolean;
+  is_verified: boolean;
+  is_active: boolean;
+  deleted_at?: Date | null;
 }
 
 export enum CustomerType {

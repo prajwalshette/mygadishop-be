@@ -18,7 +18,7 @@ export class ShopService {
   public async editShopDetails(shopData: UpdateShopDto, shop_id: string): Promise<IShop> {
     try {
       const shop = await this.prisma.shop.findFirst({
-        where: { id: shop_id, is_deleted: false, is_active: true },
+        where: { id: shop_id, deleted_at: null, is_active: true },
       });
 
       if (!shop) {
@@ -37,6 +37,7 @@ export class ShopService {
         subscription_plan: updatedShop.subscription_plan as SubscriptionPlanName,
         subscription_status: updatedShop.subscription_status as SubscriptionStatus,
         shop_type: updatedShop.shop_type as ShopType,
+        deleted_at: updatedShop.deleted_at,
       };
     } catch (error: any) {
       if (error instanceof HttpException) throw error;
@@ -51,7 +52,7 @@ export class ShopService {
   public async getShopDetails(shop_id: string): Promise<IShop> {
     try {
       const shop = await this.prisma.shop.findFirst({
-        where: { id: shop_id, is_deleted: false, is_active: true },
+        where: { id: shop_id, deleted_at: null, is_active: true },
       });
 
       if (!shop) {
@@ -65,6 +66,7 @@ export class ShopService {
         subscription_plan: shop.subscription_plan as SubscriptionPlanName,
         subscription_status: shop.subscription_status as SubscriptionStatus,
         shop_type: shop.shop_type as ShopType,
+        deleted_at: shop.deleted_at,
       };
     } catch (error: any) {
       if (error instanceof HttpException) throw error;
@@ -87,7 +89,9 @@ export class ShopService {
         take: limit,
       });
 
-      const shopCount = await this.prisma.shop.count({});
+      const shopCount = await this.prisma.shop.count({
+        where: { deleted_at: null },
+      });
 
       logger.info(`Retrieved ${shopCount} shops (page ${page}, limit ${limit})`);
       return {
@@ -96,6 +100,7 @@ export class ShopService {
           subscription_plan: shop.subscription_plan as SubscriptionPlanName,
           subscription_status: shop.subscription_status as SubscriptionStatus,
           shop_type: shop.shop_type as ShopType,
+          deleted_at: shop.deleted_at,
         })),
         pagination: {
           page: page,

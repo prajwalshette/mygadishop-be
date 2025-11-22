@@ -20,7 +20,7 @@ export class CustomerService {
   public async addNewCustomer(customerData: ICustomer, shop_id): Promise<ICustomer> {
     try {
       const isExistCustomer = await this.prisma.customer.findFirst({
-        where: { phone: customerData.phone, email: customerData.email, is_deleted: false, shop_id },
+        where: { phone: customerData.phone, email: customerData.email, deleted_at: null, shop_id },
       });
 
       if (isExistCustomer) {
@@ -51,7 +51,7 @@ export class CustomerService {
    public async updateCustomer(customerData: ICustomer, customer_id: string): Promise<ICustomer> {
     try {
       const isExistCustomer = await this.prisma.customer.findFirst({
-        where: { id: customer_id, is_deleted: false },
+        where: { id: customer_id, deleted_at: null },
       });
 
       if (!isExistCustomer) {
@@ -87,7 +87,7 @@ export class CustomerService {
       // Build where clause with filters
       const whereClause: any = {
         shop_id,
-        is_deleted: false,
+        deleted_at: null,
       };
 
       // Add search filter (searches across multiple fields)
@@ -145,7 +145,7 @@ export class CustomerService {
   // -----------------------------
   public async getCustomer(customer_id: string): Promise<ICustomer> {
     try {
-      const customer = await this.prisma.customer.findFirst({ where: { id: customer_id, is_deleted: false } });
+      const customer = await this.prisma.customer.findFirst({ where: { id: customer_id, deleted_at: null } });
       
       if (!customer) {
         logger.warn(`Get customer failed: Customer not found - ${customer_id}`);
@@ -175,7 +175,7 @@ export class CustomerService {
 
       await this.prisma.customer.update({
         where: { id: customer_id },
-        data: { is_deleted: true },
+        data: { deleted_at: new Date() },
       });
 
       logger.info(`Customer deleted successfully: ${customer_id}`);
