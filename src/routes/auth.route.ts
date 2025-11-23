@@ -5,7 +5,7 @@ import { AuthMiddleware } from '@middlewares/auth.middleware';
 import { ValidationMiddleware } from '@middlewares/validation.middleware';
 import { OnboardAuthMiddleware } from '@middlewares/onboard.middleware';
 import { loginSchema } from '@/schemas/auth.schema';
-import { adminLoginSchema, addAdminUserSchema } from '@/schemas/admin.schema';
+import { addAdminUserSchema } from '@/schemas/admin.schema';
 import { onboardShopSchema } from '@/schemas/onboard.schema';
 
 export class AuthRoute implements Routes {
@@ -19,8 +19,8 @@ export class AuthRoute implements Routes {
 
   private initializeRoutes() {
     // Admin routes
-    this.router.post(`${this.path}/admin-login`, ValidationMiddleware(adminLoginSchema, 'body'), this.auth.adminLogIn);
-    this.router.post(`${this.path}/add-admin-user`, [AuthMiddleware], ValidationMiddleware(addAdminUserSchema, 'body'), this.auth.addAdminUser);
+    this.router.post(`${this.path}/admin-login`, ValidationMiddleware(loginSchema, 'body'), this.auth.adminLogIn);
+    this.router.post(`${this.path}/add-admin-user`, ValidationMiddleware(addAdminUserSchema, 'body'), this.auth.addAdminUser);
     this.router.post(`${this.path}/logout`, [AuthMiddleware], this.auth.logOut);
 
     // UNIFIED LOGIN - Handles both login and signup

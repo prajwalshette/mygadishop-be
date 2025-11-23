@@ -11,6 +11,8 @@ export interface ICustomer {
   customer_type?: CustomerType;
 
   deleted_at?: Date | null;
+  created_at?: Date;
+  updated_at?: Date;
 }
 
 export enum CustomerType {

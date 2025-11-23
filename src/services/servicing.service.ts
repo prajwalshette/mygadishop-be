@@ -7,7 +7,7 @@ import prisma from '@/database';
 import { IServicing } from '@/interfaces/servicing.interface';
 import { ulid } from 'ulid';
 import { logger } from '@utils/logger';
-import { CreateServicingDto, UpdateServicingDto, GetServicingQueryDto } from '@/schemas/servicing.schema';
+import { CreateServicingDto, UpdateServicingDto, GetServicingQueryDto, ExportServicingQueryDto } from '@/schemas/servicing.schema';
 
 @Service()
 export class ServicingService {
@@ -156,6 +156,148 @@ export class ServicingService {
         throw new NotFoundException('Servicing not found');
       }
       logger.error(`Update servicing error for ${id}: ${error.message}`);
+      throw error;
+    }
+  }
+
+  // -----------------------------
+  // GET SERVICING STATISTICS - Get servicing stats for dashboard
+  // -----------------------------
+  public async getServicingStats(shop_id: string): Promise<any> {
+    try {
+      const now = new Date();
+      const startOfCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+
+      // Total servicings
+      const totalServicings = await this.prisma.servicing.count({
+        where: {
+          shop_id,
+          deleted_at: null,
+        },
+      });
+
+      // Completed servicings
+      const completedServicings = await this.prisma.servicing.count({
+        where: {
+          shop_id,
+          deleted_at: null,
+          status: 'COMPLETED',
+        },
+      });
+
+      // In progress servicings
+      const inProgressServicings = await this.prisma.servicing.count({
+        where: {
+          shop_id,
+          deleted_at: null,
+          status: 'IN_PROGRESS',
+        },
+      });
+
+      // Scheduled servicings
+      const scheduledServicings = await this.prisma.servicing.count({
+        where: {
+          shop_id,
+          deleted_at: null,
+          status: 'SCHEDULED',
+        },
+      });
+
+      // New servicings this month
+      const newThisMonth = await this.prisma.servicing.count({
+        where: {
+          shop_id,
+          deleted_at: null,
+          created_at: { gte: startOfCurrentMonth },
+        },
+      });
+
+      // Servicings from last month
+      const lastMonthServicings = await this.prisma.servicing.count({
+        where: {
+          shop_id,
+          deleted_at: null,
+          created_at: {
+            gte: startOfLastMonth,
+            lte: endOfLastMonth,
+          },
+        },
+      });
+
+      // Calculate growth rate
+      const growthRate = lastMonthServicings > 0
+        ? Math.round(((newThisMonth - lastMonthServicings) / lastMonthServicings) * 100)
+        : (newThisMonth > 0 ? 100 : 0);
+
+      logger.info(`Retrieved servicing stats for shop ${shop_id}: total=${totalServicings}, completed=${completedServicings}, inProgress=${inProgressServicings}, scheduled=${scheduledServicings}, newThisMonth=${newThisMonth}, growthRate=${growthRate}%`);
+
+      return {
+        totalServicings,
+        completedServicings,
+        inProgressServicings,
+        scheduledServicings,
+        newThisMonth,
+        growthRate,
+        lastMonthServicings,
+      };
+    } catch (error) {
+      logger.error(`Get servicing stats error: ${error.message}`);
+      throw error;
+    }
+  }
+
+  // -----------------------------
+  // EXPORT SERVICINGS - Get all servicings for CSV export (no pagination)
+  // -----------------------------
+  public async exportServicings(query: ExportServicingQueryDto, shop_id: string): Promise<IServicing[]> {
+    const { search, status, vehicle_id, customer_id, sortBy, sortOrder } = query;
+    
+    try {
+      // Build where clause with filters
+      const whereClause: any = {
+        shop_id,
+        deleted_at: null,
+      };
+
+      // Add search filter (searches across service_type and description)
+      if (search) {
+        whereClause.OR = [
+          { service_type: { contains: search, mode: 'insensitive' } },
+          { description: { contains: search, mode: 'insensitive' } },
+        ];
+      }
+
+      // Add status filter
+      if (status) {
+        whereClause.status = status;
+      }
+
+      // Add vehicle_id filter
+      if (vehicle_id) {
+        whereClause.vehicle_id = vehicle_id;
+      }
+
+      // Add customer_id filter
+      if (customer_id) {
+        whereClause.customer_id = customer_id;
+      }
+
+      // Fetch all servicings without pagination
+      const servicings = await this.prisma.servicing.findMany({
+        where: whereClause,
+        orderBy: { [sortBy]: sortOrder },
+      });
+
+      logger.info(`Exporting ${servicings.length} servicings (filters: ${JSON.stringify({ search, status, vehicle_id, customer_id })})`);
+      
+      return servicings.map(servicing => ({
+        ...servicing,
+        status: servicing.status as ServicingStatus,
+      }));
+    } catch (error) {
+      logger.error(`Export servicings error: ${error.message}`);
       throw error;
     }
   }

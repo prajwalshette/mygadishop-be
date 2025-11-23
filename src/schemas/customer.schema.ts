@@ -69,7 +69,19 @@ export const getCustomerQuerySchema = z.object({
   sortOrder: z.enum(['asc', 'desc']).optional().default('desc'),
 });
 
+// Query Schema for export customers (no pagination)
+export const exportCustomerQuerySchema = z.object({
+  search: z.string().trim().optional(), // Searches: name, email, phone
+  
+  customer_type: z.enum(CustomerType).optional(),
+  
+  sortBy: z.enum(['created_at', 'updated_at', 'name']).optional().default('created_at'),
+  
+  sortOrder: z.enum(['asc', 'desc']).optional().default('desc'),
+});
+
 // Export types
 export type CreateCustomerDto = z.infer<typeof createCustomerSchema>;
 export type UpdateCustomerDto = z.infer<typeof updateCustomerSchema>;
 export type GetCustomerQueryDto = z.infer<typeof getCustomerQuerySchema>;
+export type ExportCustomerQueryDto = z.infer<typeof exportCustomerQuerySchema>;

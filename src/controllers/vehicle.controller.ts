@@ -7,7 +7,9 @@ import { RequestWithUser } from '@/interfaces/auth.interface';
 import { NotFoundException } from '@/exceptions/NotFoundException';
 import { BadRequestException } from '@/exceptions/BadRequestException';
 import { uploadVehicleMedia, uploadVehicleDocMedia } from '@/services/aws.service';
-import { CreateVehicleDto, GetVehicleQueryDto } from '@/schemas/vehicle.schema';
+import { CreateVehicleDto, GetVehicleQueryDto, ExportVehicleQueryDto } from '@/schemas/vehicle.schema';
+import { stringify } from 'csv-stringify/sync';
+import { logger } from '@utils/logger';
 
 export class VehicleController {
   public vehicleService = Container.get(VehicleService);
@@ -42,7 +44,6 @@ export class VehicleController {
         id: vehicle_id,
         vehicle_doc_urls: vehicle_doc_urls,
         vehicle_image_urls: vehicle_image_urls,
-        
       };
 
       const vehicle = await this.vehicleService.createVehicle(vehicleDataWithMedia, shop_id);
@@ -85,7 +86,7 @@ export class VehicleController {
 
       // Upload new vehicle document files if present
       if (request.vehicleDocFiles && request.vehicleDocFiles.vehicleDocFiles) {
-        const newDocUrls = await this.handleVehicleDocMediaUpload(request, response, shop_id,  vehicleId);
+        const newDocUrls = await this.handleVehicleDocMediaUpload(request, response, shop_id, vehicleId);
 
         // You can choose to append or replace existing documents
         if (request.body.replaceDocuments === 'true') {
@@ -144,6 +145,116 @@ export class VehicleController {
   };
 
   // -----------------------------
+  // GET VEHICLE STATISTICS - Get vehicle stats for dashboard
+  // -----------------------------
+  public getVehicleStats = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
+    try {
+      const shop_id = request.user.shop_id;
+      const stats = await this.vehicleService.getVehicleStats(shop_id);
+      response.status(200).json({ data: stats, message: 'Successfully Retrieved Vehicle Statistics' });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // -----------------------------
+  // EXPORT VEHICLES TO CSV - Export vehicles data as CSV
+  // -----------------------------
+  public exportVehiclesToCSV = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
+    try {
+      const query = request.query as unknown as ExportVehicleQueryDto;
+      const shop_id = request.user.shop_id;
+
+      logger.info(`Export vehicles CSV requested by shop ${shop_id} with filters: ${JSON.stringify(query)}`);
+
+      const vehicles = await this.vehicleService.exportVehicles(query, shop_id);
+
+      if (vehicles.length === 0) {
+        logger.warn(`No vehicles found for export with filters: ${JSON.stringify(query)}`);
+        throw new NotFoundException('No vehicles found to export');
+      }
+
+      // Define CSV columns
+      const columns = [
+        'Type',
+        'Brand',
+        'Model',
+        'Variant',
+        'Year',
+        'Registration Number',
+        'Chassis Number',
+        'Engine Number',
+        'Color',
+        'Mileage',
+        'Fuel Type',
+        'Transmission',
+        'Engine Capacity',
+        'Ownership',
+        'Insurance Valid Till',
+        'Buying Price',
+        'Selling Price',
+        'Status',
+        'Buying Date',
+        'Selling Date',
+        'Created On',
+      ];
+
+      // Helper function to format date as DD/MM/YYYY
+      const formatDate = (date: Date | string | null | undefined): string => {
+        if (!date) return '';
+        const d = new Date(date);
+        const day = String(d.getDate()).padStart(2, '0');
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const year = d.getFullYear();
+        return `${day}/${month}/${year}`;
+      };
+
+      // Convert vehicles to CSV rows
+      const rows = vehicles.map((vehicle: any) => [
+        vehicle.type || '',
+        vehicle.brand || '',
+        vehicle.model || '',
+        vehicle.variant || '',
+        vehicle.year?.toString() || '',
+        vehicle.registration_number || '',
+        vehicle.chassis_number || '',
+        vehicle.engine_number || '',
+        vehicle.color || '',
+        vehicle.mileage?.toString() || '',
+        vehicle.fuel_type || '',
+        vehicle.transmission || '',
+        vehicle.engine_capacity?.toString() || '',
+        vehicle.ownership || '',
+        formatDate(vehicle.insurance_valid_till),
+        vehicle.buying_price?.toString() || '',
+        vehicle.selling_price?.toString() || '',
+        vehicle.status || '',
+        formatDate(vehicle.buying_date),
+        formatDate(vehicle.selling_date),
+        formatDate(vehicle.created_at),
+      ]);
+
+      // Generate CSV string
+      const csv = stringify(rows, {
+        header: true,
+        columns: columns,
+        quoted: true,
+      });
+
+      logger.info(`Successfully exported ${vehicles.length} vehicles to CSV`);
+
+      // Set response headers for CSV download
+      const filename = `vehicles_${new Date().toISOString().split('T')[0]}.csv`;
+      response.setHeader('Content-Type', 'text/csv');
+      response.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      response.status(200).send(csv);
+    } catch (error) {
+      logger.error(`Export vehicles CSV error: ${error.message}`);
+      next(error);
+    }
+  };
+
+  // -----------------------------
   // DELETE VEHICLE - Soft delete vehicle
   // -----------------------------
   public deleteVehicle = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
@@ -161,65 +272,65 @@ export class VehicleController {
   // HELPER: Handle vehicle media upload
   // -----------------------------
   private async handleVehicleMediaUpload(request: RequestWithUser, response: Response, shop_id: string, vehicle_id: string): Promise<string[]> {
-  try {
-    // Access files from request.files, not request.vehicleFiles
-    const files = (request.files as { [fieldname: string]: Express.Multer.File[] }).vehicleFiles as Express.Multer.File[];
-    
-    if (!files || files.length === 0) {
-      return [];
+    try {
+      // Access files from request.files, not request.vehicleFiles
+      const files = (request.files as { [fieldname: string]: Express.Multer.File[] }).vehicleFiles as Express.Multer.File[];
+
+      if (!files || files.length === 0) {
+        return [];
+      }
+
+      const vehicleFilesUrls: string[] = [];
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+
+        // Create a temporary request object for each file
+        const tempRequest = {
+          ...request,
+          file: file,
+        } as RequestWithUser;
+
+        const uploadResult = await uploadVehicleMedia(tempRequest, response, 'file', shop_id, vehicle_id);
+        vehicleFilesUrls.push(uploadResult.fileUrl);
+      }
+
+      return vehicleFilesUrls;
+    } catch (uploadError) {
+      throw new BadRequestException(`Failed to upload Vehicle media: ${uploadError.message}`);
     }
-
-    const vehicleFilesUrls: string[] = [];
-
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-
-      // Create a temporary request object for each file
-      const tempRequest = {
-        ...request,
-        file: file,
-      } as RequestWithUser;
-
-      const uploadResult = await uploadVehicleMedia(tempRequest, response, 'file', shop_id, vehicle_id);
-      vehicleFilesUrls.push(uploadResult.fileUrl);
-    }
-
-    return vehicleFilesUrls;
-  } catch (uploadError) {
-    throw new BadRequestException(`Failed to upload Vehicle media: ${uploadError.message}`);
   }
-}
 
-// -----------------------------
-// HELPER: Handle vehicle document upload
-// -----------------------------
-private async handleVehicleDocMediaUpload(request: RequestWithUser, response: Response, shop_id: string, vehicle_id: string): Promise<string[]> {
-  try {
-    // Access files from request.files, not request.vehicleDocFiles
-    const files = (request.files as { [fieldname: string]: Express.Multer.File[] }).vehicleDocFiles as Express.Multer.File[];
-    
-    if (!files || files.length === 0) {
-      return [];
+  // -----------------------------
+  // HELPER: Handle vehicle document upload
+  // -----------------------------
+  private async handleVehicleDocMediaUpload(request: RequestWithUser, response: Response, shop_id: string, vehicle_id: string): Promise<string[]> {
+    try {
+      // Access files from request.files, not request.vehicleDocFiles
+      const files = (request.files as { [fieldname: string]: Express.Multer.File[] }).vehicleDocFiles as Express.Multer.File[];
+
+      if (!files || files.length === 0) {
+        return [];
+      }
+
+      const vehicleDocFilesUrls: string[] = [];
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+
+        // Create a temporary request object for each file
+        const tempRequest = {
+          ...request,
+          file: file,
+        } as RequestWithUser;
+
+        const uploadResult = await uploadVehicleDocMedia(tempRequest, response, 'file', shop_id, vehicle_id);
+        vehicleDocFilesUrls.push(uploadResult.fileUrl);
+      }
+
+      return vehicleDocFilesUrls;
+    } catch (uploadError) {
+      throw new BadRequestException(`Failed to upload Vehicle Doc: ${uploadError.message}`);
     }
-
-    const vehicleDocFilesUrls: string[] = [];
-
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-
-      // Create a temporary request object for each file
-      const tempRequest = {
-        ...request,
-        file: file,
-      } as RequestWithUser;
-
-      const uploadResult = await uploadVehicleDocMedia(tempRequest, response, 'file', shop_id, vehicle_id);
-      vehicleDocFilesUrls.push(uploadResult.fileUrl);
-    }
-
-    return vehicleDocFilesUrls;
-  } catch (uploadError) {
-    throw new BadRequestException(`Failed to upload Vehicle Doc: ${uploadError.message}`);
   }
-}
 }

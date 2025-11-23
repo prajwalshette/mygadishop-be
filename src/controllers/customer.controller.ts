@@ -4,7 +4,10 @@ import { User } from '@interfaces/users.interface';
 import { CustomerService } from '@/services/customer.service';
 import { ICustomer } from '@/interfaces/customer.interface';
 import { RequestWithUser } from '@/interfaces/auth.interface';
-import { GetCustomerQueryDto } from '@/schemas/customer.schema';
+import { GetCustomerQueryDto, ExportCustomerQueryDto } from '@/schemas/customer.schema';
+import { stringify } from 'csv-stringify/sync';
+import { logger } from '@utils/logger';
+import { NotFoundException } from '@/exceptions/NotFoundException';
 
 export class CustomerController {
   public customerService = Container.get(CustomerService);
@@ -67,6 +70,92 @@ export class CustomerController {
       const customers = await this.customerService.getCustomer(customer_id);
       response.status(200).json({ data: customers, message: 'Successfully Featch Customer' });
     } catch (error) {
+      next(error);
+    }
+  };
+
+  // -----------------------------
+  // GET CUSTOMER STATISTICS - Get customer stats for dashboard
+  // -----------------------------
+  public getCustomerStats = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
+    try {
+      const shop_id = request.user.shop_id;
+      const stats = await this.customerService.getCustomerStats(shop_id);
+      response.status(200).json({ data: stats, message: 'Successfully Retrieved Customer Statistics' });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // -----------------------------
+  // EXPORT CUSTOMERS TO CSV - Export customers data as CSV
+  // -----------------------------
+  public exportCustomersToCSV = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
+    try {
+      const query = request.query as unknown as ExportCustomerQueryDto;
+      const shop_id = request.user.shop_id;
+
+      logger.info(`Export customers CSV requested by shop ${shop_id} with filters: ${JSON.stringify(query)}`);
+
+      const customers = await this.customerService.exportCustomers(query, shop_id);
+
+      if (customers.length === 0) {
+        logger.warn(`No customers found for export with filters: ${JSON.stringify(query)}`);
+        throw new NotFoundException('No customers found to export');
+      }
+
+      // Define CSV columns
+      const columns = [
+        'Name',
+        'Email',
+        'Phone',
+        'Address',
+        'City',
+        'State',
+        'Pincode',
+        'Customer Type',
+        'Created On',
+      ];
+
+      // Helper function to format date as DD/MM/YYYY
+      const formatDate = (date: Date | string | null | undefined): string => {
+        if (!date) return '';
+        const d = new Date(date);
+        const day = String(d.getDate()).padStart(2, '0');
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const year = d.getFullYear();
+        return `${day}/${month}/${year}`;
+      };
+
+      // Convert customers to CSV rows
+      const rows = customers.map((customer: any) => [
+        customer.name || '',
+        customer.email || '',
+        customer.phone || '',
+        customer.address || '',
+        customer.city || '',
+        customer.state || '',
+        customer.pincode || '',
+        customer.customer_type || '',
+        formatDate(customer.created_at),
+      ]);
+
+      // Generate CSV string
+      const csv = stringify(rows, {
+        header: true,
+        columns: columns,
+        quoted: true,
+      });
+
+      logger.info(`Successfully exported ${customers.length} customers to CSV`);
+
+      // Set response headers for CSV download
+      const filename = `customers_${new Date().toISOString().split('T')[0]}.csv`;
+      response.setHeader('Content-Type', 'text/csv');
+      response.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      response.status(200).send(csv);
+    } catch (error) {
+      logger.error(`Export customers CSV error: ${error.message}`);
       next(error);
     }
   };

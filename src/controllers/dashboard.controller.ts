@@ -8,10 +8,12 @@ export class DashboardController {
 
   public getShopDashboardStats = async (request: RequestWithUser, response: Response, next: NextFunction) => {
     try {
-      const stats = await this.dashboardService.getShopDashboardStats();
+      const shop_id = request.user.shop_id;
+      const stats = await this.dashboardService.getShopDashboardStats(shop_id);
       response.status(200).json({
         success: true,
-        data: stats
+        data: stats,
+        message: 'Dashboard stats retrieved successfully'
       });
     } catch (error) {
       next(error);

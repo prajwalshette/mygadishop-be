@@ -2,8 +2,8 @@ import { Router } from 'express';
 import { VehicleController } from '@/controllers/vehicle.controller';
 import { Routes } from '@interfaces/routes.interface';
 import { AuthMiddleware } from '@middlewares/auth.middleware';
-import { ValidationMiddleware, ValidateRequest} from '@middlewares/validation.middleware';
-import { createVehicleSchema, updateVehicleSchema, VehicleIdParamSchema, getVehicleQuerySchema} from '@/schemas/vehicle.schema';
+import { ValidationMiddleware, ValidateRequest } from '@middlewares/validation.middleware';
+import { createVehicleSchema, updateVehicleSchema, VehicleIdParamSchema, getVehicleQuerySchema, exportVehicleQuerySchema } from '@/schemas/vehicle.schema';
 import multer from 'multer';
 
 export class VehicleRoute implements Routes {
@@ -31,15 +31,15 @@ export class VehicleRoute implements Routes {
           'application/pdf',
           'application/msword',
           'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-          'text/plain'
+          'text/plain',
         ];
-        
+
         if (allowedMimeTypes.includes(file.mimetype)) {
           cb(null, true);
         } else {
           cb(null, false);
         }
-      }
+      },
     });
 
     this.router.post(
@@ -56,7 +56,6 @@ export class VehicleRoute implements Routes {
       this.vehicleController.createVehicle,
     );
 
-  
     // Update Vehicle
     this.router.put(
       `${this.path}/update-vehicle/:id`,
@@ -67,7 +66,7 @@ export class VehicleRoute implements Routes {
           { name: 'vehicleDocFiles', maxCount: 10 }, // For vehicle documents
         ]),
         ParseJsonFieldsMiddleware(['year', 'mileage', 'price', 'buying_price', 'selling_price', 'vehicle_image_urls', 'vehicle_doc_urls']),
-        ValidateRequest({body: updateVehicleSchema, params: VehicleIdParamSchema}),
+        ValidateRequest({ body: updateVehicleSchema, params: VehicleIdParamSchema }),
       ],
       this.vehicleController.updateVehicle,
     );
@@ -75,23 +74,36 @@ export class VehicleRoute implements Routes {
     // Get Vehicle by ID
     this.router.get(
       `${this.path}/get-vehicle/:id`,
-      [AuthMiddleware, ValidateRequest({params: VehicleIdParamSchema})],
+      [AuthMiddleware, ValidateRequest({ params: VehicleIdParamSchema })],
       this.vehicleController.getVehicleById,
     );
 
-     this.router.get(
+    this.router.get(
       `${this.path}/get-all-vehicle`,
-      [AuthMiddleware, ValidateRequest({query: getVehicleQuerySchema})],
+      [AuthMiddleware, ValidateRequest({ query: getVehicleQuerySchema })],
       this.vehicleController.getAllVehicle,
+    );
+
+    // Get Vehicle Statistics
+    this.router.get(
+      `${this.path}/stats`,
+      [AuthMiddleware],
+      this.vehicleController.getVehicleStats,
+    );
+
+    // Export Vehicles to CSV
+    this.router.get(
+      `${this.path}/export-vehicles`,
+      [AuthMiddleware, ValidateRequest({ query: exportVehicleQuerySchema })],
+      this.vehicleController.exportVehiclesToCSV,
     );
 
     // Delete Vehicle (Soft delete)
     this.router.delete(
       `${this.path}/delete-vehicle/:id`,
-      [AuthMiddleware, ValidateRequest({params: VehicleIdParamSchema})],
+      [AuthMiddleware, ValidateRequest({ params: VehicleIdParamSchema })],
       this.vehicleController.deleteVehicle,
     );
-
   }
 }
 
@@ -119,9 +131,9 @@ function ParseJsonFieldsMiddleware(fields: string[]) {
 
             req.body[field] = parsed;
           } catch (e) {
-            return res.status(400).json({ 
+            return res.status(400).json({
               message: `Invalid JSON in field: ${field}`,
-              error: e.message 
+              error: e.message,
             });
           }
         }

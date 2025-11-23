@@ -85,7 +85,23 @@ export const getServicingQuerySchema = z.object({
   sortOrder: z.enum(['asc', 'desc']).optional().default('desc'),
 });
 
+// Query Schema for export servicings (no pagination)
+export const exportServicingQuerySchema = z.object({
+  search: z.string().trim().optional(), // Searches: service_type, description
+  
+  status: z.nativeEnum(ServicingStatus).optional(),
+  
+  vehicle_id: z.string().optional(),
+  
+  customer_id: z.string().optional(),
+  
+  sortBy: z.enum(['service_date', 'created_at', 'updated_at']).optional().default('service_date'),
+  
+  sortOrder: z.enum(['asc', 'desc']).optional().default('desc'),
+});
+
 // Export types
 export type CreateServicingDto = z.infer<typeof createServicingSchema>;
 export type UpdateServicingDto = z.infer<typeof updateServicingSchema>;
 export type GetServicingQueryDto = z.infer<typeof getServicingQuerySchema>;
+export type ExportServicingQueryDto = z.infer<typeof exportServicingQuerySchema>;

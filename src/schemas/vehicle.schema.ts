@@ -135,8 +135,22 @@ export const getVehicleQuerySchema = z.object({
   sortOrder: z.enum(['asc', 'desc']).optional().default('desc'),
 });
 
+// Query Schema for export vehicles (no pagination)
+export const exportVehicleQuerySchema = z.object({
+  search: z.string().trim().optional(), // Searches: brand, model, variant, registration_number, chassis_number, engine_number
+  
+  status: z.nativeEnum(BikeStatus).optional(),
+  
+  type: z.nativeEnum(VehicleType).optional(),
+  
+  sortBy: z.enum(['created_at', 'updated_at']).optional().default('created_at'),
+  
+  sortOrder: z.enum(['asc', 'desc']).optional().default('desc'),
+});
+
 // Export types
 export type CreateVehicleDto = z.infer<typeof createVehicleSchema>;
 export type UpdateVehicleDto = z.infer<typeof updateVehicleSchema>;
 export type GetVehicleQueryDto = z.infer<typeof getVehicleQuerySchema>;
+export type ExportVehicleQueryDto = z.infer<typeof exportVehicleQuerySchema>;
  

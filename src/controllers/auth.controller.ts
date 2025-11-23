@@ -14,10 +14,10 @@ export class AuthController {
   public adminLogIn = async (request: RequestWithAdmin, response: Response, next: NextFunction): Promise<void> => {
     try {
       const adminUserData = request.body;
-      const { cookie, findAdminUser, token } = await this.auth.adminLogIn(adminUserData);
+      const { cookie, findAdminUser } = await this.auth.adminLogIn(adminUserData);
 
       response.setHeader('Set-Cookie', [cookie]);
-      response.status(200).json({ data: { admin: findAdminUser, token: token }, message: 'login' });
+      response.status(200).json({ data: findAdminUser, message: 'login' });
     } catch (error) {
       next(error);
     }

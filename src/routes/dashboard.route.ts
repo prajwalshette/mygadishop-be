@@ -13,6 +13,10 @@ export class DashboardRoute implements Routes {
   }
 
   private initializeRoutes() {
-    this.router.get(`${this.path}/stats`,this.dashboardController.getShopDashboardStats);
+    this.router.get(
+      `${this.path}/stats`,
+      [AuthMiddleware],
+      this.dashboardController.getShopDashboardStats
+    );
   }
 }

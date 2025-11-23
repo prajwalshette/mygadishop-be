@@ -7,7 +7,7 @@ import prisma from '@/database';
 import { CustomerType, ICustomer } from '@/interfaces/customer.interface';
 import { ulid } from 'ulid';
 import { logger } from '@utils/logger';
-import { CreateCustomerDto, UpdateCustomerDto, GetCustomerQueryDto } from '@/schemas/customer.schema';
+import { CreateCustomerDto, UpdateCustomerDto, GetCustomerQueryDto, ExportCustomerQueryDto } from '@/schemas/customer.schema';
 
 @Service()
 export class CustomerService {
@@ -135,6 +135,113 @@ export class CustomerService {
       };
     } catch (error) {
       logger.error(`Get all customers error: ${error.message}`);
+      throw error;
+    }
+  }
+
+  // -----------------------------
+  // GET CUSTOMER STATISTICS - Get customer stats for dashboard
+  // -----------------------------
+  public async getCustomerStats(shop_id: string): Promise<any> {
+    try {
+      const now = new Date();
+      const startOfCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+
+      // Total customers
+      const totalCustomers = await this.prisma.customer.count({
+        where: {
+          shop_id,
+          deleted_at: null,
+        },
+      });
+
+      // Active customers (same as total for now, can be customized based on business logic)
+      const activeCustomers = totalCustomers;
+
+      // New customers this month
+      const newThisMonth = await this.prisma.customer.count({
+        where: {
+          shop_id,
+          deleted_at: null,
+          created_at: { gte: startOfCurrentMonth },
+        },
+      });
+
+      // Customers from last month
+      const lastMonthCustomers = await this.prisma.customer.count({
+        where: {
+          shop_id,
+          deleted_at: null,
+          created_at: {
+            gte: startOfLastMonth,
+            lte: endOfLastMonth,
+          },
+        },
+      });
+
+      // Calculate growth rate
+      const growthRate = lastMonthCustomers > 0
+        ? Math.round(((newThisMonth - lastMonthCustomers) / lastMonthCustomers) * 100)
+        : (newThisMonth > 0 ? 100 : 0);
+
+      logger.info(`Retrieved customer stats for shop ${shop_id}: total=${totalCustomers}, newThisMonth=${newThisMonth}, growthRate=${growthRate}%`);
+
+      return {
+        totalCustomers,
+        activeCustomers,
+        newThisMonth,
+        growthRate,
+        lastMonthCustomers,
+      };
+    } catch (error) {
+      logger.error(`Get customer stats error: ${error.message}`);
+      throw error;
+    }
+  }
+
+  // -----------------------------
+  // EXPORT CUSTOMERS - Get all customers for CSV export (no pagination)
+  // -----------------------------
+  public async exportCustomers(query: ExportCustomerQueryDto, shop_id: string): Promise<ICustomer[]> {
+    const { search, customer_type, sortBy, sortOrder } = query;
+    
+    try {
+      // Build where clause with filters
+      const whereClause: any = {
+        shop_id,
+        deleted_at: null,
+      };
+
+      // Add search filter (searches across multiple fields)
+      if (search) {
+        whereClause.OR = [
+          { name: { contains: search, mode: 'insensitive' } },
+          { email: { contains: search, mode: 'insensitive' } },
+          { phone: { contains: search, mode: 'insensitive' } },
+        ];
+      }
+
+      // Add customer_type filter
+      if (customer_type) {
+        whereClause.customer_type = customer_type;
+      }
+
+      // Fetch all customers without pagination
+      const customers = await this.prisma.customer.findMany({
+        where: whereClause,
+        orderBy: { [sortBy]: sortOrder },
+      });
+
+      logger.info(`Exporting ${customers.length} customers (filters: ${JSON.stringify({ search, customer_type })})`);
+      
+      return customers.map(customer => ({
+        ...customer,
+        customer_type: customer.customer_type as CustomerType,
+      }));
+    } catch (error) {
+      logger.error(`Export customers error: ${error.message}`);
       throw error;
     }
   }

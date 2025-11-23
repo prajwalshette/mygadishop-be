@@ -10,7 +10,7 @@ import { FuelType, IVehicle, VehicleType, TransmissionType, BikeStatus, Ownershi
 import { generateVehiclePresignedUrls } from './aws.service';
 import { getCachedVehiclePresignedUrls } from '@/utils/cacheVehiclePresignedUrl';
 import { logger } from '@utils/logger';
-import { CreateVehicleDto, UpdateVehicleDto, GetVehicleQueryDto } from '@/schemas/vehicle.schema';
+import { CreateVehicleDto, UpdateVehicleDto, GetVehicleQueryDto, ExportVehicleQueryDto } from '@/schemas/vehicle.schema';
 
 @Service()
 export class VehicleService {
@@ -296,6 +296,152 @@ export class VehicleService {
       };
     } catch (error) {
       logger.error(`Get all vehicles error: ${error.message}`);
+      throw error;
+    }
+  }
+
+  // -----------------------------
+  // GET VEHICLE STATISTICS - Get vehicle stats for dashboard
+  // -----------------------------
+  public async getVehicleStats(shop_id: string): Promise<any> {
+    try {
+      const now = new Date();
+      const startOfCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+
+      // Total vehicles
+      const totalVehicles = await this.prisma.vehicle.count({
+        where: {
+          shop_id,
+          deleted_at: null,
+        },
+      });
+
+      // Available vehicles
+      const availableVehicles = await this.prisma.vehicle.count({
+        where: {
+          shop_id,
+          deleted_at: null,
+          status: 'AVAILABLE',
+        },
+      });
+
+      // Sold vehicles this month
+      const soldThisMonth = await this.prisma.vehicle.count({
+        where: {
+          shop_id,
+          deleted_at: null,
+          status: 'SOLD',
+          created_at: { gte: startOfCurrentMonth },
+        },
+      });
+
+      // Maintenance vehicles
+      const maintenanceVehicles = await this.prisma.vehicle.count({
+        where: {
+          shop_id,
+          deleted_at: null,
+          status: 'MAINTENANCE',
+        },
+      });
+
+      // New vehicles this month
+      const newThisMonth = await this.prisma.vehicle.count({
+        where: {
+          shop_id,
+          deleted_at: null,
+          created_at: { gte: startOfCurrentMonth },
+        },
+      });
+
+      // Vehicles from last month
+      const lastMonthVehicles = await this.prisma.vehicle.count({
+        where: {
+          shop_id,
+          deleted_at: null,
+          created_at: {
+            gte: startOfLastMonth,
+            lte: endOfLastMonth,
+          },
+        },
+      });
+
+      // Calculate growth rate
+      const growthRate = lastMonthVehicles > 0
+        ? Math.round(((newThisMonth - lastMonthVehicles) / lastMonthVehicles) * 100)
+        : (newThisMonth > 0 ? 100 : 0);
+
+      logger.info(`Retrieved vehicle stats for shop ${shop_id}: total=${totalVehicles}, available=${availableVehicles}, soldThisMonth=${soldThisMonth}, maintenance=${maintenanceVehicles}, newThisMonth=${newThisMonth}, growthRate=${growthRate}%`);
+
+      return {
+        totalVehicles,
+        availableVehicles,
+        soldThisMonth,
+        maintenanceVehicles,
+        newThisMonth,
+        growthRate,
+        lastMonthVehicles,
+      };
+    } catch (error) {
+      logger.error(`Get vehicle stats error: ${error.message}`);
+      throw error;
+    }
+  }
+
+  // -----------------------------
+  // EXPORT VEHICLES - Get all vehicles for CSV export (no pagination)
+  // -----------------------------
+  public async exportVehicles(query: ExportVehicleQueryDto, shop_id: string): Promise<IVehicle[]> {
+    const { search, status, type, sortBy, sortOrder } = query;
+    
+    try {
+      // Build where clause with filters
+      const whereClause: any = {
+        shop_id: shop_id,
+        deleted_at: null,
+      };
+
+      // Add search filter (searches across multiple fields)
+      if (search) {
+        whereClause.OR = [
+          { brand: { contains: search, mode: 'insensitive' } },
+          { model: { contains: search, mode: 'insensitive' } },
+          { variant: { contains: search, mode: 'insensitive' } },
+          { registration_number: { contains: search, mode: 'insensitive' } },
+          { chassis_number: { contains: search, mode: 'insensitive' } },
+          { engine_number: { contains: search, mode: 'insensitive' } },
+        ];
+      }
+
+      // Add status filter
+      if (status) {
+        whereClause.status = status;
+      }
+
+      // Add type filter
+      if (type) {
+        whereClause.type = type;
+      }
+
+      // Fetch all vehicles without pagination
+      const vehicles = await this.prisma.vehicle.findMany({
+        where: whereClause,
+        orderBy: { [sortBy]: sortOrder },
+      });
+
+      logger.info(`Exporting ${vehicles.length} vehicles (filters: ${JSON.stringify({ search, status, type })})`);
+      
+      return vehicles.map(vehicle => ({
+        ...vehicle,
+        type: vehicle.type as VehicleType,
+        fuel_type: vehicle.fuel_type as FuelType,
+        transmission: vehicle.transmission as TransmissionType,
+        status: vehicle.status as BikeStatus,
+        ownership: vehicle.ownership as OwnershipType,
+      }));
+    } catch (error) {
+      logger.error(`Export vehicles error: ${error.message}`);
       throw error;
     }
   }

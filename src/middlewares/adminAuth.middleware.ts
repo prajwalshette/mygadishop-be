@@ -6,7 +6,7 @@ import { DataStoredInToken, RequestWithAdmin } from '@interfaces/auth.interface'
 import { AdminRole } from '@/interfaces/users.interface';
 import prisma from '@/database';
 
-const getAuthorization = (req) => {
+const getAuthorization = req => {
   const coockie = req.cookies['Authorization'];
   if (coockie) return coockie;
 
@@ -14,17 +14,16 @@ const getAuthorization = (req) => {
   if (header) return header.split('Bearer ')[1];
 
   return null;
-}
+};
 
 export const AdminAuthMiddleware = async (req: RequestWithAdmin, res: Response, next: NextFunction) => {
   try {
     const Authorization = getAuthorization(req);
 
     if (Authorization) {
-      const { id, session_id} = verify(Authorization, SECRET_KEY) as DataStoredInToken;
+      const { id, session_id } = verify(Authorization, SECRET_KEY) as DataStoredInToken;
       const findAdmin = await prisma.admin.findUnique({ where: { id: id } });
-      const session = await prisma.adminSession.findUnique({ where: { id: session_id }});
-
+      const session = await prisma.adminSession.findUnique({ where: { id: session_id } });
 
       if (findAdmin && session) {
         req.admin = {
@@ -33,13 +32,13 @@ export const AdminAuthMiddleware = async (req: RequestWithAdmin, res: Response, 
           role: findAdmin.role as AdminRole,
           password: findAdmin.password,
         };
-        req.session_id = session_id
+        req.session_id = session_id;
         next();
       } else {
         next(new HttpException(401, 'Wrong authentication token'));
       }
     } else {
-      next(new HttpException(404, 'Authentication token missing'));
+      next(new HttpException(401, 'Authentication token missing'));
     }
   } catch (error) {
     next(new HttpException(401, 'Wrong authentication token'));

@@ -9,17 +9,20 @@ import { DashboardRoute } from './routes/dashboard.route';
 import { ShopRoute } from './routes/shop.route';
 import { SubscriptionRoute } from './routes/subscription.route';
 
+import { AdminRoute } from './routes/admin.routes';
+
 ValidateEnv();
 
 const app = new App([
-    new AuthRoute(),
-    new VehicleRoute(),
-    new CustomerRoute(),
-    new ServicingRoute(),
-    new PaymentRoute(),
-    new DashboardRoute(),
-    new ShopRoute(),
-    new SubscriptionRoute(),
+  new AuthRoute(),
+  new AdminRoute(),
+  new VehicleRoute(),
+  new CustomerRoute(),
+  new ServicingRoute(),
+  new PaymentRoute(),
+  new DashboardRoute(),
+  new ShopRoute(),
+  new SubscriptionRoute(),
 ]);
 
 app.listen();

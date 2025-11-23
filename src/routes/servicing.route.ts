@@ -3,7 +3,7 @@ import { ServicingController } from '@/controllers/servicing.controller';
 import { Routes } from '@interfaces/routes.interface';
 import { AuthMiddleware } from '@middlewares/auth.middleware';
 import { ValidateRequest } from '@middlewares/validation.middleware';
-import { createServicingSchema, updateServicingSchema, servicingIdParamSchema, getServicingQuerySchema } from '@/schemas/servicing.schema';
+import { createServicingSchema, updateServicingSchema, servicingIdParamSchema, getServicingQuerySchema, exportServicingQuerySchema } from '@/schemas/servicing.schema';
 
 export class ServicingRoute implements Routes {
   public path = '/servicing';
@@ -34,6 +34,20 @@ export class ServicingRoute implements Routes {
       `${this.path}/get-all`,
       [AuthMiddleware, ValidateRequest({ query: getServicingQuerySchema })],
       this.servicingController.getServicings,
+    );
+
+    // Get Servicing Statistics
+    this.router.get(
+      `${this.path}/stats`,
+      [AuthMiddleware],
+      this.servicingController.getServicingStats,
+    );
+
+    // Export Servicings to CSV
+    this.router.get(
+      `${this.path}/export-servicings`,
+      [AuthMiddleware, ValidateRequest({ query: exportServicingQuerySchema })],
+      this.servicingController.exportServicingsToCSV,
     );
 
     // Get by id
