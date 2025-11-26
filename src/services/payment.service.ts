@@ -46,18 +46,22 @@ export class PaymentService {
   // -----------------------------
   // GET ALL VEHICLE PAYMENTS - Retrieve paginated payment list
   // -----------------------------
-  public async getAllVehiclePayments(query: GetAllPaymentsQueryDto): Promise<any> {
+  public async getAllVehiclePayments(query: GetAllPaymentsQueryDto, shop_id?: string): Promise<any> {
     try {
       const { page, limit } = query;
       const skip = (page - 1) * limit;
+      const whereClause: any = { deleted_at: null };
+      if (shop_id) {
+        whereClause.shop_id = shop_id;
+      }
       const payments = await this.prisma.vehiclePayment.findMany({
-        where: { deleted_at: null },
+        where: whereClause,
         orderBy: { created_at: 'desc' },
         skip,
         take: limit,
         include: { vehicle: true, customer: true },
       });
-      const paymentCount = await this.prisma.vehiclePayment.count({ where: { deleted_at: null } });
+      const paymentCount = await this.prisma.vehiclePayment.count({ where: whereClause });
       
       logger.info(`Retrieved ${paymentCount} payments (page ${page}, limit ${limit})`);
       return {
@@ -85,10 +89,14 @@ export class PaymentService {
   // -----------------------------
   // GET VEHICLE PAYMENT BY ID - Retrieve single payment record
   // -----------------------------
-  public async getVehiclePaymentById(id: string): Promise<IVehiclePayment> {
+  public async getVehiclePaymentById(id: string, shop_id?: string): Promise<IVehiclePayment> {
     try {
+      const whereClause: any = { id, deleted_at: null };
+      if (shop_id) {
+        whereClause.shop_id = shop_id;
+      }
       const payment = await this.prisma.vehiclePayment.findFirst({
-        where: { id, deleted_at: null },
+        where: whereClause,
         include: { vehicle: true, customer: true },
       });
       
@@ -109,10 +117,14 @@ export class PaymentService {
   // -----------------------------
   // GET PAYMENTS BY VEHICLE ID - Retrieve all payments for a vehicle
   // -----------------------------
-  public async getAllPaymentsByVehicleId(vehicle_id: string): Promise<IVehiclePayment[]> {
+  public async getAllPaymentsByVehicleId(vehicle_id: string, shop_id?: string): Promise<IVehiclePayment[]> {
     try {
+      const whereClause: any = { vehicle_id, deleted_at: null };
+      if (shop_id) {
+        whereClause.shop_id = shop_id;
+      }
       const payments = await this.prisma.vehiclePayment.findMany({
-        where: { vehicle_id, deleted_at: null },
+        where: whereClause,
       });
       
       logger.info(`Retrieved ${payments.length} payments for vehicle: ${vehicle_id}`);
@@ -157,9 +169,13 @@ export class PaymentService {
   // -----------------------------
   // DELETE VEHICLE PAYMENT - Soft delete payment record
   // -----------------------------
-  public async deleteVehiclePayment(id: string): Promise<any> {
+  public async deleteVehiclePayment(id: string, shop_id?: string): Promise<any> {
     try {
-      const payment = await this.prisma.vehiclePayment.findUnique({ where: { id } });
+      const whereClause: any = { id };
+      if (shop_id) {
+        whereClause.shop_id = shop_id;
+      }
+      const payment = await this.prisma.vehiclePayment.findFirst({ where: whereClause });
       
       if (!payment) {
         logger.warn(`Delete payment failed: Payment not found - ${id}`);

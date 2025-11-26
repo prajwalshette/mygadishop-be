@@ -33,9 +33,15 @@ export const createVehicleSchema = z.object({
   
   ownership: z.nativeEnum(OwnershipType),
   
-  insurance_valid_till: z.string().datetime().or(z.date()),
-  
-  price: z.number().min(0, 'Price must be positive'),
+  insurance_valid_till: z.union([
+    z.string().transform((val) => {
+      if (!val || val === '') return null;
+      const date = new Date(val);
+      return isNaN(date.getTime()) ? null : date;
+    }),
+    z.date(),
+    z.null(),
+  ]).optional(),
   
   buying_price: z.number().min(0).optional(),
   
@@ -47,9 +53,28 @@ export const createVehicleSchema = z.object({
   
   status: z.nativeEnum(BikeStatus),
   
-  buying_date: z.string().datetime().or(z.date()),
+  buying_date: z.union([
+    z.string().transform((val) => {
+      if (!val || val === '') return new Date();
+      const date = new Date(val);
+      return isNaN(date.getTime()) ? new Date() : date;
+    }),
+    z.date(),
+  ]),
   
-  selling_date: z.string().datetime().or(z.date()).optional(),
+  selling_date: z.union([
+    z.string().transform((val) => {
+      if (!val || val === '') return null;
+      const date = new Date(val);
+      return isNaN(date.getTime()) ? null : date;
+    }),
+    z.date(),
+    z.null(),
+  ]).optional(),
+  
+  features: z.array(z.string()).optional(),
+  
+  description: z.string().optional(),
 });
 
 // Update Vehicle Schema - All fields optional
@@ -84,9 +109,15 @@ export const updateVehicleSchema = z.object({
   
   ownership: z.nativeEnum(OwnershipType).optional(),
   
-  insurance_valid_till: z.string().datetime().or(z.date()).optional(),
-  
-  price: z.number().min(0).optional(),
+  insurance_valid_till: z.union([
+    z.string().transform((val) => {
+      if (!val || val === '') return null;
+      const date = new Date(val);
+      return isNaN(date.getTime()) ? null : date;
+    }),
+    z.date(),
+    z.null(),
+  ]).optional(),
   
   buying_price: z.number().min(0).optional(),
   
@@ -98,9 +129,29 @@ export const updateVehicleSchema = z.object({
   
   status: z.nativeEnum(BikeStatus).optional(),
   
-  buying_date: z.string().datetime().or(z.date()).optional(),
+  buying_date: z.union([
+    z.string().transform((val) => {
+      if (!val || val === '') return null;
+      const date = new Date(val);
+      return isNaN(date.getTime()) ? null : date;
+    }),
+    z.date(),
+    z.null(),
+  ]).optional(),
   
-  selling_date: z.string().datetime().or(z.date()).optional(),
+  selling_date: z.union([
+    z.string().transform((val) => {
+      if (!val || val === '') return null;
+      const date = new Date(val);
+      return isNaN(date.getTime()) ? null : date;
+    }),
+    z.date(),
+    z.null(),
+  ]).optional(),
+  
+  features: z.array(z.string()).optional(),
+  
+  description: z.string().optional(),
 });
 
 // Vehicle ID Param Schema

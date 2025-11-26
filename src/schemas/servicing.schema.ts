@@ -3,8 +3,7 @@ import { ServicingStatus } from '@/interfaces/servicing.interface';
 
 // Create Servicing Schema
 export const createServicingSchema = z.object({
-  shop_id: z.string().min(1, 'Shop ID is required'),
-  
+ 
   vehicle_id: z.string().min(1, 'Vehicle ID is required'),
   
   customer_id: z.string().min(1, 'Customer ID is required'),

@@ -32,14 +32,17 @@ export class VehicleService {
         );
       }
       
+      // Remove price field if it exists (not in Prisma schema)
+      const { price, ...vehicleDataWithoutPrice } = vehicleData as any;
+      
       const vehicle = await this.prisma.vehicle.create({
         data: {
           id: ulid(),
           shop_id: shop_id,
-          ...vehicleData,
+          ...vehicleDataWithoutPrice,
           selling_date: vehicleData.selling_date ? new Date(vehicleData.selling_date) : null,
           buying_date: vehicleData.buying_date ? new Date(vehicleData.buying_date) : null,
-          insurance_valid_till: new Date(vehicleData.insurance_valid_till),
+          insurance_valid_till: vehicleData.insurance_valid_till ? new Date(vehicleData.insurance_valid_till) : null,
         }as Prisma.VehicleUncheckedCreateInput,
       });
       
@@ -77,12 +80,15 @@ export class VehicleService {
         throw new NotFoundException(`Vehicle not found with id: ${vehicleId}`);
       }
 
+      // Remove price field if it exists (not in Prisma schema)
+      const { price, ...vehicleDataWithoutPrice } = vehicleData as any;
+
       // Check if registration_number or chassis_number is being updated and already exists
-      if (vehicleData.registration_number || vehicleData.chassis_number) {
+      if (vehicleDataWithoutPrice.registration_number || vehicleDataWithoutPrice.chassis_number) {
         const duplicateVehicle = await this.prisma.vehicle.findFirst({
           where: {
             OR: [
-              ...(vehicleData.registration_number ? [{ registration_number: vehicleData.registration_number }] : []),
+              ...(vehicleDataWithoutPrice.registration_number ? [{ registration_number: vehicleDataWithoutPrice.registration_number }] : []),
               ...(vehicleData.chassis_number ? [{ chassis_number: vehicleData.chassis_number }] : []),
             ],
             AND: [
@@ -99,15 +105,17 @@ export class VehicleService {
       }
 
       // Remove id from update data if present (shouldn't be updated)
-      const { id, ...updateData } = vehicleData;
+      // price is already removed above
+      const { id, ...updateData } = vehicleDataWithoutPrice;
 
       const updatedVehicle = await this.prisma.vehicle.update({
         where: { id: vehicleId },
         data: {
           ...updateData,
           updated_at: new Date(),
-          selling_date: vehicleData.selling_date ? new Date(vehicleData.selling_date) : existingVehicle.selling_date,
-          buying_date: vehicleData.buying_date ? new Date(vehicleData.buying_date) : existingVehicle.buying_date,
+          selling_date: vehicleDataWithoutPrice.selling_date ? new Date(vehicleDataWithoutPrice.selling_date) : existingVehicle.selling_date,
+          buying_date: vehicleDataWithoutPrice.buying_date ? new Date(vehicleDataWithoutPrice.buying_date) : existingVehicle.buying_date,
+          insurance_valid_till: vehicleDataWithoutPrice.insurance_valid_till ? new Date(vehicleDataWithoutPrice.insurance_valid_till) : existingVehicle.insurance_valid_till,
         }as Prisma.VehicleUncheckedCreateInput,
       });
 

@@ -3,7 +3,7 @@ import { PaymentMethod, PaymentStatus, PaymentType } from '@/interfaces/vehicleP
 
 // Create Vehicle Payment Schema
 export const createVehiclePaymentSchema = z.object({
-  shop_id: z.string().min(1, 'Shop ID is required'),
+  shop_id: z.string().min(1, 'Shop ID is required').optional(), // Will be set by controller from request.shop_id
   
   vehicle_id: z.string().min(1, 'Vehicle ID is required'),
   

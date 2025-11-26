@@ -1,9 +1,9 @@
 import { NextFunction, Request, Response } from 'express';
 import { Container } from 'typedi';
-import { RequestWithAdminUser } from '@/interfaces/auth.interface';
+import { RequestWithAdminUser, RequestWithUser } from '@/interfaces/auth.interface';
 import { SubscriptionService } from '@/services/subscription.service';
 import { ISubscriptionPricing } from '@/interfaces/subscription.interface';
-import { CreateSubscriptionPlanDto, CreateSubscriptionPricingDto, ActiveDeactivePlanDto } from '@/schemas/subscription.schema';
+import { CreateSubscriptionPlanDto, CreateSubscriptionPricingDto, ActiveDeactivePlanDto, GetSubscriptionHistoryQueryDto, GetPaymentHistoryQueryDto } from '@/schemas/subscription.schema';
 
 export class SubscriptionController {
   public subscriptionService = Container.get(SubscriptionService);
@@ -75,5 +75,50 @@ export class SubscriptionController {
     }
   };
 
+  // Get shop current subscription (for shop users)
+  public getShopCurrentSubscription = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
+    try {
+      const shop_id = request.shop_id || request.user.shop_id;
+      if (!shop_id) {
+        response.status(400).json({ message: 'Shop ID not found' });
+        return;
+      }
+      const subscription = await this.subscriptionService.getShopCurrentSubscription(shop_id);
+      response.status(200).json({ data: subscription, message: 'Shop subscription fetched successfully' });
+    } catch (error) {
+      next(error);
+    }
+  };
 
+  // Get shop subscription history (for shop users)
+  public getShopSubscriptionHistory = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
+    try {
+      const shop_id = request.shop_id || request.user.shop_id;
+      if (!shop_id) {
+        response.status(400).json({ message: 'Shop ID not found' });
+        return;
+      }
+      const query: GetSubscriptionHistoryQueryDto = request.query as any;
+      const history = await this.subscriptionService.getShopSubscriptionHistory(shop_id, query);
+      response.status(200).json({ data: history, message: 'Subscription history fetched successfully' });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // Get shop payment history (for shop users)
+  public getShopPaymentHistory = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
+    try {
+      const shop_id = request.shop_id || request.user.shop_id;
+      if (!shop_id) {
+        response.status(400).json({ message: 'Shop ID not found' });
+        return;
+      }
+      const query: GetPaymentHistoryQueryDto = request.query as any;
+      const history = await this.subscriptionService.getShopPaymentHistory(shop_id, query);
+      response.status(200).json({ data: history, message: 'Payment history fetched successfully' });
+    } catch (error) {
+      next(error);
+    }
+  };
 }

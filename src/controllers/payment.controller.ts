@@ -17,6 +17,7 @@ export class PaymentController {
   public createVehiclePayment = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
     try {
       const vehiclePaymentData: CreateVehiclePaymentDto = request.body;
+      const shop_id = request.shop_id || request.user.shop_id;
       const payment_id = ulid();
 
       let payment_receipt_images: string[] = [];
@@ -27,6 +28,7 @@ export class PaymentController {
 
       const vehiclePaymentDataWithMedia: CreateVehiclePaymentDto = {
         ...vehiclePaymentData,
+        shop_id: shop_id,
         payment_receipt_images: payment_receipt_images,
       };
 
@@ -38,10 +40,11 @@ export class PaymentController {
   };
 
   // Get all
-  public getAllVehiclePayments = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
+  public getAllVehiclePayments = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
     try {
       const query: GetAllPaymentsQueryDto = request.query as any;
-      const payments = await this.paymentService.getAllVehiclePayments(query);
+      const shop_id = (request as RequestWithUser).shop_id || (request as RequestWithUser).user?.shop_id;
+      const payments = await this.paymentService.getAllVehiclePayments(query, shop_id);
 
       response.status(200).json({ data: { ...payments }, message: 'Payments fetched successfully' });
     } catch (error) {
@@ -50,20 +53,22 @@ export class PaymentController {
   };
 
   // Get by ID
-  public getVehiclePaymentById = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
+  public getVehiclePaymentById = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
     try {
       const { id } = request.params;
-      const payment = await this.paymentService.getVehiclePaymentById(id);
+      const shop_id = request.shop_id || request.user.shop_id;
+      const payment = await this.paymentService.getVehiclePaymentById(id, shop_id);
       response.status(200).json({ data: payment, message: 'Payment fetched successfully' });
     } catch (error) {
       next(error);
     }
   };
 
-  public getAllPaymentsByVehicleId = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
+  public getAllPaymentsByVehicleId = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
     try {
       const { vehicle_id } = request.params;
-      const payment = await this.paymentService.getAllPaymentsByVehicleId(vehicle_id);
+      const shop_id = request.shop_id || request.user.shop_id;
+      const payment = await this.paymentService.getAllPaymentsByVehicleId(vehicle_id, shop_id);
       response.status(200).json({ data: payment, message: 'Payment fetched successfully' });
     } catch (error) {
       next(error);
@@ -75,6 +80,7 @@ export class PaymentController {
     try {
       const { id } = request.params;
       const vehiclePaymentData: UpdateVehiclePaymentDto = request.body;
+      const shop_id = request.shop_id || request.user.shop_id;
 
       const existingPayment = await this.prisma.vehiclePayment.findUnique({ where: { id } });
       if (!existingPayment) {
@@ -98,6 +104,7 @@ export class PaymentController {
 
       const vehiclePaymentDataWithMedia: UpdateVehiclePaymentDto = {
         ...vehiclePaymentData,
+        shop_id: shop_id,
         payment_receipt_images: payment_receipt_images,
       };
 
@@ -110,10 +117,11 @@ export class PaymentController {
   };
 
   // Delete
-  public deleteVehiclePayment = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
+  public deleteVehiclePayment = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
     try {
       const { id } = request.params;
-      const deletedPayment = await this.paymentService.deleteVehiclePayment(id);
+      const shop_id = request.shop_id || request.user.shop_id;
+      const deletedPayment = await this.paymentService.deleteVehiclePayment(id, shop_id);
       response.status(200).json({ data: deletedPayment, message: 'Payment deleted successfully' });
     } catch (error) {
       next(error);

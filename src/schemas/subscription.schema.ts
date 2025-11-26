@@ -37,7 +37,47 @@ export const activeDeactivePlanSchema = z.object({
   is_active: z.boolean(),
 });
 
+// Shop ID Param Schema
+export const shopIdParamSchema = z.object({
+  shop_id: z.string().ulid({ message: 'Invalid Shop ID' }),
+});
+
+// Get Subscription History Query Schema
+export const getSubscriptionHistoryQuerySchema = z.object({
+  page: z
+    .string()
+    .optional()
+    .default('1')
+    .transform(Number)
+    .refine(val => val > 0, 'Page must be greater than 0'),
+  limit: z
+    .string()
+    .optional()
+    .default('10')
+    .transform(Number)
+    .refine(val => val > 0 && val <= 100, 'Limit must be between 1 and 100'),
+});
+
+// Get Payment History Query Schema
+export const getPaymentHistoryQuerySchema = z.object({
+  page: z
+    .string()
+    .optional()
+    .default('1')
+    .transform(Number)
+    .refine(val => val > 0, 'Page must be greater than 0'),
+  limit: z
+    .string()
+    .optional()
+    .default('10')
+    .transform(Number)
+    .refine(val => val > 0 && val <= 100, 'Limit must be between 1 and 100'),
+  status: z.enum(['PENDING', 'PROCESSING', 'SUCCESS', 'FAILED', 'REFUNDED', 'CANCELLED']).optional(),
+});
+
 // Export types
 export type CreateSubscriptionPlanDto = z.infer<typeof createSubscriptionPlanSchema>;
 export type CreateSubscriptionPricingDto = z.infer<typeof createSubscriptionPricingSchema>;
 export type ActiveDeactivePlanDto = z.infer<typeof activeDeactivePlanSchema>;
+export type GetSubscriptionHistoryQueryDto = z.infer<typeof getSubscriptionHistoryQuerySchema>;
+export type GetPaymentHistoryQueryDto = z.infer<typeof getPaymentHistoryQuerySchema>;

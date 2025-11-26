@@ -9,7 +9,9 @@ import {
   createSubscriptionPricingSchema,
   planIdParamSchema,
   pricingIdParamSchema,
-  activeDeactivePlanSchema
+  activeDeactivePlanSchema,
+  getSubscriptionHistoryQuerySchema,
+  getPaymentHistoryQuerySchema
 } from '@/schemas/subscription.schema';
 
 export class SubscriptionRoute implements Routes {
@@ -28,6 +30,11 @@ export class SubscriptionRoute implements Routes {
     this.router.post(`${this.path}/:plan_id/create-pricing`, [AdminAuthMiddleware, ValidationMiddleware(planIdParamSchema, 'params'), ValidationMiddleware(createSubscriptionPricingSchema, 'body')], this.subscriptionController.createSubscriptionPricing);
     this.router.put(`${this.path}/:plan_id/:subscription_pricing_id/update-pricing`, [AdminAuthMiddleware, ValidationMiddleware(pricingIdParamSchema, 'params'), ValidationMiddleware(createSubscriptionPricingSchema, 'body')], this.subscriptionController.updateSubscriptionPricing);
     this.router.put(`${this.path}/:plan_id/active-deactive-plan`, [AdminAuthMiddleware, ValidationMiddleware(planIdParamSchema, 'params'), ValidationMiddleware(activeDeactivePlanSchema, 'body')], this.subscriptionController.activeDeactiveSubscriptionPlan);
+
+    // Shop subscription routes (for shop users)
+    this.router.get(`${this.path}/shop/current`, [AuthMiddleware], this.subscriptionController.getShopCurrentSubscription);
+    this.router.get(`${this.path}/shop/history`, [AuthMiddleware, ValidationMiddleware(getSubscriptionHistoryQuerySchema, 'query')], this.subscriptionController.getShopSubscriptionHistory);
+    this.router.get(`${this.path}/shop/payment-history`, [AuthMiddleware, ValidationMiddleware(getPaymentHistoryQuerySchema, 'query')], this.subscriptionController.getShopPaymentHistory);
 
     // this.router.put(`${this.path}/:subscription_id/assign-shop`, [AdminAuthMiddleware], this.subscriptionController.assignSubscriptionToShop);
   }

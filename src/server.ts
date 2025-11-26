@@ -8,6 +8,7 @@ import { PaymentRoute } from './routes/payment.route';
 import { DashboardRoute } from './routes/dashboard.route';
 import { ShopRoute } from './routes/shop.route';
 import { SubscriptionRoute } from './routes/subscription.route';
+import { UserRoute } from './routes/user.route';
 
 import { AdminRoute } from './routes/admin.routes';
 
@@ -23,6 +24,7 @@ const app = new App([
   new DashboardRoute(),
   new ShopRoute(),
   new SubscriptionRoute(),
+  new UserRoute(),
 ]);
 
 app.listen();

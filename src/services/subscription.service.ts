@@ -5,7 +5,7 @@ import { NotFoundException } from '@/exceptions/NotFoundException';
 import { ConflictException } from '@/exceptions/ConflictException';
 import prisma from '@/database';
 import { ulid } from 'ulid';
-import { ISubscriptionPlan, ISubscriptionPricing, PlanDuration, SubscriptionPlanName } from '@/interfaces/subscription.interface';
+import { ISubscriptionPlan, ISubscriptionPricing, PlanDuration, SubscriptionPlanName, SubscriptionStatus } from '@/interfaces/subscription.interface';
 import { CreateSubscriptionPlanDto, CreateSubscriptionPricingDto } from '@/schemas/subscription.schema';
 import { logger } from '@utils/logger';
 
@@ -194,5 +194,214 @@ export class SubscriptionService {
       logger.error(`Toggle plan status error for ${plan_id}: ${error.message}`);
       throw error;
     }
-  } 
+  }
+
+  // -----------------------------
+  // GET SHOP CURRENT SUBSCRIPTION - Get active subscription for a shop
+  // -----------------------------
+  public async getShopCurrentSubscription(shop_id: string): Promise<any> {
+    try {
+      const shop = await this.prisma.shop.findUnique({ where: { id: shop_id } });
+      if (!shop) {
+        logger.warn(`Get shop subscription failed: Shop not found - ${shop_id}`);
+        throw new NotFoundException('Shop not found');
+      }
+
+      // Get the most recent active subscription
+      const subscription = await this.prisma.shopSubscription.findFirst({
+        where: { 
+          shop_id: shop_id,
+          status: {
+            in: [SubscriptionStatus.ACTIVE, SubscriptionStatus.TRIAL, SubscriptionStatus.PAYMENT_PENDING]
+          }
+        },
+        orderBy: { created_at: 'desc' },
+        include: {
+          plan: {
+            select: {
+              id: true,
+              plan_name: true,
+              description: true,
+              max_vehicles: true,
+              max_staff_users: true,
+            }
+          },
+          pricing: {
+            select: {
+              id: true,
+              duration: true,
+              price: true,
+              discount: true,
+            }
+          }
+        }
+      });
+
+      // If no active subscription, check shop's subscription_status
+      if (!subscription) {
+        return {
+          shop: {
+            id: shop.id,
+            shop_name: shop.shop_name,
+            subscription_status: shop.subscription_status,
+            subscription_plan: shop.subscription_plan,
+            plan_start_date: shop.plan_start_date,
+            plan_end_date: shop.plan_end_date,
+          },
+          subscription: null,
+          plan: null,
+          pricing: null,
+        };
+      }
+
+      logger.info(`Retrieved current subscription for shop ${shop_id}`);
+      return {
+        shop: {
+          id: shop.id,
+          shop_name: shop.shop_name,
+          subscription_status: shop.subscription_status,
+        },
+        subscription: {
+          ...subscription,
+          status: subscription.status,
+        },
+        plan: subscription.plan,
+        pricing: subscription.pricing,
+      };
+    } catch (error: any) {
+      if (error instanceof HttpException) throw error;
+      logger.error(`Get shop subscription error for ${shop_id}: ${error.message}`);
+      throw error;
+    }
+  }
+
+  // -----------------------------
+  // GET SHOP SUBSCRIPTION HISTORY - Get all subscriptions for a shop
+  // -----------------------------
+  public async getShopSubscriptionHistory(shop_id: string, query: { page?: number; limit?: number }): Promise<any> {
+    try {
+      const shop = await this.prisma.shop.findUnique({ where: { id: shop_id } });
+      if (!shop) {
+        logger.warn(`Get shop subscription history failed: Shop not found - ${shop_id}`);
+        throw new NotFoundException('Shop not found');
+      }
+
+      const { page = 1, limit = 10 } = query;
+      const skip = (page - 1) * limit;
+
+      const [subscriptions, total] = await Promise.all([
+        this.prisma.shopSubscription.findMany({
+          where: { shop_id: shop_id },
+          orderBy: { created_at: 'desc' },
+          skip,
+          take: limit,
+          include: {
+            plan: {
+              select: {
+                id: true,
+                plan_name: true,
+                description: true,
+              }
+            },
+            pricing: {
+              select: {
+                id: true,
+                duration: true,
+                price: true,
+                discount: true,
+              }
+            }
+          }
+        }),
+        this.prisma.shopSubscription.count({ where: { shop_id: shop_id } }),
+      ]);
+
+      const totalPages = Math.ceil(total / limit);
+
+      logger.info(`Retrieved ${subscriptions.length} subscriptions for shop ${shop_id}`);
+      return {
+        subscriptions: subscriptions.map(sub => ({
+          ...sub,
+          status: sub.status,
+        })),
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages,
+        },
+      };
+    } catch (error: any) {
+      if (error instanceof HttpException) throw error;
+      logger.error(`Get shop subscription history error for ${shop_id}: ${error.message}`);
+      throw error;
+    }
+  }
+
+  // -----------------------------
+  // GET SHOP PAYMENT HISTORY - Get transaction history for subscriptions
+  // -----------------------------
+  public async getShopPaymentHistory(shop_id: string, query: { page?: number; limit?: number; status?: string }): Promise<any> {
+    try {
+      const shop = await this.prisma.shop.findUnique({ where: { id: shop_id } });
+      if (!shop) {
+        logger.warn(`Get shop payment history failed: Shop not found - ${shop_id}`);
+        throw new NotFoundException('Shop not found');
+      }
+
+      const { page = 1, limit = 10, status } = query;
+      const skip = (page - 1) * limit;
+
+      const whereClause: any = {
+        shop_id: shop_id,
+        subscription_id: { not: null }, // Only subscription-related transactions
+      };
+
+      if (status) {
+        whereClause.status = status;
+      }
+
+      const [transactions, total] = await Promise.all([
+        this.prisma.transaction.findMany({
+          where: whereClause,
+          orderBy: { created_at: 'desc' },
+          skip,
+          take: limit,
+          include: {
+            subscription: {
+              include: {
+                plan: {
+                  select: {
+                    plan_name: true,
+                    description: true,
+                  }
+                }
+              }
+            }
+          }
+        }),
+        this.prisma.transaction.count({ where: whereClause }),
+      ]);
+
+      const totalPages = Math.ceil(total / limit);
+
+      logger.info(`Retrieved ${transactions.length} payment transactions for shop ${shop_id}`);
+      return {
+        transactions: transactions.map(txn => ({
+          ...txn,
+          status: txn.status,
+        })),
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages,
+        },
+      };
+    } catch (error: any) {
+      if (error instanceof HttpException) throw error;
+      logger.error(`Get shop payment history error for ${shop_id}: ${error.message}`);
+      throw error;
+    }
+  }
 }

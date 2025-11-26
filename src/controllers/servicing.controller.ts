@@ -14,10 +14,11 @@ export class ServicingController {
   // -----------------------------
   // CREATE SERVICING - Create new servicing record
   // -----------------------------
-  public createServicing = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
+  public createServicing = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
     try {
       const servicingData: IServicing = request.body;
-      const newServicing = await this.servicingService.createServicing(servicingData);
+      const shop_id = request.user.shop_id;
+      const newServicing = await this.servicingService.createServicing({...servicingData, shop_id: shop_id});
       response.status(201).json({ data: newServicing, message: 'Servicing created successfully' });
     } catch (error) {
       next(error);
@@ -27,11 +28,10 @@ export class ServicingController {
   // -----------------------------
   // GET ALL SERVICINGS - Retrieve paginated servicing list
   // -----------------------------
-  public getServicings = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
+  public getServicings = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
     try {
       // Query is validated by ValidateRequest middleware
       const query = request.query as unknown as GetServicingQueryDto;
-
       const result = await this.servicingService.getServicings(query);
       response.status(200).json({ data: result, message: 'Servicings fetched successfully' });
     } catch (error) {
@@ -42,8 +42,8 @@ export class ServicingController {
   // -----------------------------
   // GET SERVICING BY ID - Retrieve single servicing record
   // -----------------------------
-  public getServicingById = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
-    try {
+  public getServicingById = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
+    try { 
       const { id } = request.params;
       const servicing = await this.servicingService.getServicingById(id);
       response.status(200).json({ data: servicing, message: 'Servicing fetched successfully' });
@@ -55,7 +55,7 @@ export class ServicingController {
   // -----------------------------
   // UPDATE SERVICING - Modify existing servicing record
   // -----------------------------
-  public updateServicing = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
+  public updateServicing = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
     try {
       const { id } = request.params;
       const servicingData: Partial<IServicing> = request.body;
@@ -155,7 +155,7 @@ export class ServicingController {
   // -----------------------------
   // DELETE SERVICING - Soft delete servicing record
   // -----------------------------
-  public deleteServicing = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
+  public deleteServicing = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
     try {
       const { id } = request.params;
       const deletedServicing = await this.servicingService.deleteServicing(id);
