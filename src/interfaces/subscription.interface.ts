@@ -8,7 +8,7 @@ export interface ISubscriptionPlan {
 }
 
 export interface ISubscriptionPricing {
-  id: string;
+  id?: string;
   plan_id: string;
   duration: PlanDuration;
   price: number;

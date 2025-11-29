@@ -13,9 +13,14 @@ import {
   GetShopVehiclesQueryDto,
   GetShopCustomersQueryDto,
   GetShopPaymentHistoryQueryDto,
+  GetShopVehiclePaymentsQueryDto,
   GetShopQueryEnhancedDto,
-  GetAnalyticsQueryDto
+  GetAnalyticsQueryDto,
+  GetShopUsersQueryDto,
+  CreateSubscriptionPlanDto,
+  CreateSubscriptionPricingDto,
 } from '@/schemas/admin.schema';
+import { ISubscriptionPlan, ISubscriptionPricing, PlanDuration, SubscriptionPlanName } from '@/interfaces/subscription.interface';
 import bcrypt from 'bcrypt';
 import { ulid } from 'ulid';
 
@@ -336,7 +341,7 @@ export class AdminService {
         data: statusData,
       });
 
-      logger.info(`Shop status updated: ${shop.shop_name} (${shopId})`, statusData);
+      logger.info(`Shop status updated: ${shop.shop_name} (${shopId})`);
       return updatedShop;
     } catch (error) {
       if (error instanceof HttpException) throw error;
@@ -520,7 +525,146 @@ export class AdminService {
     }
   }
 
-  // Get Shop Payment History
+  // Get Shop Users
+  public async getShopUsers(shopId: string, query: GetShopUsersQueryDto) {
+    try {
+      const shop = await prisma.shop.findUnique({ where: { id: shopId } });
+      if (!shop) throw new NotFoundException('Shop not found');
+
+      const { page, limit, search, status, sortBy, sortOrder } = query;
+      const skip = (page - 1) * limit;
+
+      const whereClause: any = {
+        shop_id: shopId,
+        deleted_at: null,
+      };
+
+      if (search) {
+        whereClause.OR = [
+          { name: { contains: search, mode: 'insensitive' } },
+          { email: { contains: search, mode: 'insensitive' } },
+          { phone: { contains: search, mode: 'insensitive' } },
+        ];
+      }
+
+      if (status) {
+        whereClause.is_active = status === 'active';
+      }
+
+      const [users, total] = await Promise.all([
+        prisma.user.findMany({
+          where: whereClause,
+          orderBy: { [sortBy]: sortOrder },
+          skip,
+          take: limit,
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true,
+            role: true,
+            is_active: true,
+            created_at: true,
+          },
+        }),
+        prisma.user.count({ where: whereClause }),
+      ]);
+
+      const totalPages = Math.ceil(total / limit);
+
+      logger.info(`Retrieved ${users.length} users for shop ${shopId}`);
+      return {
+        users,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages,
+        },
+      };
+    } catch (error) {
+      if (error instanceof HttpException) throw error;
+      logger.error(`Get shop users error for ${shopId}: ${error.message}`);
+      throw error;
+    }
+  }
+
+  // Get Shop Vehicle Payments (VehiclePayment model)
+  public async getShopVehiclePayments(shopId: string, query: GetShopVehiclePaymentsQueryDto) {
+    try {
+      const shop = await prisma.shop.findUnique({ where: { id: shopId } });
+      if (!shop) throw new NotFoundException('Shop not found');
+
+      const { page, limit, search, status, payment_type, sortBy, sortOrder } = query;
+      const skip = (page - 1) * limit;
+
+      const whereClause: any = {
+        shop_id: shopId,
+        deleted_at: null,
+      };
+
+      if (search) {
+        whereClause.OR = [
+          { notes: { contains: search, mode: 'insensitive' } },
+          { transaction_id: { contains: search, mode: 'insensitive' } },
+        ];
+      }
+
+      if (status) {
+        whereClause.status = status;
+      }
+
+      if (payment_type) {
+        whereClause.payment_type = payment_type;
+      }
+
+      const [payments, total] = await Promise.all([
+        prisma.vehiclePayment.findMany({
+          where: whereClause,
+          orderBy: { [sortBy]: sortOrder },
+          skip,
+          take: limit,
+          include: {
+            vehicle: {
+              select: {
+                id: true,
+                registration_number: true,
+                brand: true,
+                model: true,
+              },
+            },
+            customer: {
+              select: {
+                id: true,
+                name: true,
+                phone: true,
+              },
+            },
+          },
+        }),
+        prisma.vehiclePayment.count({ where: whereClause }),
+      ]);
+
+      const totalPages = Math.ceil(total / limit);
+
+      logger.info(`Retrieved ${payments.length} vehicle payments for shop ${shopId}`);
+      return {
+        payments,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages,
+        },
+      };
+    } catch (error) {
+      if (error instanceof HttpException) throw error;
+      logger.error(`Get shop vehicle payments error for ${shopId}: ${error.message}`);
+      throw error;
+    }
+  }
+
+  // Get Shop Payment History (Transaction model - Subscription payments)
   public async getShopPaymentHistory(shopId: string, query: GetShopPaymentHistoryQueryDto) {
     try {
       const shop = await prisma.shop.findUnique({ where: { id: shopId } });
@@ -888,6 +1032,181 @@ export class AdminService {
     } catch (error) {
       if (error instanceof HttpException) throw error;
       logger.error(`Get analytics error: ${error.message}`);
+      throw error;
+    }
+  }
+
+  // -----------------------------
+  // SUBSCRIPTION PLAN MANAGEMENT (Admin only)
+  // -----------------------------
+
+  // CREATE SUBSCRIPTION PLAN - Add new subscription plan
+  public async createSubscriptionPlan(planData: CreateSubscriptionPlanDto): Promise<ISubscriptionPlan> {
+    try {
+      const isExistPlan = await prisma.subscriptionPlan.findFirst({
+        where: { plan_name: planData.plan_name },
+      });
+
+      if (isExistPlan) {
+        logger.warn(`Create plan failed: Plan already exists - ${planData.plan_name}`);
+        throw new ConflictException(`${planData.plan_name} Plan already exists`);
+      }
+      
+      const newPlan = await prisma.subscriptionPlan.create({
+        data: {
+          id: ulid(),
+          ...planData,
+        },
+      });
+      
+      logger.info(`Subscription plan created successfully: ${newPlan.plan_name} (${newPlan.id})`);
+      return { ...newPlan, plan_name: newPlan.plan_name as SubscriptionPlanName };
+    } catch (error: any) {
+      if (error instanceof HttpException) throw error;
+      logger.error(`Create subscription plan error: ${error.message}`);
+      throw error;
+    }
+  }
+
+  // UPDATE SUBSCRIPTION PLAN - Modify existing plan
+  public async updateSubscriptionPlan(planData: CreateSubscriptionPlanDto, plan_id: string): Promise<ISubscriptionPlan> {
+    try {
+      const isExistPlan = await prisma.subscriptionPlan.findFirst({
+        where: { id: plan_id },
+      });
+
+      if (!isExistPlan) {
+        logger.warn(`Update plan failed: Plan not found - ${plan_id}`);
+        throw new NotFoundException('Plan not found');
+      }
+      
+      const plan = await prisma.subscriptionPlan.update({
+        where: { id: plan_id },
+        data: {
+          plan_name: planData.plan_name,
+          description: planData.description,
+          max_vehicles: planData.max_vehicles,
+          max_staff_users: planData.max_staff_users,
+        },
+      });
+      
+      logger.info(`Subscription plan updated successfully: ${plan.plan_name} (${plan_id})`);
+      return { ...plan, plan_name: plan.plan_name as SubscriptionPlanName };
+    } catch (error: any) {
+      if (error instanceof HttpException) throw error;
+      logger.error(`Update subscription plan error for ${plan_id}: ${error.message}`);
+      throw error;
+    }
+  }
+
+  // GET SUBSCRIPTION PLANS - Retrieve all active plans
+  public async getSubscriptionPlan(): Promise<any> {
+    try {
+      const plans = await prisma.subscriptionPlan.findMany({
+        where: { is_active: true },
+        include: {
+          pricing: true,
+        },
+      });
+      
+      logger.info(`Retrieved ${plans.length} subscription plans`);
+      return plans;
+    } catch (error: any) {
+      if (error instanceof HttpException) throw error;
+      logger.error(`Get subscription plans error: ${error.message}`);
+      throw error;
+    }
+  }
+
+  // CREATE SUBSCRIPTION PRICING - Add pricing for a plan
+  public async createSubscriptionPricing(pricingData: ISubscriptionPricing): Promise<ISubscriptionPricing> {
+    try {
+      const isExistPricing = await prisma.subscriptionPricing.findFirst({
+        where: { plan_id: pricingData.plan_id, duration: pricingData.duration },
+      });
+
+      if (isExistPricing) {
+        logger.warn(`Create pricing failed: Pricing already exists for plan ${pricingData.plan_id} with duration ${pricingData.duration}`);
+        throw new ConflictException(`Pricing already exists in this plan for duration ${pricingData.duration}`);
+      }
+      
+      const newPricing = await prisma.subscriptionPricing.create({
+        data: {
+          id: ulid(),
+          ...pricingData,
+        },
+      });
+      
+      logger.info(`Subscription pricing created successfully: ${newPricing.duration} (${newPricing.id})`);
+      return { ...newPricing, duration: newPricing.duration as PlanDuration };
+    } catch (error: any) {
+      if (error instanceof HttpException) throw error;
+      logger.error(`Create subscription pricing error: ${error.message}`);
+      throw error;
+    }
+  }
+
+  // UPDATE SUBSCRIPTION PRICING - Modify existing pricing
+  public async updateSubscriptionPricing(pricingData: ISubscriptionPricing, subscription_pricing_id: string): Promise<ISubscriptionPricing> {
+    try {
+      const isExistPricing = await prisma.subscriptionPricing.findFirst({
+        where: { plan_id: pricingData.plan_id, id: subscription_pricing_id },
+      });
+
+      if (!isExistPricing) {
+        logger.warn(`Update pricing failed: Pricing not found - ${subscription_pricing_id}`);
+        throw new NotFoundException('Pricing not found');
+      }
+
+      const pricing = await prisma.subscriptionPricing.update({
+        where: { id: subscription_pricing_id },
+        data: {
+          duration: pricingData.duration,
+          price: pricingData.price,
+          discount: pricingData.discount,
+        },
+      });
+      
+      logger.info(`Subscription pricing updated successfully: ${pricing.duration} (${subscription_pricing_id})`);
+      return { ...pricing, duration: pricing.duration as PlanDuration };
+    } catch (error: any) {
+      if (error instanceof HttpException) throw error;
+      logger.error(`Update subscription pricing error for ${subscription_pricing_id}: ${error.message}`);
+      throw error;
+    }
+  }
+
+  // ACTIVE/DEACTIVE SUBSCRIPTION PLAN - Toggle plan status
+  public async activeDeactiveSubscriptionPlan(plan_id: string, is_active: boolean): Promise<ISubscriptionPlan> {
+    try {
+      const isExistPlan = await prisma.subscriptionPlan.findFirst({
+        where: { id: plan_id },
+      });
+
+      if (!isExistPlan) {
+        logger.warn(`Toggle plan status failed: Plan not found - ${plan_id}`);
+        throw new NotFoundException('Plan not found');
+      }
+      
+      const plan = await prisma.subscriptionPlan.update({
+        where: { id: plan_id },
+        data: {
+          is_active: is_active,
+        },
+      });
+
+      await prisma.subscriptionPricing.updateMany({
+        where: { plan_id: plan_id },
+        data: {
+          is_active: is_active,
+        },
+      });
+
+      logger.info(`Subscription plan ${is_active ? 'activated' : 'deactivated'} successfully: ${plan.plan_name} (${plan_id})`);
+      return { ...plan, plan_name: plan.plan_name as SubscriptionPlanName };
+    } catch (error: any) {
+      if (error instanceof HttpException) throw error;
+      logger.error(`Toggle plan status error for ${plan_id}: ${error.message}`);
       throw error;
     }
   }

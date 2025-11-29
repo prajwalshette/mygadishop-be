@@ -141,6 +141,42 @@ export class AuthService {
   }
 
   // -----------------------------
+  // ADMIN LOGOUT - Invalidate admin session
+  // -----------------------------
+  public async adminLogout(token: string, session_id: string): Promise<void> {
+    try {
+      if (!token) {
+        logger.warn('Admin logout failed: No token provided');
+        throw new UnauthorizedException('No token provided');
+      }
+
+      if (!session_id) {
+        logger.warn('Admin logout failed: Invalid token payload');
+        throw new UnauthorizedException('Invalid token payload');
+      }
+
+      const existingSession = await prisma.adminSession.findUnique({
+        where: { id: session_id },
+      });
+
+      if (!existingSession) {
+        logger.warn(`Admin logout failed: Session not found - ${session_id}`);
+        throw new NotFoundException('Session not found');
+      }
+
+      await prisma.adminSession.delete({
+        where: { id: session_id },
+      });
+
+      logger.info(`Admin logged out successfully: session ${session_id}`);
+    } catch (error) {
+      if (error instanceof HttpException) throw error;
+      logger.error(`Admin logout error for session ${session_id}: ${error.message}`);
+      throw error;
+    }
+  }
+
+  // -----------------------------
   // UNIFIED LOGIN - Handles both existing users and new user creation
   // -----------------------------
   public async login(userData: LoginDto): Promise<{ cookie: string; newUser: boolean; user?: User }> {

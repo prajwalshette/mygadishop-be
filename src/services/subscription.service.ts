@@ -1,200 +1,18 @@
-import { Prisma } from '@prisma/client';
+import { Prisma, TransactionStatus } from '@prisma/client';
 import { Service } from 'typedi';
 import { HttpException } from '@/exceptions/HttpException';
 import { NotFoundException } from '@/exceptions/NotFoundException';
 import { ConflictException } from '@/exceptions/ConflictException';
 import prisma from '@/database';
 import { ulid } from 'ulid';
-import { ISubscriptionPlan, ISubscriptionPricing, PlanDuration, SubscriptionPlanName, SubscriptionStatus } from '@/interfaces/subscription.interface';
-import { CreateSubscriptionPlanDto, CreateSubscriptionPricingDto } from '@/schemas/subscription.schema';
+import { PlanDuration, SubscriptionStatus, SubscriptionPlanName } from '@/interfaces/subscription.interface';
 import { logger } from '@utils/logger';
+import axios from 'axios';
+import { RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET } from '@/config';
 
 @Service()
 export class SubscriptionService {
   private prisma = prisma;
-
-  // -----------------------------
-  // CREATE SUBSCRIPTION PLAN - Add new subscription plan
-  // -----------------------------
-  public async createSubscriptionPlan(planData: CreateSubscriptionPlanDto): Promise<ISubscriptionPlan> {
-    try {
-      const isExistPlan = await this.prisma.subscriptionPlan.findFirst({
-        where: { plan_name: planData.plan_name },
-      });
-
-      if (isExistPlan) {
-        logger.warn(`Create plan failed: Plan already exists - ${planData.plan_name}`);
-        throw new ConflictException(`${planData.plan_name} Plan already exists`);
-      }
-      
-      const newPlan = await this.prisma.subscriptionPlan.create({
-        data: {
-          id: ulid(),
-          ...planData,
-        },
-      });
-      
-      logger.info(`Subscription plan created successfully: ${newPlan.plan_name} (${newPlan.id})`);
-      return { ...newPlan, plan_name: newPlan.plan_name as SubscriptionPlanName };
-    } catch (error: any) {
-      if (error instanceof HttpException) throw error;
-      logger.error(`Create subscription plan error: ${error.message}`);
-      throw error;
-    }
-  }
-
-  // -----------------------------
-  // UPDATE SUBSCRIPTION PLAN - Modify existing plan
-  // -----------------------------
-  public async updateSubscriptionPlan(planData: CreateSubscriptionPlanDto, plan_id: string): Promise<ISubscriptionPlan> {
-    try {
-      const isExistPlan = await this.prisma.subscriptionPlan.findFirst({
-        where: { id: plan_id },
-      });
-
-      if (!isExistPlan) {
-        logger.warn(`Update plan failed: Plan not found - ${plan_id}`);
-        throw new NotFoundException('Plan not found');
-      }
-      
-      const plan = await this.prisma.subscriptionPlan.update({
-        where: { id: plan_id },
-        data: {
-          plan_name: planData.plan_name,
-          description: planData.description,
-          max_vehicles: planData.max_vehicles,
-          max_staff_users: planData.max_staff_users,
-        },
-      });
-      
-      logger.info(`Subscription plan updated successfully: ${plan.plan_name} (${plan_id})`);
-      return { ...plan, plan_name: plan.plan_name as SubscriptionPlanName };
-    } catch (error: any) {
-      if (error instanceof HttpException) throw error;
-      logger.error(`Update subscription plan error for ${plan_id}: ${error.message}`);
-      throw error;
-    }
-  }
-
-  // -----------------------------
-  // GET SUBSCRIPTION PLANS - Retrieve all active plans
-  // -----------------------------
-  public async getSubscriptionPlan(): Promise<any> {
-    try {
-      const plans = await this.prisma.subscriptionPlan.findMany({
-        where: { is_active: true },
-        include: {
-          pricing: true,
-        },
-      });
-      
-      logger.info(`Retrieved ${plans.length} subscription plans`);
-      return plans;
-    } catch (error: any) {
-      if (error instanceof HttpException) throw error;
-      logger.error(`Get subscription plans error: ${error.message}`);
-      throw error;
-    }
-  }
-
-  // -----------------------------
-  // CREATE SUBSCRIPTION PRICING - Add pricing for a plan
-  // -----------------------------
-  public async createSubscriptionPricing(pricingData: ISubscriptionPricing): Promise<ISubscriptionPricing> {
-    try {
-      const isExistPricing = await this.prisma.subscriptionPricing.findFirst({
-        where: { plan_id: pricingData.plan_id, duration: pricingData.duration },
-      });
-
-      if (isExistPricing) {
-        logger.warn(`Create pricing failed: Pricing already exists for plan ${pricingData.plan_id} with duration ${pricingData.duration}`);
-        throw new ConflictException(`Pricing already exists in this plan for duration ${pricingData.duration}`);
-      }
-      
-      const newPricing = await this.prisma.subscriptionPricing.create({
-        data: {
-          id: ulid(),
-          ...pricingData,
-        },
-      });
-      
-      logger.info(`Subscription pricing created successfully: ${newPricing.duration} (${newPricing.id})`);
-      return { ...newPricing, duration: newPricing.duration as PlanDuration };
-    } catch (error: any) {
-      if (error instanceof HttpException) throw error;
-      logger.error(`Create subscription pricing error: ${error.message}`);
-      throw error;
-    }
-  }
-
-  // -----------------------------
-  // UPDATE SUBSCRIPTION PRICING - Modify existing pricing
-  // -----------------------------
-  public async updateSubscriptionPricing(pricingData: ISubscriptionPricing, subscription_pricing_id: string): Promise<ISubscriptionPricing> {
-    try {
-      const isExistPricing = await this.prisma.subscriptionPricing.findFirst({
-        where: { plan_id: pricingData.plan_id, id: subscription_pricing_id },
-      });
-
-      if (!isExistPricing) {
-        logger.warn(`Update pricing failed: Pricing not found - ${subscription_pricing_id}`);
-        throw new NotFoundException('Pricing not found');
-      }
-
-      const pricing = await this.prisma.subscriptionPricing.update({
-        where: { id: subscription_pricing_id },
-        data: {
-          duration: pricingData.duration,
-          price: pricingData.price,
-          discount: pricingData.discount,
-        },
-      });
-      
-      logger.info(`Subscription pricing updated successfully: ${pricing.duration} (${subscription_pricing_id})`);
-      return { ...pricing, duration: pricing.duration as PlanDuration };
-    } catch (error: any) {
-      if (error instanceof HttpException) throw error;
-      logger.error(`Update subscription pricing error for ${subscription_pricing_id}: ${error.message}`);
-      throw error;
-    }
-  }
-
-  // -----------------------------
-  // ACTIVE/DEACTIVE SUBSCRIPTION PLAN - Toggle plan status
-  // -----------------------------
-  public async activeDeactiveSubscriptionPlan(plan_id: string, is_active: boolean): Promise<ISubscriptionPlan> {
-    try {
-      const isExistPlan = await this.prisma.subscriptionPlan.findFirst({
-        where: { id: plan_id },
-      });
-
-      if (!isExistPlan) {
-        logger.warn(`Toggle plan status failed: Plan not found - ${plan_id}`);
-        throw new NotFoundException('Plan not found');
-      }
-      
-      const plan = await this.prisma.subscriptionPlan.update({
-        where: { id: plan_id },
-        data: {
-          is_active: is_active,
-        },
-      });
-
-      await this.prisma.subscriptionPricing.updateMany({
-        where: { plan_id: plan_id },
-        data: {
-          is_active: is_active,
-        },
-      });
-
-      logger.info(`Subscription plan ${is_active ? 'activated' : 'deactivated'} successfully: ${plan.plan_name} (${plan_id})`);
-      return { ...plan, plan_name: plan.plan_name as SubscriptionPlanName };
-    } catch (error: any) {
-      if (error instanceof HttpException) throw error;
-      logger.error(`Toggle plan status error for ${plan_id}: ${error.message}`);
-      throw error;
-    }
-  }
 
   // -----------------------------
   // GET SHOP CURRENT SUBSCRIPTION - Get active subscription for a shop
@@ -401,6 +219,252 @@ export class SubscriptionService {
     } catch (error: any) {
       if (error instanceof HttpException) throw error;
       logger.error(`Get shop payment history error for ${shop_id}: ${error.message}`);
+      throw error;
+    }
+  }
+
+  // -----------------------------
+  // CREATE SUBSCRIPTION ORDER (RAZORPAY) - Create Razorpay order for selected plan
+  // -----------------------------
+  public async createSubscriptionOrder(shop_id: string, data: { plan_name: SubscriptionPlanName; duration: PlanDuration }): Promise<any> {
+    try {
+      if (!RAZORPAY_KEY_ID || !RAZORPAY_KEY_SECRET) {
+        logger.error('Razorpay configuration missing');
+        throw new HttpException(500, 'Payment configuration not available');
+      }
+
+      const shop = await this.prisma.shop.findUnique({ where: { id: shop_id } });
+      if (!shop) {
+        logger.warn(`Create subscription order failed: Shop not found - ${shop_id}`);
+        throw new NotFoundException('Shop not found');
+      }
+
+      const plan = await this.prisma.subscriptionPlan.findFirst({
+        where: { plan_name: data.plan_name, is_active: true },
+        include: {
+          pricing: {
+            where: { duration: data.duration, is_active: true },
+          },
+        },
+      });
+
+      if (!plan) {
+        logger.warn(`Create subscription order failed: Plan not found - ${data.plan_name}`);
+        throw new NotFoundException('Subscription plan not found');
+      }
+
+      const pricing = plan.pricing[0];
+      if (!pricing) {
+        logger.warn(`Create subscription order failed: Pricing not found for duration ${data.duration} on plan ${data.plan_name}`);
+        throw new NotFoundException('Subscription pricing not found for selected duration');
+      }
+
+      const discount = pricing.discount ?? 0;
+      const basePrice = pricing.price;
+      const finalAmount = basePrice - (basePrice * discount) / 100;
+      const amountInPaise = Math.round(finalAmount * 100);
+
+      const receipt = `sub_${shop_id}_${plan.id}_${pricing.id}_${Date.now()}`;
+
+      const authString = Buffer.from(`${RAZORPAY_KEY_ID}:${RAZORPAY_KEY_SECRET}`).toString('base64');
+
+      const razorpayOrderResponse = await axios.post(
+        'https://api.razorpay.com/v1/orders',
+        {
+          amount: amountInPaise,
+          currency: 'INR',
+          receipt,
+          notes: {
+            shop_id,
+            plan_id: plan.id,
+            subscription_pricing_id: pricing.id,
+            duration: data.duration,
+          },
+        },
+        {
+          headers: {
+            Authorization: `Basic ${authString}`,
+          },
+        },
+      );
+
+      const order = razorpayOrderResponse.data;
+
+      await this.prisma.transaction.create({
+        data: {
+          id: ulid(),
+          shop_id,
+          subscription_id: null,
+          amount: finalAmount,
+          currency: 'INR',
+          status: TransactionStatus.PENDING,
+          payment_method: null,
+          razorpay_order_id: order.id,
+          razorpay_payment_id: null,
+          razorpay_signature: null,
+          receipt_number: receipt,
+          invoice_url: null,
+          description: `Subscription purchase - ${plan.plan_name} (${pricing.duration})`,
+          notes: {
+            shop_id,
+            plan_id: plan.id,
+            subscription_pricing_id: pricing.id,
+            duration: data.duration,
+          } as Prisma.JsonObject,
+          failure_reason: null,
+          payment_date: null,
+        },
+      });
+
+      logger.info(`Razorpay order created successfully for shop ${shop_id} - order_id: ${order.id}`);
+
+      return {
+        order_id: order.id,
+        amount: finalAmount,
+        currency: 'INR',
+        razorpay_key_id: RAZORPAY_KEY_ID,
+        notes: order.notes,
+      };
+    } catch (error: any) {
+      if (error instanceof HttpException) throw error;
+      logger.error(`Create subscription order error for shop ${shop_id}: ${error.message}`);
+      throw error;
+    }
+  }
+
+  // -----------------------------
+  // PROCESS RAZORPAY WEBHOOK - Update transaction & create subscription
+  // -----------------------------
+  public async processRazorpayWebhook(event: string, payload: any): Promise<void> {
+    try {
+      if (event !== 'payment.captured') {
+        logger.info(`Razorpay webhook event ignored: ${event}`);
+        return;
+      }
+
+      const paymentEntity = payload?.payment?.entity;
+      if (!paymentEntity || !paymentEntity.order_id || !paymentEntity.id) {
+        logger.warn('Razorpay webhook payload missing payment entity or identifiers');
+        return;
+      }
+
+      const existingTransaction = await this.prisma.transaction.findFirst({
+        where: {
+          razorpay_order_id: paymentEntity.order_id,
+        },
+      });
+
+      if (!existingTransaction) {
+        logger.warn(`Razorpay webhook: Transaction not found for order ${paymentEntity.order_id}`);
+        return;
+      }
+
+      await this.prisma.$transaction(async tx => {
+        const updatedTransaction = await tx.transaction.update({
+          where: { id: existingTransaction.id },
+          data: {
+            razorpay_payment_id: paymentEntity.id,
+            amount: paymentEntity.amount ? paymentEntity.amount / 100 : existingTransaction.amount,
+            currency: paymentEntity.currency || existingTransaction.currency,
+            status: TransactionStatus.SUCCESS,
+            payment_method: paymentEntity.method || existingTransaction.payment_method,
+            payment_date: paymentEntity.created_at ? new Date(paymentEntity.created_at * 1000) : new Date(),
+            description: paymentEntity.description || existingTransaction.description,
+            failure_reason: null,
+          },
+        });
+
+        const notes: any = updatedTransaction.notes || {};
+        const shop_id: string | undefined = notes.shop_id;
+        const plan_id: string | undefined = notes.plan_id;
+        const subscription_pricing_id: string | undefined = notes.subscription_pricing_id;
+        const duration: PlanDuration | undefined = notes.duration;
+
+        if (!shop_id || !plan_id || !subscription_pricing_id || !duration) {
+          logger.warn(`Razorpay webhook: Missing subscription metadata in transaction notes for transaction ${updatedTransaction.id}`);
+          return;
+        }
+
+        const pricing = await tx.subscriptionPricing.findUnique({
+          where: { id: subscription_pricing_id },
+          include: {
+            plan: true,
+          },
+        });
+
+        if (!pricing) {
+          logger.warn(`Razorpay webhook: Subscription pricing not found for id ${subscription_pricing_id}`);
+          return;
+        }
+
+        const now = new Date();
+        const endDate = new Date(now);
+
+        switch (duration) {
+          case PlanDuration.ONE_MONTH:
+            endDate.setMonth(endDate.getMonth() + 1);
+            break;
+          case PlanDuration.THREE_MONTHS:
+            endDate.setMonth(endDate.getMonth() + 3);
+            break;
+          case PlanDuration.SIX_MONTHS:
+            endDate.setMonth(endDate.getMonth() + 6);
+            break;
+          case PlanDuration.ONE_YEAR:
+            endDate.setFullYear(endDate.getFullYear() + 1);
+            break;
+          default:
+            logger.warn(`Razorpay webhook: Unknown duration ${duration}, defaulting to 1 month`);
+            endDate.setMonth(endDate.getMonth() + 1);
+        }
+
+        await tx.shopSubscription.updateMany({
+          where: {
+            shop_id,
+            status: {
+              in: [SubscriptionStatus.ACTIVE, SubscriptionStatus.TRIAL, SubscriptionStatus.PAYMENT_PENDING],
+            },
+          },
+          data: {
+            status: SubscriptionStatus.EXPIRED,
+          },
+        });
+
+        const subscription = await tx.shopSubscription.create({
+          data: {
+            id: ulid(),
+            shop_id,
+            plan_id,
+            subscription_pricing_id,
+            start_date: now,
+            end_date: endDate,
+            status: SubscriptionStatus.ACTIVE,
+            auto_renew: false,
+          },
+        });
+
+        await tx.shop.update({
+          where: { id: shop_id },
+          data: {
+            subscription_status: SubscriptionStatus.ACTIVE,
+            subscription_plan: pricing.plan.plan_name as SubscriptionPlanName,
+            plan_start_date: now,
+            plan_end_date: endDate,
+          },
+        });
+
+        await tx.transaction.update({
+          where: { id: updatedTransaction.id },
+          data: {
+            subscription_id: subscription.id,
+          },
+        });
+
+        logger.info(`Subscription created from Razorpay payment for shop ${shop_id}, subscription ${subscription.id}`);
+      });
+    } catch (error: any) {
+      if (error instanceof HttpException) throw error;
+      logger.error(`Process Razorpay webhook error: ${error.message}`);
       throw error;
     }
   }

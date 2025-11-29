@@ -66,6 +66,38 @@ export class AuthController {
   };
 
   // -----------------------------
+  // ADMIN LOGOUT - Invalidate admin session
+  // -----------------------------
+  public adminLogOut = async (request: RequestWithAdmin, response: Response, next: NextFunction) => {
+    try {
+      const session_id = request.session_id;
+
+      // Extract token from cookie or header (same as middleware)
+      let token: string | undefined;
+      const cookieToken = request.cookies?.['Authorization'];
+      if (cookieToken) {
+        token = cookieToken;
+      } else {
+        const headerToken = request.header('Authorization');
+        if (headerToken?.startsWith('Bearer ')) {
+          token = headerToken.split('Bearer ')[1];
+        }
+      }
+
+      await this.auth.adminLogout(token, session_id);
+
+      response.setHeader('Set-Cookie', ['Authorization=; HttpOnly; Max-Age=0; Path=/']);
+
+      return response.status(200).json({
+        success: true,
+        message: 'Admin logout successfully',
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // -----------------------------
   // UNIFIED LOGIN - Handles both existing users and new user creation
   // -----------------------------
   public login = async (request: Request, response: Response, next: NextFunction): Promise<void> => {

@@ -15,8 +15,15 @@ import {
   getShopVehiclesQuerySchema,
   getShopCustomersQuerySchema,
   getShopPaymentHistoryQuerySchema,
+  getShopVehiclePaymentsQuerySchema,
   getShopQueryEnhancedSchema,
   getAnalyticsQuerySchema,
+  getShopUsersQuerySchema,
+  createSubscriptionPlanSchema,
+  createSubscriptionPricingSchema,
+  planIdParamSchema,
+  pricingIdParamSchema,
+  activeDeactivePlanSchema,
 } from '@/schemas/admin.schema';
 
 export class AdminRoute implements Routes {
@@ -72,9 +79,19 @@ export class AdminRoute implements Routes {
       this.adminController.getShopCustomers,
     );
     this.router.get(
+      `${this.path}/shops/:id/users`,
+      [AdminAuthMiddleware, ValidationMiddleware(ShopIdParamSchema, 'params'), ValidationMiddleware(getShopUsersQuerySchema, 'query')],
+      this.adminController.getShopUsers,
+    );
+    this.router.get(
       `${this.path}/shops/:id/payments`,
       [AdminAuthMiddleware, ValidationMiddleware(ShopIdParamSchema, 'params'), ValidationMiddleware(getShopPaymentHistoryQuerySchema, 'query')],
       this.adminController.getShopPaymentHistory,
+    );
+    this.router.get(
+      `${this.path}/shops/:id/vehicle-payments`,
+      [AdminAuthMiddleware, ValidationMiddleware(ShopIdParamSchema, 'params'), ValidationMiddleware(getShopVehiclePaymentsQuerySchema, 'query')],
+      this.adminController.getShopVehiclePayments,
     );
     this.router.delete(
       `${this.path}/shops/:id`,
@@ -94,6 +111,38 @@ export class AdminRoute implements Routes {
       `${this.path}/users/:id`,
       [AdminAuthMiddleware, ValidationMiddleware(UserIdParamSchema, 'params')],
       this.adminController.deleteUser,
+    );
+
+    // Subscription Plans Management (Admin only)
+    this.router.post(
+      `${this.path}/subscription/create-plan`,
+      [AdminAuthMiddleware, ValidationMiddleware(createSubscriptionPlanSchema, 'body')],
+      this.adminController.createSubscriptionPlan
+    );
+    this.router.put(
+      `${this.path}/subscription/:plan_id/update-plan`,
+      [AdminAuthMiddleware, ValidationMiddleware(planIdParamSchema, 'params'), ValidationMiddleware(createSubscriptionPlanSchema, 'body')],
+      this.adminController.updateSubscriptionPlan
+    );
+    this.router.get(
+      `${this.path}/subscription/plans`,
+      [AdminAuthMiddleware],
+      this.adminController.getSubscriptionPlan
+    );
+    this.router.post(
+      `${this.path}/subscription/:plan_id/create-pricing`,
+      [AdminAuthMiddleware, ValidationMiddleware(planIdParamSchema, 'params'), ValidationMiddleware(createSubscriptionPricingSchema, 'body')],
+      this.adminController.createSubscriptionPricing
+    );
+    this.router.put(
+      `${this.path}/subscription/:plan_id/:subscription_pricing_id/update-pricing`,
+      [AdminAuthMiddleware, ValidationMiddleware(pricingIdParamSchema, 'params'), ValidationMiddleware(createSubscriptionPricingSchema, 'body')],
+      this.adminController.updateSubscriptionPricing
+    );
+    this.router.put(
+      `${this.path}/subscription/:plan_id/active-deactive-plan`,
+      [AdminAuthMiddleware, ValidationMiddleware(planIdParamSchema, 'params'), ValidationMiddleware(activeDeactivePlanSchema, 'body')],
+      this.adminController.activeDeactiveSubscriptionPlan
     );
   }
 }

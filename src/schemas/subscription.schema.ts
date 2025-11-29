@@ -75,9 +75,16 @@ export const getPaymentHistoryQuerySchema = z.object({
   status: z.enum(['PENDING', 'PROCESSING', 'SUCCESS', 'FAILED', 'REFUNDED', 'CANCELLED']).optional(),
 });
 
+// Create Subscription Order (Razorpay) Schema
+export const createSubscriptionOrderSchema = z.object({
+  plan_name: z.nativeEnum(SubscriptionPlanName),
+  duration: z.nativeEnum(PlanDuration),
+});
+
 // Export types
 export type CreateSubscriptionPlanDto = z.infer<typeof createSubscriptionPlanSchema>;
 export type CreateSubscriptionPricingDto = z.infer<typeof createSubscriptionPricingSchema>;
 export type ActiveDeactivePlanDto = z.infer<typeof activeDeactivePlanSchema>;
 export type GetSubscriptionHistoryQueryDto = z.infer<typeof getSubscriptionHistoryQuerySchema>;
 export type GetPaymentHistoryQueryDto = z.infer<typeof getPaymentHistoryQuerySchema>;
+export type CreateSubscriptionOrderDto = z.infer<typeof createSubscriptionOrderSchema>;

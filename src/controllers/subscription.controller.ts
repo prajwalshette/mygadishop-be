@@ -1,79 +1,19 @@
 import { NextFunction, Request, Response } from 'express';
 import { Container } from 'typedi';
-import { RequestWithAdminUser, RequestWithUser } from '@/interfaces/auth.interface';
+import { RequestWithUser } from '@/interfaces/auth.interface';
 import { SubscriptionService } from '@/services/subscription.service';
-import { ISubscriptionPricing } from '@/interfaces/subscription.interface';
-import { CreateSubscriptionPlanDto, CreateSubscriptionPricingDto, ActiveDeactivePlanDto, GetSubscriptionHistoryQueryDto, GetPaymentHistoryQueryDto } from '@/schemas/subscription.schema';
+import {
+  GetSubscriptionHistoryQueryDto,
+  GetPaymentHistoryQueryDto,
+  CreateSubscriptionOrderDto,
+} from '@/schemas/subscription.schema';
+import crypto from 'crypto';
+import { UnauthorizedException } from '@/exceptions/UnauthorizedException';
+import { logger } from '@utils/logger';
+import { RAZORPAY_WEBHOOK_SECRET } from '@/config';
 
 export class SubscriptionController {
   public subscriptionService = Container.get(SubscriptionService);
-
-  public createSubscriptionPlan = async (request: RequestWithAdminUser, response: Response, next: NextFunction): Promise<void> => {
-    try {
-      const planData: CreateSubscriptionPlanDto = request.body;
-
-      const plan = await this.subscriptionService.createSubscriptionPlan(planData);
-      response.status(200).json({ data: plan, message: 'Successfully Create New Plan' });
-    } catch (error) {
-      next(error);
-    }
-  };
-
-  public updateSubscriptionPlan = async (request: RequestWithAdminUser, response: Response, next: NextFunction): Promise<void> => {
-    try {
-      const plan_id = request.params.plan_id;
-      const planData: CreateSubscriptionPlanDto = request.body;
-
-      const plan = await this.subscriptionService.updateSubscriptionPlan(planData, plan_id);
-      response.status(200).json({ data: plan, message: 'Successfully Update Plan' });
-    } catch (error) {
-      next(error);
-    }
-  };
-
-
-  public getSubscriptionPlan = async (request: RequestWithAdminUser, response: Response, next: NextFunction): Promise<void> => {
-    try {
-      const plan = await this.subscriptionService.getSubscriptionPlan();
-      response.status(200).json({ data: plan, message: 'Plan Featch Successfully' });
-    } catch (error) {
-      next(error);
-    }
-  };
-
-  public createSubscriptionPricing = async (request: RequestWithAdminUser, response: Response, next: NextFunction): Promise<void> => {
-    try {
-      const plan_id = request.params.plan_id;
-      const pricingData: CreateSubscriptionPricingDto = request.body;
-      const pricing = await this.subscriptionService.createSubscriptionPricing({...pricingData, plan_id, id: '', is_active: true});
-      response.status(200).json({ data: pricing, message: 'Successfully Create Pricing' });
-    } catch (error) {
-      next(error);
-    }
-  };
-
-  public updateSubscriptionPricing = async (request: RequestWithAdminUser, response: Response, next: NextFunction): Promise<void> => {
-    try {
-      const plan_id = request.params.plan_id;
-      const subscription_pricing_id = request.params.subscription_pricing_id;
-      const pricingData: CreateSubscriptionPricingDto = request.body;
-      const pricing = await this.subscriptionService.updateSubscriptionPricing({...pricingData, plan_id, id: '', is_active: true}, subscription_pricing_id);
-      response.status(200).json({ data: pricing, message: 'Successfully Update Pricing' });
-    } catch (error) {
-      next(error);
-    }
-  };
-
-  public activeDeactiveSubscriptionPlan = async (request: RequestWithAdminUser, response: Response, next: NextFunction): Promise<void> => {
-    try {
-      const plan_id = request.params.plan_id;
-      const { is_active }: ActiveDeactivePlanDto = request.body;
-      await this.subscriptionService.activeDeactiveSubscriptionPlan(plan_id, is_active);
-      response.status(200).json({ message: is_active ? 'Successfully active subscription plan' : 'Successfully deactive subscription plan' });
-    } catch (error) {
-      next(error);
-    }
-  };
 
   // Get shop current subscription (for shop users)
   public getShopCurrentSubscription = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
@@ -117,6 +57,55 @@ export class SubscriptionController {
       const query: GetPaymentHistoryQueryDto = request.query as any;
       const history = await this.subscriptionService.getShopPaymentHistory(shop_id, query);
       response.status(200).json({ data: history, message: 'Payment history fetched successfully' });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // Create Razorpay order for subscription (for shop users)
+  public createSubscriptionOrder = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
+    try {
+      const shop_id = request.shop_id || request.user.shop_id;
+      if (!shop_id) {
+        response.status(400).json({ message: 'Shop ID not found' });
+        return;
+      }
+
+      const body: CreateSubscriptionOrderDto = request.body;
+      const order = await this.subscriptionService.createSubscriptionOrder(shop_id, body);
+      response.status(200).json({ data: order, message: 'Subscription payment order created successfully' });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // Razorpay webhook handler
+  public handleRazorpayWebhook = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
+    try {
+      if (!RAZORPAY_WEBHOOK_SECRET) {
+        logger.error('Razorpay webhook secret not configured');
+        throw new UnauthorizedException('Invalid webhook configuration');
+      }
+
+      const signature = request.headers['x-razorpay-signature'] as string | undefined;
+      if (!signature) {
+        throw new UnauthorizedException('Razorpay signature missing');
+      }
+
+      const bodyString = JSON.stringify(request.body);
+      const shasum = crypto.createHmac('sha256', RAZORPAY_WEBHOOK_SECRET);
+      shasum.update(bodyString);
+      const digest = shasum.digest('hex');
+
+      if (digest !== signature) {
+        logger.warn('Razorpay webhook signature verification failed');
+        throw new UnauthorizedException('Invalid Razorpay signature');
+      }
+
+      const { event, payload } = request.body as { event: string; payload: any };
+      await this.subscriptionService.processRazorpayWebhook(event, payload);
+
+      response.status(200).json({ status: 'ok' });
     } catch (error) {
       next(error);
     }

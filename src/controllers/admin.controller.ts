@@ -12,8 +12,13 @@ import {
   GetShopVehiclesQueryDto,
   GetShopCustomersQueryDto,
   GetShopPaymentHistoryQueryDto,
+  GetShopVehiclePaymentsQueryDto,
   GetShopQueryEnhancedDto,
-  GetAnalyticsQueryDto
+  GetAnalyticsQueryDto,
+  GetShopUsersQueryDto,
+  CreateSubscriptionPlanDto,
+  CreateSubscriptionPricingDto,
+  ActiveDeactivePlanDto,
 } from '@/schemas/admin.schema';
 
 export class AdminController {
@@ -189,13 +194,37 @@ export class AdminController {
     }
   };
 
-  // Get Shop Payment History
+  // Get Shop Users
+  public getShopUsers = async (req: RequestWithAdmin, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const shopId = req.params.id;
+      const query = req.query as unknown as GetShopUsersQueryDto;
+      const result = await this.adminService.getShopUsers(shopId, query);
+      res.status(200).json({ data: result, message: 'shop users' });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // Get Shop Vehicle Payments
+  public getShopVehiclePayments = async (req: RequestWithAdmin, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const shopId = req.params.id;
+      const query = req.query as unknown as GetShopVehiclePaymentsQueryDto;
+      const result = await this.adminService.getShopVehiclePayments(shopId, query);
+      res.status(200).json({ data: result, message: 'shop vehicle payments' });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // Get Shop Payment History (Subscription Transactions)
   public getShopPaymentHistory = async (req: RequestWithAdmin, res: Response, next: NextFunction): Promise<void> => {
     try {
       const shopId = req.params.id;
       const query = req.query as unknown as GetShopPaymentHistoryQueryDto;
       const result = await this.adminService.getShopPaymentHistory(shopId, query);
-      res.status(200).json({ data: result, message: 'payment history' });
+      res.status(200).json({ data: result, message: 'subscription payment history' });
     } catch (error) {
       next(error);
     }
@@ -207,6 +236,71 @@ export class AdminController {
       const query = req.query as unknown as GetShopQueryEnhancedDto;
       const result = await this.adminService.getShopsEnhanced(query);
       res.status(200).json({ data: result, message: 'findAll' });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // Subscription Plans Management (Admin only)
+  public createSubscriptionPlan = async (req: RequestWithAdmin, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const planData: CreateSubscriptionPlanDto = req.body;
+      const plan = await this.adminService.createSubscriptionPlan(planData);
+      res.status(200).json({ data: plan, message: 'Successfully Create New Plan' });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  public updateSubscriptionPlan = async (req: RequestWithAdmin, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const plan_id = req.params.plan_id;
+      const planData: CreateSubscriptionPlanDto = req.body;
+      const plan = await this.adminService.updateSubscriptionPlan(planData, plan_id);
+      res.status(200).json({ data: plan, message: 'Successfully Update Plan' });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  public getSubscriptionPlan = async (req: RequestWithAdmin, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const plan = await this.adminService.getSubscriptionPlan();
+      res.status(200).json({ data: plan, message: 'Plan Featch Successfully' });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  public createSubscriptionPricing = async (req: RequestWithAdmin, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const plan_id = req.params.plan_id;
+      const pricingData: CreateSubscriptionPricingDto = req.body;
+      const pricing = await this.adminService.createSubscriptionPricing({...pricingData, plan_id, is_active: true});
+      res.status(200).json({ data: pricing, message: 'Successfully Create Pricing' });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  public updateSubscriptionPricing = async (req: RequestWithAdmin, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const plan_id = req.params.plan_id;
+      const subscription_pricing_id = req.params.subscription_pricing_id;
+      const pricingData: CreateSubscriptionPricingDto = req.body;
+      const pricing = await this.adminService.updateSubscriptionPricing({...pricingData, plan_id, id: '', is_active: true}, subscription_pricing_id);
+      res.status(200).json({ data: pricing, message: 'Successfully Update Pricing' });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  public activeDeactiveSubscriptionPlan = async (req: RequestWithAdmin, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const plan_id = req.params.plan_id;
+      const { is_active }: ActiveDeactivePlanDto = req.body;
+      await this.adminService.activeDeactiveSubscriptionPlan(plan_id, is_active);
+      res.status(200).json({ message: is_active ? 'Successfully active subscription plan' : 'Successfully deactive subscription plan' });
     } catch (error) {
       next(error);
     }
