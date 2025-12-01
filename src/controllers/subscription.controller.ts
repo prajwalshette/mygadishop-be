@@ -79,6 +79,16 @@ export class SubscriptionController {
     }
   };
 
+  // Get all subscription plans (for shop users)
+  public getSubscriptionPlans = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
+    try {
+      const plans = await this.subscriptionService.getSubscriptionPlans();
+      response.status(200).json({ data: plans, message: 'Subscription plans fetched successfully' });
+    } catch (error) {
+      next(error);
+    }
+  };
+
   // Razorpay webhook handler
   public handleRazorpayWebhook = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
     try {

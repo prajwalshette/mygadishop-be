@@ -19,41 +19,53 @@ export class SubscriptionService {
   // -----------------------------
   public async getShopCurrentSubscription(shop_id: string): Promise<any> {
     try {
-      const shop = await this.prisma.shop.findUnique({ where: { id: shop_id } });
+      // Fetch shop and subscription in parallel for better performance
+      const [shop, subscription] = await Promise.all([
+        this.prisma.shop.findUnique({ 
+          where: { id: shop_id },
+          select: {
+            id: true,
+            shop_name: true,
+            subscription_status: true,
+            subscription_plan: true,
+            plan_start_date: true,
+            plan_end_date: true,
+          }
+        }),
+        this.prisma.shopSubscription.findFirst({
+          where: { 
+            shop_id: shop_id,
+            status: {
+              in: [SubscriptionStatus.ACTIVE, SubscriptionStatus.TRIAL, SubscriptionStatus.PAYMENT_PENDING]
+            }
+          },
+          orderBy: { created_at: 'desc' },
+          include: {
+            plan: {
+              select: {
+                id: true,
+                plan_name: true,
+                description: true,
+                max_vehicles: true,
+                max_staff_users: true,
+              }
+            },
+            pricing: {
+              select: {
+                id: true,
+                duration: true,
+                price: true,
+                discount: true,
+              }
+            }
+          }
+        })
+      ]);
+
       if (!shop) {
         logger.warn(`Get shop subscription failed: Shop not found - ${shop_id}`);
         throw new NotFoundException('Shop not found');
       }
-
-      // Get the most recent active subscription
-      const subscription = await this.prisma.shopSubscription.findFirst({
-        where: { 
-          shop_id: shop_id,
-          status: {
-            in: [SubscriptionStatus.ACTIVE, SubscriptionStatus.TRIAL, SubscriptionStatus.PAYMENT_PENDING]
-          }
-        },
-        orderBy: { created_at: 'desc' },
-        include: {
-          plan: {
-            select: {
-              id: true,
-              plan_name: true,
-              description: true,
-              max_vehicles: true,
-              max_staff_users: true,
-            }
-          },
-          pricing: {
-            select: {
-              id: true,
-              duration: true,
-              price: true,
-              discount: true,
-            }
-          }
-        }
-      });
 
       // If no active subscription, check shop's subscription_status
       if (!subscription) {
@@ -98,12 +110,6 @@ export class SubscriptionService {
   // -----------------------------
   public async getShopSubscriptionHistory(shop_id: string, query: { page?: number; limit?: number }): Promise<any> {
     try {
-      const shop = await this.prisma.shop.findUnique({ where: { id: shop_id } });
-      if (!shop) {
-        logger.warn(`Get shop subscription history failed: Shop not found - ${shop_id}`);
-        throw new NotFoundException('Shop not found');
-      }
-
       const { page = 1, limit = 10 } = query;
       const skip = (page - 1) * limit;
 
@@ -161,12 +167,6 @@ export class SubscriptionService {
   // -----------------------------
   public async getShopPaymentHistory(shop_id: string, query: { page?: number; limit?: number; status?: string }): Promise<any> {
     try {
-      const shop = await this.prisma.shop.findUnique({ where: { id: shop_id } });
-      if (!shop) {
-        logger.warn(`Get shop payment history failed: Shop not found - ${shop_id}`);
-        throw new NotFoundException('Shop not found');
-      }
-
       const { page = 1, limit = 10, status } = query;
       const skip = (page - 1) * limit;
 
@@ -187,11 +187,11 @@ export class SubscriptionService {
           take: limit,
           include: {
             subscription: {
-              include: {
+              select: {
+                id: true,
                 plan: {
                   select: {
                     plan_name: true,
-                    description: true,
                   }
                 }
               }
@@ -264,67 +264,84 @@ export class SubscriptionService {
       const finalAmount = basePrice - (basePrice * discount) / 100;
       const amountInPaise = Math.round(finalAmount * 100);
 
-      const receipt = `sub_${shop_id}_${plan.id}_${pricing.id}_${Date.now()}`;
+      // Validate amount (Razorpay minimum is ₹1 = 100 paise)
+      if (amountInPaise < 100) {
+        logger.error(`Create subscription order failed: Amount too small - ${amountInPaise} paise (₹${finalAmount})`);
+        throw new HttpException(400, 'Amount must be at least ₹1');
+      }
+
+      const receipt = `sub_${shop_id.slice(-8)}_${Date.now()}`;
 
       const authString = Buffer.from(`${RAZORPAY_KEY_ID}:${RAZORPAY_KEY_SECRET}`).toString('base64');
 
-      const razorpayOrderResponse = await axios.post(
-        'https://api.razorpay.com/v1/orders',
-        {
-          amount: amountInPaise,
-          currency: 'INR',
-          receipt,
-          notes: {
+      try {
+        const razorpayOrderResponse = await axios.post(
+          'https://api.razorpay.com/v1/orders',
+          {
+            amount: amountInPaise,
+            currency: 'INR',
+            receipt,
+            notes: {
+              shop_id,
+              plan_id: plan.id,
+              subscription_pricing_id: pricing.id,
+              duration: data.duration,
+            },
+          },
+          {
+            headers: {
+              Authorization: `Basic ${authString}`,
+              'Content-Type': 'application/json',
+            },
+          },
+        );
+
+        const order = razorpayOrderResponse.data;
+
+        await this.prisma.transaction.create({
+          data: {
+            id: ulid(),
             shop_id,
-            plan_id: plan.id,
-            subscription_pricing_id: pricing.id,
-            duration: data.duration,
+            subscription_id: null,
+            amount: finalAmount,
+            currency: 'INR',
+            status: TransactionStatus.PENDING,
+            payment_method: null,
+            razorpay_order_id: order.id,
+            razorpay_payment_id: null,
+            razorpay_signature: null,
+            receipt_number: receipt,
+            invoice_url: null,
+            description: `Subscription purchase - ${plan.plan_name} (${pricing.duration})`,
+            notes: {
+              shop_id,
+              plan_id: plan.id,
+              subscription_pricing_id: pricing.id,
+              duration: data.duration,
+            } as Prisma.JsonObject,
+            failure_reason: null,
+            payment_date: null,
           },
-        },
-        {
-          headers: {
-            Authorization: `Basic ${authString}`,
-          },
-        },
-      );
+        });
 
-      const order = razorpayOrderResponse.data;
+        logger.info(`Razorpay order created successfully for shop ${shop_id} - order_id: ${order.id}`);
 
-      await this.prisma.transaction.create({
-        data: {
-          id: ulid(),
-          shop_id,
-          subscription_id: null,
+        return {
+          order_id: order.id,
           amount: finalAmount,
           currency: 'INR',
-          status: TransactionStatus.PENDING,
-          payment_method: null,
-          razorpay_order_id: order.id,
-          razorpay_payment_id: null,
-          razorpay_signature: null,
-          receipt_number: receipt,
-          invoice_url: null,
-          description: `Subscription purchase - ${plan.plan_name} (${pricing.duration})`,
-          notes: {
-            shop_id,
-            plan_id: plan.id,
-            subscription_pricing_id: pricing.id,
-            duration: data.duration,
-          } as Prisma.JsonObject,
-          failure_reason: null,
-          payment_date: null,
-        },
-      });
-
-      logger.info(`Razorpay order created successfully for shop ${shop_id} - order_id: ${order.id}`);
-
-      return {
-        order_id: order.id,
-        amount: finalAmount,
-        currency: 'INR',
-        razorpay_key_id: RAZORPAY_KEY_ID,
-        notes: order.notes,
-      };
+          razorpay_key_id: RAZORPAY_KEY_ID,
+          notes: order.notes,
+        };
+      } catch (razorpayError: any) {
+        logger.error(`Razorpay API error: ${razorpayError.message}. Status: ${razorpayError.response?.status}, Amount: ${amountInPaise} paise, Receipt: ${receipt}, Response: ${JSON.stringify(razorpayError.response?.data)}`);
+        
+        if (razorpayError.response?.data) {
+          const errorMessage = razorpayError.response.data.error?.description || razorpayError.response.data.error?.message || 'Razorpay API error';
+          throw new HttpException(razorpayError.response.status || 400, errorMessage);
+        }
+        throw new HttpException(500, 'Failed to create Razorpay order');
+      }
     } catch (error: any) {
       if (error instanceof HttpException) throw error;
       logger.error(`Create subscription order error for shop ${shop_id}: ${error.message}`);
@@ -465,6 +482,31 @@ export class SubscriptionService {
     } catch (error: any) {
       if (error instanceof HttpException) throw error;
       logger.error(`Process Razorpay webhook error: ${error.message}`);
+      throw error;
+    }
+  }
+
+  // -----------------------------
+  // GET SUBSCRIPTION PLANS - Retrieve all active plans for shop users
+  // -----------------------------
+  public async getSubscriptionPlans(): Promise<any> {
+    try {
+      const plans = await this.prisma.subscriptionPlan.findMany({
+        where: { is_active: true },
+        include: {
+          pricing: {
+            where: { is_active: true },
+            orderBy: { price: 'asc' },
+          },
+        },
+        orderBy: { created_at: 'asc' },
+      });
+      
+      logger.info(`Retrieved ${plans.length} subscription plans`);
+      return plans;
+    } catch (error: any) {
+      if (error instanceof HttpException) throw error;
+      logger.error(`Get subscription plans error: ${error.message}`);
       throw error;
     }
   }

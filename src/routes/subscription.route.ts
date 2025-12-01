@@ -19,6 +19,9 @@ export class SubscriptionRoute implements Routes {
   }
 
   private initializeRoutes() {
+    // Get all subscription plans (public endpoint for shop users)
+    this.router.get(`${this.path}/plans`, this.subscriptionController.getSubscriptionPlans);
+
     // Shop subscription routes (for shop users)
     this.router.get(`${this.path}/shop/current`, [AuthMiddleware], this.subscriptionController.getShopCurrentSubscription);
     this.router.get(`${this.path}/shop/history`, [AuthMiddleware, ValidationMiddleware(getSubscriptionHistoryQuerySchema, 'query')], this.subscriptionController.getShopSubscriptionHistory);
