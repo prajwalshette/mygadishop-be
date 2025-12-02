@@ -1,7 +1,7 @@
 export interface User {
   id?: string;
   email: string;
-  password: string;
+  password?: string; // Optional - not included in cache for security
   role?: UserRole;
   name?: string;
   phone?: string;
@@ -14,7 +14,7 @@ export interface AdminUser {
   id?: string;
   email: string;
   role?: AdminRole;
-  password: string;
+  password?: string; // Optional - not included in cache for security
   name?: string;
   phone?: string;
   is_active?: boolean;

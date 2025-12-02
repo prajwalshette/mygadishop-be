@@ -13,6 +13,7 @@ import { AdminRole, AdminUser, ShopUserResponseDTO, User, UserRole } from '@inte
 import prisma from '@/database';
 import { ulid } from 'ulid';
 import { onboardTempTokenCache } from '@/utils/onboardTempTokenCache';
+import { SessionCache } from '@/utils/sessionCache';
 import { IShop, ShopType } from '@/interfaces/shop.interface';
 import { LoginDto } from '@/schemas/auth.schema';
 import { OnboardShopDto } from '@/schemas/onboard.schema';
@@ -128,9 +129,11 @@ export class AuthService {
         where: { id: session_id },
       });
 
-      await prisma.userSession.delete({
-        where: { id: session_id },
-      });
+      // Delete session from database and clear Redis cache
+      await Promise.all([
+        prisma.userSession.delete({ where: { id: session_id } }),
+        SessionCache.deleteSession(session_id),
+      ]);
 
       logger.info(`User logged out successfully: session ${session_id}`);
     } catch (error) {
@@ -164,9 +167,11 @@ export class AuthService {
         throw new NotFoundException('Session not found');
       }
 
-      await prisma.adminSession.delete({
-        where: { id: session_id },
-      });
+      // Delete session from database and clear Redis cache
+      await Promise.all([
+        prisma.adminSession.delete({ where: { id: session_id } }),
+        SessionCache.deleteSession(session_id, 'admin'),
+      ]);
 
       logger.info(`Admin logged out successfully: session ${session_id}`);
     } catch (error) {
