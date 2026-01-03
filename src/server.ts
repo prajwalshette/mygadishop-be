@@ -27,4 +27,8 @@ const app = new App([
   new UserRoute(),
 ]);
 
-app.listen();
+export default app.app;
+
+if (process.env.NODE_ENV !== 'production') {
+  app.listen();
+}
