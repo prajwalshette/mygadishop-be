@@ -41,9 +41,28 @@ export class App {
 
   private initializeMiddlewares() {
     this.app.use(morgan(LOG_FORMAT, { stream }));
-    this.app.use(cors({ origin: ORIGIN, credentials: CREDENTIALS }));
+
+    const origins = ORIGIN ? ORIGIN.split(',') : ['http://localhost:3000', 'http://localhost:8085'];
+    this.app.use(
+      cors({
+        origin: (origin, callback) => {
+          if (!origin || origins.includes(origin) || origins.includes('*')) {
+            callback(null, true);
+          } else {
+            callback(new Error('Not allowed by CORS'));
+          }
+        },
+        credentials: CREDENTIALS,
+      }),
+    );
+
     this.app.use(hpp());
-    this.app.use(helmet());
+    this.app.use(
+      helmet({
+        crossOriginResourcePolicy: { policy: 'cross-origin' },
+        crossOriginEmbedderPolicy: false,
+      }),
+    );
     this.app.use(compression());
     this.app.use(express.json());
     this.app.use(express.urlencoded({ extended: true }));
