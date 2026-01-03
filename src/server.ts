@@ -1,4 +1,32 @@
-import 'tsconfig-paths/register';
+// Register path aliases BEFORE any imports that use them
+// This must be done using require to ensure execution order
+const { join } = require('path');
+const { register } = require('tsconfig-paths');
+
+// Register path aliases explicitly for Vercel serverless environment
+// Use process.cwd() which points to project root in Vercel
+const projectRoot = process.cwd();
+const baseUrl = join(projectRoot, 'src');
+
+// Match tsconfig.json paths configuration (baseUrl: "src")
+const paths = {
+  '@/*': ['*'],
+  '@config': ['config'],
+  '@controllers/*': ['controllers/*'],
+  '@dtos/*': ['dtos/*'],
+  '@exceptions/*': ['exceptions/*'],
+  '@interfaces/*': ['interfaces/*'],
+  '@middlewares/*': ['middlewares/*'],
+  '@routes/*': ['routes/*'],
+  '@services/*': ['services/*'],
+  '@utils/*': ['utils/*'],
+};
+
+register({
+  baseUrl,
+  paths,
+});
+
 import { App } from '@/app';
 import { AuthRoute } from '@routes/auth.route';
 import { ValidateEnv } from '@utils/validateEnv';
