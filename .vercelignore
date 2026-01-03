@@ -1,8 +1,6 @@
-node_modules
 .env
 .env.*
 !.env.example
-src
 *.md
 !README.md
 .git
@@ -19,3 +17,4 @@ Dockerfile*
 docker-compose.yml
 Makefile
 nginx.conf
+
