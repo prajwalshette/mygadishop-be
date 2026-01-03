@@ -6,7 +6,7 @@ import express from 'express';
 import helmet from 'helmet';
 import hpp from 'hpp';
 import morgan from 'morgan';
-import { NODE_ENV, PORT, LOG_FORMAT, ORIGIN, CREDENTIALS, BASE_PATH} from '@config';
+import { NODE_ENV, PORT, LOG_FORMAT, ORIGIN, CREDENTIALS, BASE_PATH } from '@config';
 import { Routes } from '@interfaces/routes.interface';
 import { ErrorMiddleware } from '@middlewares/error.middleware';
 import { logger, stream } from '@utils/logger';
@@ -57,10 +57,10 @@ export class App {
       console.log('Health check request received');
       return response.status(200).send({
         status: 'SUCCESS',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
     });
-    
+
     routes.forEach(route => {
       this.app.use(basePath, route.router);
     });
