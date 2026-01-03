@@ -3,31 +3,11 @@ import { join } from 'path';
 import pino from 'pino';
 import { LOG_DIR } from '@config';
 
-// logs dir
-const logDir: string = join(__dirname, LOG_DIR);
-
-if (!existsSync(logDir)) {
-  mkdirSync(logDir);
-}
-
-// Create separate log directories
-const debugLogDir = join(logDir, 'debug');
-const errorLogDir = join(logDir, 'error');
-
-if (!existsSync(debugLogDir)) {
-  mkdirSync(debugLogDir, { recursive: true });
-}
-
-if (!existsSync(errorLogDir)) {
-  mkdirSync(errorLogDir, { recursive: true });
-}
-
-// Get current date for log filename
-const getCurrentDate = () => new Date().toISOString().split('T')[0];
+const isProduction = process.env.NODE_ENV === 'production';
 
 // Pino configuration
 const logger = pino({
-  level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
+  level: isProduction ? 'info' : 'debug',
   timestamp: pino.stdTimeFunctions.isoTime,
   transport: {
     targets: [
@@ -42,24 +22,27 @@ const logger = pino({
           singleLine: false,
         },
       },
-      // Debug log file - logs everything (debug and above)
-      {
-        target: 'pino/file',
-        level: 'debug',
-        options: {
-          destination: join(debugLogDir, `${getCurrentDate()}.log`),
-          mkdir: true,
-        },
-      },
-      // Error log file - logs only errors
-      {
-        target: 'pino/file',
-        level: 'error',
-        options: {
-          destination: join(errorLogDir, `${getCurrentDate()}.log`),
-          mkdir: true,
-        },
-      },
+      // File logging (Only in non-production environments)
+      ...(!isProduction
+        ? [
+            {
+              target: 'pino/file',
+              level: 'debug',
+              options: {
+                destination: join(__dirname, LOG_DIR, 'debug', `${new Date().toISOString().split('T')[0]}.log`),
+                mkdir: true,
+              },
+            },
+            {
+              target: 'pino/file',
+              level: 'error',
+              options: {
+                destination: join(__dirname, LOG_DIR, 'error', `${new Date().toISOString().split('T')[0]}.log`),
+                mkdir: true,
+              },
+            },
+          ]
+        : []),
     ],
   },
 });
