@@ -33,10 +33,7 @@ export class UserService {
       // Check if email already exists
       const existingUser = await this.prisma.user.findFirst({
         where: {
-          OR: [
-            { email: userData.email },
-            { phone: userData.phone || undefined },
-          ],
+          OR: [{ email: userData.email }, { phone: userData.phone || undefined }],
           deleted_at: null,
         },
       });
@@ -221,10 +218,7 @@ export class UserService {
             AND: [
               { id: { not: user_id } },
               {
-                OR: [
-                  userData.email ? { email: userData.email } : {},
-                  userData.phone ? { phone: userData.phone } : {},
-                ],
+                OR: [userData.email ? { email: userData.email } : {}, userData.phone ? { phone: userData.phone } : {}],
               },
               { deleted_at: null },
             ],
@@ -262,7 +256,7 @@ export class UserService {
       logger.info(`User updated successfully: ${user_id}`);
       return {
         ...updatedUser,
-        role: updatedUser.role as ShopUserRole,
+        role: updatedUser.role as UserRole,
       };
     } catch (error: any) {
       if (error instanceof HttpException) throw error;
@@ -341,4 +335,3 @@ export class UserService {
     }
   }
 }
-

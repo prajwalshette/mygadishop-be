@@ -1,6 +1,4 @@
-// Import path registration FIRST - this must happen before any other imports
-// Using require() ensures it runs before ES6 imports are hoisted
-require('./paths.cjs');
+import './paths-init';
 
 import { App } from '@/app';
 import { AuthRoute } from '@routes/auth.route';
