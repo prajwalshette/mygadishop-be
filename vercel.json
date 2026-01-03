@@ -6,6 +6,11 @@
       "use": "@vercel/node"
     }
   ],
+  "functions": {
+    "src/server.ts": {
+      "includeFiles": "tsconfig.json"
+    }
+  },
   "routes": [
     {
       "src": "/(.*)",
