@@ -54,7 +54,10 @@ export class AuthController {
 
       await this.auth.logout(token, session_id);
 
-      response.setHeader('Set-Cookie', ['Authorization=; HttpOnly; Max-Age=0; Path=/']);
+      const isProduction = process.env.NODE_ENV === 'production';
+      response.setHeader('Set-Cookie', [
+        `Authorization=; HttpOnly; Max-Age=0; Path=/; SameSite=${isProduction ? 'None' : 'Lax'}${isProduction ? '; Secure' : ''}`,
+      ]);
 
       return response.status(200).json({
         success: true,
@@ -86,7 +89,10 @@ export class AuthController {
 
       await this.auth.adminLogout(token, session_id);
 
-      response.setHeader('Set-Cookie', ['Authorization=; HttpOnly; Max-Age=0; Path=/']);
+      const isProduction = process.env.NODE_ENV === 'production';
+      response.setHeader('Set-Cookie', [
+        `Authorization=; HttpOnly; Max-Age=0; Path=/; SameSite=${isProduction ? 'None' : 'Lax'}${isProduction ? '; Secure' : ''}`,
+      ]);
 
       return response.status(200).json({
         success: true,
@@ -109,18 +115,18 @@ export class AuthController {
 
       if (result.newUser) {
         // New user - needs to complete onboarding
-        response.status(200).json({ 
-          data: { newUser: true }, 
-          message: 'Account created. Please complete onboarding.' 
+        response.status(200).json({
+          data: { newUser: true },
+          message: 'Account created. Please complete onboarding.',
         });
       } else {
         // Existing user - logged in successfully
-        response.status(200).json({ 
-          data: { 
+        response.status(200).json({
+          data: {
             newUser: false,
-            user: result.user 
-          }, 
-          message: 'Login successful' 
+            user: result.user,
+          },
+          message: 'Login successful',
         });
       }
     } catch (error) {
