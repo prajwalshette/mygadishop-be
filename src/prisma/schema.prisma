@@ -2,8 +2,8 @@
 // Prisma Schema for Second Hand Vehicle Management Platform
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider          = "postgresql"
+  url               = env("DATABASE_URL")
   shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
 }
 
@@ -53,8 +53,9 @@ model User {
   created_at DateTime     @default(now())
   updated_at DateTime     @updatedAt
 
-  shop     Shop          @relation(fields: [shop_id], references: [id], onDelete: Cascade)
-  sessions UserSession[]
+  shop      Shop          @relation(fields: [shop_id], references: [id], onDelete: Cascade)
+  sessions  UserSession[]
+  inquiries Inquiry[]
 
   @@unique([shop_id, email])
   @@index([shop_id, role])
@@ -91,11 +92,22 @@ model Shop {
   shop_type        ShopType @default(BOTH)
   established_year Int?
 
+  description    String?
+  business_hours Json? // {monday: {open: "09:00", close: "18:00"}}
+
+  // NEW: Social Media
+  facebook_url    String?
+  instagram_url   String?
+  twitter_url     String?
+  youtube_url     String?
+  whatsapp_number String?
+
   // Subscription & Status
   subscription_status SubscriptionStatus    @default(TRIAL)
   subscription_plan   SubscriptionPlanName?
   plan_start_date     DateTime?
   plan_end_date       DateTime?
+  trial_ends_at       DateTime?
   is_verified         Boolean               @default(false)
   is_active           Boolean               @default(true)
   deleted_at          DateTime?
@@ -111,6 +123,7 @@ model Shop {
   payments      VehiclePayment[]
   subscriptions ShopSubscription[]
   transactions  Transaction[]
+  inquiries     Inquiry[]
 }
 
 // ============= SUBSCRIPTION PLANS ===========
@@ -146,7 +159,7 @@ model SubscriptionPricing {
   shop_subscriptions ShopSubscription[]
 
   @@unique([plan_id, duration])
-  @@index([plan_id]) 
+  @@index([plan_id])
 }
 
 // ============= SHOP SUBSCRIPTION ===========
@@ -165,9 +178,9 @@ model ShopSubscription {
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
-  shop         Shop             @relation(fields: [shop_id], references: [id], onDelete: Cascade)
-  plan         SubscriptionPlan @relation(fields: [plan_id], references: [id])
-  pricing SubscriptionPricing @relation(fields: [subscription_pricing_id], references: [id])
+  shop         Shop                @relation(fields: [shop_id], references: [id], onDelete: Cascade)
+  plan         SubscriptionPlan    @relation(fields: [plan_id], references: [id])
+  pricing      SubscriptionPricing @relation(fields: [subscription_pricing_id], references: [id])
   transactions Transaction[]
 
   @@index([shop_id, status])
@@ -213,25 +226,28 @@ model Transaction {
 
 // ============= CUSTOMERS ===========
 model Customer {
-  id              String  @id
-  shop_id         String
-  name            String
-  phone           String
-  email           String?
-  address         String?
-  city            String?
-  state           String?
-  pincode         String?
+  id        String  @id
+  shop_id   String
+  name      String
+  phone     String
+  email     String?
+  address   String?
+  city      String?
+  state     String?
+  pincode   String?
+  alt_phone String?
+  gender    Gender?
 
   customer_type CustomerType @default(BUYER)
   deleted_at    DateTime?
   created_at    DateTime     @default(now())
   updated_at    DateTime     @updatedAt
 
-  shop     Shop             @relation(fields: [shop_id], references: [id], onDelete: Cascade)
-  vehicles Vehicle[]
-  services Servicing[]
-  payments VehiclePayment[]
+  shop      Shop             @relation(fields: [shop_id], references: [id], onDelete: Cascade)
+  vehicles  Vehicle[]
+  services  Servicing[]
+  payments  VehiclePayment[]
+  inquiries Inquiry[]
 
   @@unique([shop_id, phone])
   @@index([shop_id, customer_type])
@@ -256,15 +272,19 @@ model Vehicle {
   mileage             Float
 
   // Technical Details
-  fuel_type            FuelType
-  transmission         TransmissionType
-  engine_capacity      Int? // in CC
-  ownership            OwnershipType    @default(FIRST)
-  insurance_valid_till DateTime?
+  fuel_type               FuelType
+  transmission            TransmissionType
+  engine_capacity         Int? // in CC
+  ownership               OwnershipType    @default(FIRST)
+  insurance_valid_till    DateTime?
+  registration_valid_till DateTime?
+  puc_valid_till          DateTime?
 
   // Pricing
-  buying_price   Float?
-  selling_price  Float?
+  buying_price        Float?
+  selling_price       Float?
+  min_selling_price   Float?
+  is_price_negotiable Boolean @default(true)
 
   // Media
   vehicle_image_urls String[]
@@ -279,18 +299,28 @@ model Vehicle {
   features    String[]
   description String?
 
-  deleted_at  DateTime?
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
+  // NEW: Featured & Display
+  is_featured    Boolean   @default(false)
+  featured_until DateTime?
+  view_count     Int       @default(0)
 
-  shop     Shop             @relation(fields: [shop_id], references: [id], onDelete: Cascade)
-  customer Customer?        @relation(fields: [customer_id], references: [id])
-  services Servicing[]
-  payments VehiclePayment[]
+  // NEW: SEO for public website
+  slug             String? @unique // URL-friendly identifier
+  meta_title       String?
+  meta_description String?
+
+  deleted_at DateTime?
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+
+  shop      Shop             @relation(fields: [shop_id], references: [id], onDelete: Cascade)
+  customer  Customer?        @relation(fields: [customer_id], references: [id])
+  services  Servicing[]
+  payments  VehiclePayment[]
+  inquiries Inquiry[]
 
   @@unique([shop_id, registration_number])
   @@unique([shop_id, chassis_number])
-
   @@index([shop_id, status])
   @@index([shop_id, customer_id])
 }
@@ -308,16 +338,25 @@ model Servicing {
   parts_replaced String[]
   labor_cost     Float    @default(0)
   parts_cost     Float    @default(0)
+  other_charges  Float    @default(0) // NEW: Washing, inspection, etc.
   total_cost     Float
 
   status            ServicingStatus
   next_service_date DateTime?
+  next_service_km   Int? // Next service at X km
   technician_name   String?
+
+  // Current odometer reading
+  odometer_reading Int?
+
+  // Quality rating (customer feedback)
+  rating            Int? // 1-5 stars
+  customer_feedback String?
 
   service_images String[]
   deleted_at     DateTime?
-  created_at     DateTime @default(now())
-  updated_at     DateTime @updatedAt
+  created_at     DateTime  @default(now())
+  updated_at     DateTime  @updatedAt
 
   shop     Shop     @relation(fields: [shop_id], references: [id], onDelete: Cascade)
   vehicle  Vehicle  @relation(fields: [vehicle_id], references: [id], onDelete: Cascade)
@@ -340,13 +379,22 @@ model VehiclePayment {
   method       PaymentMethod
   status       PaymentStatus
 
+  // NEW: Payment date
+  payment_date DateTime @default(now())
+
+  // NEW: Cheque details
+  cheque_number String?
+  cheque_date   DateTime?
+  bank_name     String?
+  cheque_status ChequeStatus?
+
   transaction_id         String?
   payment_receipt_images String[]
   notes                  String?
 
   deleted_at DateTime?
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
 
   shop     Shop     @relation(fields: [shop_id], references: [id], onDelete: Cascade)
   vehicle  Vehicle  @relation(fields: [vehicle_id], references: [id], onDelete: Cascade)
@@ -355,6 +403,79 @@ model VehiclePayment {
   @@index([shop_id, status])
   @@index([shop_id, vehicle_id])
   @@index([shop_id, customer_id])
+  @@index([shop_id, payment_date])
+}
+
+// ============= INQUIRIES / LEADS ===========
+model Inquiry {
+  id          String  @id
+  shop_id     String
+  customer_id String?
+  vehicle_id  String? // If inquiry about specific vehicle
+  assigned_to String? // User ID
+
+  // Inquiry Details
+  inquiry_type InquiryType
+  status       InquiryStatus   @default(NEW)
+  priority     InquiryPriority @default(MEDIUM)
+
+  // Customer Info (if not registered)
+  customer_name  String
+  customer_phone String
+  customer_email String?
+
+  // Inquiry Content
+  vehicle_type     VehicleType?
+  budget_min       Float?
+  budget_max       Float?
+  preferred_brands String[]
+  message          String?
+  requirements     Json? // Detailed requirements
+
+  // Source Tracking
+  source      InquirySource @default(WALK_IN)
+  referred_by String?
+
+  // Follow-up
+  follow_up_date  DateTime?
+  follow_up_notes String
+
+  // Conversion
+  converted_at     DateTime?
+  conversion_value Float?
+
+  // Lost/Closed
+  closed_at      DateTime?
+  closure_reason String?
+
+  deleted_at DateTime?
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+
+  shop     Shop          @relation(fields: [shop_id], references: [id], onDelete: Cascade)
+  customer Customer?     @relation(fields: [customer_id], references: [id])
+  vehicle  Vehicle?      @relation(fields: [vehicle_id], references: [id])
+  user     User?         @relation(fields: [assigned_to], references: [id])
+  notes    InquiryNote[]
+
+  @@index([shop_id, status])
+  @@index([shop_id, inquiry_type])
+  @@index([shop_id, assigned_to])
+  @@index([created_at])
+}
+
+// Inquiry Notes/Comments
+model InquiryNote {
+  id          String   @id
+  inquiry_id  String
+  user_id     String?
+  note        String
+  is_internal Boolean  @default(false) // Internal note (not shown to customer)
+  created_at  DateTime @default(now())
+
+  inquiry Inquiry @relation(fields: [inquiry_id], references: [id], onDelete: Cascade)
+
+  @@index([inquiry_id, created_at])
 }
 
 // ============= ENUMS ===========
@@ -362,6 +483,12 @@ enum PlatformAdminRole {
   SUPER_ADMIN
   ADMIN
   SUPPORT
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
 }
 
 enum ShopUserRole {
@@ -374,6 +501,12 @@ enum ShopType {
   TWO_WHEELER
   FOUR_WHEELER
   BOTH
+}
+
+enum ChequeStatus {
+  PENDING
+  CLEARED
+  BOUNCED
 }
 
 enum SubscriptionPlanName {
@@ -481,4 +614,40 @@ enum TransactionStatus {
   FAILED
   REFUNDED
   CANCELLED
+}
+
+//Inquiry Enums
+enum InquiryStatus {
+  NEW
+  CONTACTED
+  FOLLOW_UP
+  CONVERTED
+  LOST
+  CLOSED
+}
+
+enum InquiryPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum InquiryType {
+  BUYING
+  SELLING
+  SERVICE
+  GENERAL
+}
+
+enum InquirySource {
+  WALK_IN
+  PHONE_CALL
+  WEBSITE
+  WHATSAPP
+  FACEBOOK
+  INSTAGRAM
+  REFERRAL
+  OLX
+  OTHER
 }
