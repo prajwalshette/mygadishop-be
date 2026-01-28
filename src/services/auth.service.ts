@@ -2,7 +2,7 @@ import { Prisma, PrismaClient, SubscriptionPlanName, SubscriptionStatus } from '
 import { compare, hash } from 'bcrypt';
 import { sign } from 'jsonwebtoken';
 import { Service } from 'typedi';
-import { SECRET_KEY } from '@config';
+import { SECRET_KEY, NODE_ENV } from '@config';
 import { HttpException } from '@exceptions/HttpException';
 import { NotFoundException } from '@exceptions/NotFoundException';
 import { ConflictException } from '@exceptions/ConflictException';
@@ -130,10 +130,7 @@ export class AuthService {
       });
 
       // Delete session from database and clear Redis cache
-      await Promise.all([
-        prisma.userSession.delete({ where: { id: session_id } }),
-        SessionCache.deleteSession(session_id),
-      ]);
+      await Promise.all([prisma.userSession.delete({ where: { id: session_id } }), SessionCache.deleteSession(session_id)]);
 
       logger.info(`User logged out successfully: session ${session_id}`);
     } catch (error) {
@@ -168,10 +165,7 @@ export class AuthService {
       }
 
       // Delete session from database and clear Redis cache
-      await Promise.all([
-        prisma.adminSession.delete({ where: { id: session_id } }),
-        SessionCache.deleteSession(session_id, 'admin'),
-      ]);
+      await Promise.all([prisma.adminSession.delete({ where: { id: session_id } }), SessionCache.deleteSession(session_id, 'admin')]);
 
       logger.info(`Admin logged out successfully: session ${session_id}`);
     } catch (error) {
@@ -388,7 +382,9 @@ export class AuthService {
   }
 
   public createCookie(tokenData: TokenData): string {
-    return `Authorization=${tokenData.token}; HttpOnly; Max-Age=${tokenData.expiresIn}; Path=/; SameSite=Lax`;
+    const isProduction = NODE_ENV === 'production';
+    return `Authorization=${tokenData.token}; HttpOnly; Max-Age=${tokenData.expiresIn}; Path=/; SameSite=${isProduction ? 'None' : 'Lax'}${
+      isProduction ? '; Secure' : ''
+    }`;
   }
-
 }
