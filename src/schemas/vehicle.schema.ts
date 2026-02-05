@@ -1,9 +1,12 @@
 import { z } from 'zod';
-import { VehicleType, FuelType, TransmissionType, BikeStatus, OwnershipType } from '@/interfaces/vehicle.interface';
+import { VehicleType, FuelType, TransmissionType, VehicleStatus, OwnershipType } from '@/interfaces/vehicle.interface';
 
 // Create Vehicle Schema
 export const createVehicleSchema = z.object({
-  customer_id: z.string().optional(),
+  customer_id: z
+    .string()
+    .optional()
+    .transform((val) => (val === undefined || val === '' ? null : val)),
   
   type: z.nativeEnum(VehicleType),
   
@@ -42,16 +45,45 @@ export const createVehicleSchema = z.object({
     z.date(),
     z.null(),
   ]).optional(),
+
+  registration_valid_till: z.union([
+    z.string().transform((val) => {
+      if (!val || val === '') return null;
+      const date = new Date(val);
+      return isNaN(date.getTime()) ? null : date;
+    }),
+    z.date(),
+    z.null(),
+  ]).optional(),
+
+  puc_valid_till: z.union([
+    z.string().transform((val) => {
+      if (!val || val === '') return null;
+      const date = new Date(val);
+      return isNaN(date.getTime()) ? null : date;
+    }),
+    z.date(),
+    z.null(),
+  ]).optional(),
   
   buying_price: z.number().min(0).optional(),
   
   selling_price: z.number().min(0).optional(),
+
+  min_selling_price: z.number().min(0).optional(),
+
+  is_price_negotiable: z
+    .union([
+      z.boolean(),
+      z.string().transform((v) => v === 'true'),
+    ])
+    .optional(),
   
   vehicle_image_urls: z.array(z.string().url()).optional(),
   
   vehicle_doc_urls: z.array(z.string().url()).optional(),
   
-  status: z.nativeEnum(BikeStatus),
+  status: z.nativeEnum(VehicleStatus),
   
   buying_date: z.union([
     z.string().transform((val) => {
@@ -75,11 +107,35 @@ export const createVehicleSchema = z.object({
   features: z.array(z.string()).optional(),
   
   description: z.string().optional(),
+
+  is_featured: z
+    .union([
+      z.boolean(),
+      z.string().transform((v) => v === 'true'),
+    ])
+    .optional(),
+
+  featured_until: z.union([
+    z.string().transform((val) => {
+      if (!val || val === '') return null;
+      const date = new Date(val);
+      return isNaN(date.getTime()) ? null : date;
+    }),
+    z.date(),
+    z.null(),
+  ]).optional(),
+
+  slug: z.string().trim().min(1).optional(),
+  meta_title: z.string().trim().optional(),
+  meta_description: z.string().trim().optional(),
 });
 
 // Update Vehicle Schema - All fields optional
 export const updateVehicleSchema = z.object({
-  customer_id: z.string().optional(),
+  customer_id: z
+    .string()
+    .optional()
+    .transform((val) => (val === undefined || val === '' ? null : val)),
   
   type: z.nativeEnum(VehicleType).optional(),
   
@@ -118,16 +174,45 @@ export const updateVehicleSchema = z.object({
     z.date(),
     z.null(),
   ]).optional(),
+
+  registration_valid_till: z.union([
+    z.string().transform((val) => {
+      if (!val || val === '') return null;
+      const date = new Date(val);
+      return isNaN(date.getTime()) ? null : date;
+    }),
+    z.date(),
+    z.null(),
+  ]).optional(),
+
+  puc_valid_till: z.union([
+    z.string().transform((val) => {
+      if (!val || val === '') return null;
+      const date = new Date(val);
+      return isNaN(date.getTime()) ? null : date;
+    }),
+    z.date(),
+    z.null(),
+  ]).optional(),
   
   buying_price: z.number().min(0).optional(),
   
   selling_price: z.number().min(0).optional(),
+
+  min_selling_price: z.number().min(0).optional(),
+
+  is_price_negotiable: z
+    .union([
+      z.boolean(),
+      z.string().transform((v) => v === 'true'),
+    ])
+    .optional(),
   
   vehicle_image_urls: z.array(z.string().url()).optional(),
   
   vehicle_doc_urls: z.array(z.string().url()).optional(),
   
-  status: z.nativeEnum(BikeStatus).optional(),
+  status: z.nativeEnum(VehicleStatus).optional(),
   
   buying_date: z.union([
     z.string().transform((val) => {
@@ -152,6 +237,27 @@ export const updateVehicleSchema = z.object({
   features: z.array(z.string()).optional(),
   
   description: z.string().optional(),
+
+  is_featured: z
+    .union([
+      z.boolean(),
+      z.string().transform((v) => v === 'true'),
+    ])
+    .optional(),
+
+  featured_until: z.union([
+    z.string().transform((val) => {
+      if (!val || val === '') return null;
+      const date = new Date(val);
+      return isNaN(date.getTime()) ? null : date;
+    }),
+    z.date(),
+    z.null(),
+  ]).optional(),
+
+  slug: z.string().trim().min(1).optional(),
+  meta_title: z.string().trim().optional(),
+  meta_description: z.string().trim().optional(),
 });
 
 // Vehicle ID Param Schema
@@ -177,7 +283,7 @@ export const getVehicleQuerySchema = z.object({
     
   search: z.string().trim().optional(), // Searches: brand, model, variant, registration_number, chassis_number, engine_number
   
-  status: z.nativeEnum(BikeStatus).optional(),
+  status: z.nativeEnum(VehicleStatus).optional(),
   
   type: z.nativeEnum(VehicleType).optional(),
   
@@ -190,7 +296,7 @@ export const getVehicleQuerySchema = z.object({
 export const exportVehicleQuerySchema = z.object({
   search: z.string().trim().optional(), // Searches: brand, model, variant, registration_number, chassis_number, engine_number
   
-  status: z.nativeEnum(BikeStatus).optional(),
+  status: z.nativeEnum(VehicleStatus).optional(),
   
   type: z.nativeEnum(VehicleType).optional(),
   

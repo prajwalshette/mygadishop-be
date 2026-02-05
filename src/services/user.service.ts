@@ -6,7 +6,7 @@ import { ConflictException } from '@/exceptions/ConflictException';
 import { BadRequestException } from '@/exceptions/BadRequestException';
 import prisma from '@/database';
 import { ulid } from 'ulid';
-import { UserRole } from '@/interfaces/users.interface';
+import { ShopUserRole } from '@/interfaces/users.interface';
 import { CreateUserDto, UpdateUserDto, UpdateUserPasswordDto, GetAllUsersQueryDto } from '@/schemas/user.schema';
 import { logger } from '@utils/logger';
 import bcrypt from 'bcrypt';
@@ -55,7 +55,7 @@ export class UserService {
           email: userData.email,
           phone: userData.phone,
           password: hashedPassword,
-          role: userData.role || UserRole.STAFF,
+          role: userData.role || ShopUserRole.STAFF,
           is_active: true,
         },
         select: {
@@ -73,7 +73,7 @@ export class UserService {
       logger.info(`User created successfully: ${user.email} (${user.id}) by ${created_by_user_id}`);
       return {
         ...user,
-        role: user.role as UserRole,
+        role: user.role as ShopUserRole,
       };
     } catch (error: any) {
       if (error instanceof HttpException) throw error;
@@ -137,7 +137,7 @@ export class UserService {
       return {
         users: users.map(user => ({
           ...user,
-          role: user.role as UserRole,
+          role: user.role as ShopUserRole,
         })),
         pagination: {
           page,
@@ -184,7 +184,7 @@ export class UserService {
       logger.info(`User retrieved successfully: ${user_id}`);
       return {
         ...user,
-        role: user.role as UserRole,
+        role: user.role as ShopUserRole,
       };
     } catch (error: any) {
       if (error instanceof HttpException) throw error;
@@ -256,7 +256,7 @@ export class UserService {
       logger.info(`User updated successfully: ${user_id}`);
       return {
         ...updatedUser,
-        role: updatedUser.role as UserRole,
+        role: updatedUser.role as ShopUserRole,
       };
     } catch (error: any) {
       if (error instanceof HttpException) throw error;
@@ -317,7 +317,7 @@ export class UserService {
       }
 
       // Don't allow deleting OWNER
-      if (user.role === UserRole.OWNER) {
+      if (user.role === ShopUserRole.OWNER) {
         logger.warn(`Delete user failed: Cannot delete OWNER user - ${user_id}`);
         throw new BadRequestException('Cannot delete OWNER user');
       }

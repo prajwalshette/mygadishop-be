@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { CustomerType } from '@/interfaces/customer.interface';
+import { CustomerType , Gender} from '@/interfaces/customer.interface';
 
 // Create Customer Schema
 export const createCustomerSchema = z.object({
@@ -16,6 +16,9 @@ export const createCustomerSchema = z.object({
   state: z.string().optional(),
   
   pincode: z.string().optional(),
+  
+  alt_phone: z.string().optional(),
+  gender: z.enum(Gender).optional(),
   
   customer_type: z.enum(CustomerType),
 });
@@ -35,6 +38,9 @@ export const updateCustomerSchema = z.object({
   state: z.string().optional(),
   
   pincode: z.string().optional(),
+  
+  alt_phone: z.string().optional(),
+  gender: z.enum(['MALE', 'FEMALE', 'OTHER']).optional(),
   
   customer_type: z.enum(CustomerType).optional(),
 });
@@ -64,7 +70,9 @@ export const getCustomerQuerySchema = z.object({
   
   customer_type: z.enum(CustomerType).optional(),
   
-  sortBy: z.enum(['created_at', 'updated_at', 'name']).optional().default('created_at'),
+  last_purchase: z.enum(['all_time', 'this_month', 'last_3_months']).optional().default('all_time'),
+  
+  sortBy: z.enum(['created_at', 'updated_at', 'name', 'total_spent', 'last_purchase']).optional().default('created_at'),
   
   sortOrder: z.enum(['asc', 'desc']).optional().default('desc'),
 });
@@ -75,7 +83,9 @@ export const exportCustomerQuerySchema = z.object({
   
   customer_type: z.enum(CustomerType).optional(),
   
-  sortBy: z.enum(['created_at', 'updated_at', 'name']).optional().default('created_at'),
+  last_purchase: z.enum(['all_time', 'this_month', 'last_3_months']).optional().default('all_time'),
+  
+  sortBy: z.enum(['created_at', 'updated_at', 'name', 'total_spent', 'last_purchase']).optional().default('created_at'),
   
   sortOrder: z.enum(['asc', 'desc']).optional().default('desc'),
 });

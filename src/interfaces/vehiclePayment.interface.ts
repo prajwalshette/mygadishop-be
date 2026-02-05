@@ -1,28 +1,5 @@
 
-export enum PaymentStatus {
-  PENDING = "PENDING",
-  PARTIAL = "PARTIAL",
-  COMPLETED = "COMPLETED",
-  FAILED = "FAILED",
-  REFUNDED = "REFUNDED",
-  CANCELLED = "CANCELLED",
-}
-
-export enum PaymentMethod {
-  CASH = "CASH",
-  UPI = "UPI",
-  CARD = "CARD",
-  NET_BANKING = "NET_BANKING",
-  EMI = "EMI",
-}
-
-export enum PaymentType {
-  VEHICLE_SALE = "VEHICLE_SALE",
-  VEHICLE_PURCHASE = "VEHICLE_PURCHASE",
-  SERVICE = "SERVICE",
-  ADVANCE = "ADVANCE",
-  REFUND = "REFUND",
-}
+import { PaymentStatus, PaymentMethod, PaymentType } from "@prisma/client";
 
 export interface IVehiclePayment {
   id: string;
@@ -30,6 +7,8 @@ export interface IVehiclePayment {
   vehicle_id: string;
   customer_id: string;
   amount: number;
+  paid_amount?: number | null;
+  balance_due?: number | null;
   payment_type: PaymentType;
   method: PaymentMethod;
   status: PaymentStatus;
@@ -40,3 +19,5 @@ export interface IVehiclePayment {
   created_at: Date;
   updated_at: Date;
 }
+
+export { PaymentStatus, PaymentMethod, PaymentType };

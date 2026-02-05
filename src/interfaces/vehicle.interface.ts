@@ -1,3 +1,5 @@
+import { FuelType, OwnershipType, TransmissionType, VehicleStatus, VehicleType } from '@prisma/client';
+
 export interface IVehicle {
   id: string;
   shop_id?: string;
@@ -16,50 +18,30 @@ export interface IVehicle {
   transmission: TransmissionType;
   engine_capacity?: number;
   ownership: OwnershipType;
-  insurance_valid_till: Date;
+  insurance_valid_till?: Date | string | null;
+  registration_valid_till?: Date | string | null;
+  puc_valid_till?: Date | string | null;
   buying_price?: number;
   selling_price?: number;
+  min_selling_price?: number;
+  is_price_negotiable?: boolean;
   vehicle_image_urls?: string[];
   vehicle_doc_urls?: string[];
-  status: BikeStatus;
-  buying_date: Date;
-  selling_date?: Date;
-  features: string[];
+  status: VehicleStatus;
+  buying_date?: Date | string | null;
+  selling_date?: Date | string | null;
+  features?: string[];
   description?: string;
+  is_featured?: boolean;
+  featured_until?: Date | string | null;
+  view_count?: number;
+  slug?: string | null;
+  meta_title?: string | null;
+  meta_description?: string | null;
+  deleted_at?: Date | null;
+  created_at?: Date;
+  updated_at?: Date;
 }
 
-export enum VehicleType {
-  BIKE = 'BIKE',
-  SCOTY = 'SCOTY',
-  CAR = 'CAR',
-}
-
-export enum FuelType {
-  PETROL = 'PETROL',
-  DIESEL = 'DIESEL',
-  CNG = 'CNG',
-  ELECTRIC = 'ELECTRIC',
-  HYBRID = 'HYBRID',
-}
-
-export enum TransmissionType {
-  MANUAL = 'MANUAL',
-  AUTOMATIC = 'AUTOMATIC',
-  SEMI_AUTOMATIC = 'SEMI_AUTOMATIC',
-}
-
-export enum BikeStatus {
-  AVAILABLE = 'AVAILABLE',
-  SOLD = 'SOLD',
-  MAINTENANCE = 'MAINTENANCE',
-  RENTED = 'RENTED',
-  BOOKED = 'BOOKED',
-  ON_HOLD = 'ON_HOLD',
-}
-
-export enum OwnershipType {
-  FIRST = 'FIRST',
-  SECOND = 'SECOND',
-  THIRD = 'THIRD',
-  FOURTH_PLUS = 'FOURTH_PLUS',
-}
+// Use Prisma enums directly (single source of truth)
+export { VehicleType, FuelType, TransmissionType, VehicleStatus, OwnershipType };

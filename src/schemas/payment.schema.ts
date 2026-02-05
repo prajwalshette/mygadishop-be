@@ -4,46 +4,54 @@ import { PaymentMethod, PaymentStatus, PaymentType } from '@/interfaces/vehicleP
 // Create Vehicle Payment Schema
 export const createVehiclePaymentSchema = z.object({
   shop_id: z.string().min(1, 'Shop ID is required').optional(), // Will be set by controller from request.shop_id
-  
+
   vehicle_id: z.string().min(1, 'Vehicle ID is required'),
-  
+
   customer_id: z.string().min(1, 'Customer ID is required'),
-  
+
   amount: z.number().min(0, 'Amount must be positive'),
-  
+
+  paid_amount: z.number().min(0).optional(),
+
+  balance_due: z.number().min(0).optional(),
+
   payment_type: z.nativeEnum(PaymentType).default(PaymentType.VEHICLE_SALE),
-  
+
   method: z.nativeEnum(PaymentMethod),
-  
+
   status: z.nativeEnum(PaymentStatus),
-  
+
   transaction_id: z.string().optional(),
-  
+
   payment_receipt_images: z.array(z.string()).optional().default([]),
-  
+
   notes: z.string().optional(),
 });
 
 // Update Vehicle Payment Schema - All fields optional
 export const updateVehiclePaymentSchema = z.object({
   shop_id: z.string().min(1).optional(),
-  
+
   vehicle_id: z.string().min(1).optional(),
-  
+
   customer_id: z.string().min(1).optional(),
-  
+
   amount: z.number().min(0).optional(),
-  
+
+  paid_amount: z.number().min(0).optional(),
+
+  balance_due: z.number().min(0).optional(),
+
   payment_type: z.nativeEnum(PaymentType).optional(),
-  
+
   method: z.nativeEnum(PaymentMethod).optional(),
-  
+
   status: z.nativeEnum(PaymentStatus).optional(),
-  
+
   transaction_id: z.string().optional(),
-  
+
   payment_receipt_images: z.array(z.string()).optional(),
-  
+
   notes: z.string().optional(),
 });
 
@@ -65,7 +73,7 @@ export const getAllPaymentsQuerySchema = z.object({
     .default('1')
     .transform(Number)
     .refine(val => val > 0, 'Page must be greater than 0'),
-    
+
   limit: z
     .string()
     .optional()
@@ -74,7 +82,18 @@ export const getAllPaymentsQuerySchema = z.object({
     .refine(val => val > 0 && val <= 100, 'Limit must be between 1 and 100'),
 });
 
+// Export Payments Query Schema (for CSV export)
+export const exportPaymentsQuerySchema = z.object({
+  dateFrom: z.string().optional(),
+  dateTo: z.string().optional(),
+  status: z.nativeEnum(PaymentStatus).optional(),
+  payment_type: z.nativeEnum(PaymentType).optional(),
+  method: z.nativeEnum(PaymentMethod).optional(),
+  search: z.string().trim().optional(),
+});
+
 // Export types
 export type CreateVehiclePaymentDto = z.infer<typeof createVehiclePaymentSchema>;
 export type UpdateVehiclePaymentDto = z.infer<typeof updateVehiclePaymentSchema>;
 export type GetAllPaymentsQueryDto = z.infer<typeof getAllPaymentsQuerySchema>;
+export type ExportPaymentsQueryDto = z.infer<typeof exportPaymentsQuerySchema>;

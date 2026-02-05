@@ -18,11 +18,27 @@ export const createServicingSchema = z.object({
   
   parts_cost: z.number().min(0, 'Parts cost must be positive').default(0),
   
+  other_charges: z.number().min(0).optional().default(0),
+  
   total_cost: z.number().min(0, 'Total cost must be positive'),
   
   status: z.nativeEnum(ServicingStatus),
   
   next_service_date: z.string().datetime().or(z.date()).optional(),
+  
+  next_service_km: z.number().int().min(0).optional(),
+  
+  technician_name: z.string().optional(),
+  
+  odometer_reading: z.number().int().min(0).optional(),
+  
+  rating: z.number().int().min(1).max(5).optional(),
+  
+  customer_feedback: z.string().optional(),
+  
+  service_images: z.array(z.string()).optional().default([]),
+  
+  parts_replaced: z.array(z.string()).optional().default([]),
 });
 
 // Update Servicing Schema - All fields optional
@@ -43,11 +59,27 @@ export const updateServicingSchema = z.object({
   
   parts_cost: z.number().min(0).optional(),
   
+  other_charges: z.number().min(0).optional(),
+  
   total_cost: z.number().min(0).optional(),
   
   status: z.nativeEnum(ServicingStatus).optional(),
   
   next_service_date: z.string().datetime().or(z.date()).optional(),
+  
+  next_service_km: z.number().int().min(0).optional(),
+  
+  technician_name: z.string().optional(),
+  
+  odometer_reading: z.number().int().min(0).optional(),
+  
+  rating: z.number().int().min(1).max(5).optional(),
+  
+  customer_feedback: z.string().optional(),
+  
+  service_images: z.array(z.string()).optional(),
+  
+  parts_replaced: z.array(z.string()).optional(),
 });
 
 // Servicing ID Param Schema

@@ -8,6 +8,7 @@ import {
   createVehiclePaymentSchema, 
   updateVehiclePaymentSchema, 
   getAllPaymentsQuerySchema,
+  exportPaymentsQuerySchema,
   paymentIdParamSchema,
   vehicleIdParamSchema
 } from '@/schemas/payment.schema';
@@ -70,6 +71,13 @@ export class PaymentRoute implements Routes {
       `${this.path}/get-all`,
       [AuthMiddleware, ValidationMiddleware(getAllPaymentsQuerySchema, 'query')],
       this.paymentController.getAllVehiclePayments,
+    );
+
+    // 👉 Export Payments to CSV
+    this.router.get(
+      `${this.path}/export-payments`,
+      [AuthMiddleware, ValidationMiddleware(exportPaymentsQuerySchema, 'query')],
+      this.paymentController.exportPaymentsToCSV,
     );
 
      this.router.get(

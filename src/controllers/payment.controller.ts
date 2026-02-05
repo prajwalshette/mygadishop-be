@@ -6,8 +6,11 @@ import { RequestWithAdmin, RequestWithUser } from '@/interfaces/auth.interface';
 import { ulid } from 'ulid';
 import { uploadVehiclePaymentMedia } from '@/services/aws.service';
 import { HttpException } from '@/exceptions/HttpException';
+import { NotFoundException } from '@/exceptions/NotFoundException';
 import prisma from '@/database';
-import { CreateVehiclePaymentDto, UpdateVehiclePaymentDto, GetAllPaymentsQueryDto } from '@/schemas/payment.schema';
+import { CreateVehiclePaymentDto, UpdateVehiclePaymentDto, GetAllPaymentsQueryDto, ExportPaymentsQueryDto } from '@/schemas/payment.schema';
+import { stringify } from 'csv-stringify/sync';
+import { logger } from '@utils/logger';
 
 export class PaymentController {
   public paymentService = Container.get(PaymentService);
@@ -47,6 +50,72 @@ export class PaymentController {
       const payments = await this.paymentService.getAllVehiclePayments(query, shop_id);
 
       response.status(200).json({ data: { ...payments }, message: 'Payments fetched successfully' });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // Export payments to CSV
+  public exportPaymentsToCSV = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
+    try {
+      const query = request.query as unknown as ExportPaymentsQueryDto;
+      const shop_id = request.shop_id || request.user.shop_id;
+
+      logger.info(`Export payments CSV requested by shop ${shop_id} with filters: ${JSON.stringify(query)}`);
+
+      const payments = await this.paymentService.exportPayments(query, shop_id);
+
+      if (payments.length === 0) {
+        logger.warn(`No payments found for export with filters: ${JSON.stringify(query)}`);
+        throw new NotFoundException('No payments found to export');
+      }
+
+      const formatDate = (date: Date | string | null | undefined): string => {
+        if (!date) return '';
+        const d = new Date(date);
+        const day = String(d.getDate()).padStart(2, '0');
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const year = d.getFullYear();
+        return `${day}/${month}/${year}`;
+      };
+
+      const columns = [
+        'Payment Date',
+        'Transaction ID',
+        'Vehicle Reg No',
+        'Customer Name',
+        'Customer Phone',
+        'Type',
+        'Method',
+        'Status',
+        'Amount',
+        'Paid',
+        'Balance Due',
+        'Notes',
+        'Created On',
+      ];
+
+      const rows = payments.map((p: any) => [
+        formatDate(p.payment_date),
+        p.transaction_id || '',
+        p.vehicle?.registration_number || '',
+        p.customer?.name || '',
+        p.customer?.phone || '',
+        p.payment_type || '',
+        p.method || '',
+        p.status || '',
+        p.amount?.toString() ?? '',
+        p.paid_amount?.toString() ?? '',
+        p.balance_due?.toString() ?? '',
+        p.notes || '',
+        formatDate(p.created_at),
+      ]);
+
+      const csv = stringify(rows, { header: true, columns, quoted: true });
+      const filename = `payments_${new Date().toISOString().split('T')[0]}.csv`;
+      response.setHeader('Content-Type', 'text/csv');
+      response.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      response.status(200).send(csv);
     } catch (error) {
       next(error);
     }

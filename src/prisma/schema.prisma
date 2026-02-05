@@ -89,7 +89,7 @@ model Shop {
   // Shop Details
   website_url      String?
   shop_logo_url    String?
-  shop_type        ShopType @default(BOTH)
+  shop_type        ShopType @default(TWO_WHEELER)
   established_year Int?
 
   description    String?
@@ -375,6 +375,8 @@ model VehiclePayment {
   customer_id String
 
   amount       Float
+  paid_amount   Float?
+  balance_due  Float?
   payment_type PaymentType   @default(VEHICLE_SALE)
   method       PaymentMethod
   status       PaymentStatus
@@ -500,7 +502,8 @@ enum ShopUserRole {
 enum ShopType {
   TWO_WHEELER
   FOUR_WHEELER
-  BOTH
+  THREE_WHEELER
+  COMMERCIAL
 }
 
 enum ChequeStatus {
@@ -523,9 +526,16 @@ enum CustomerType {
 }
 
 enum VehicleType {
-  BIKE
-  SCOOTER
-  CAR
+  BIKE              // Motorcycle
+  SCOOTER           // Gearless / Scooter
+  MOPED             // TVS XL, etc.
+  CAR               // Hatchback / Sedan / SUV (handled by BodyType)
+  AUTO_RICKSHAW     // Passenger 3-wheeler
+  E_RICKSHAW        // Electric rickshaw
+  GOODS_AUTO        // Cargo 3-wheeler
+  PICKUP_TRUCK      // Bolero Pickup, Tata Ace
+  TRUCK             // Medium / Heavy truck
+  BUS               // Private / School / Staff bus
 }
 
 enum FuelType {
@@ -546,6 +556,7 @@ enum OwnershipType {
   FIRST
   SECOND
   THIRD
+  FOURTH
   FOURTH_PLUS
 }
 

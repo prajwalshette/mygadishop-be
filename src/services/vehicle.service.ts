@@ -6,7 +6,7 @@ import { ConflictException } from '@/exceptions/ConflictException';
 import { BadRequestException } from '@/exceptions/BadRequestException';
 import prisma from '@/database';
 import { ulid } from 'ulid';
-import { FuelType, IVehicle, VehicleType, TransmissionType, BikeStatus, OwnershipType } from '@/interfaces/vehicle.interface';
+import { FuelType, IVehicle, VehicleType, TransmissionType, VehicleStatus, OwnershipType } from '@/interfaces/vehicle.interface';
 import { generateVehiclePresignedUrls } from './aws.service';
 import { getCachedVehiclePresignedUrls } from '@/utils/cacheVehiclePresignedUrl';
 import { logger } from '@utils/logger';
@@ -52,8 +52,8 @@ export class VehicleService {
         type: vehicle.type as VehicleType,
         fuel_type: vehicle.fuel_type as FuelType,
         transmission: vehicle.transmission as TransmissionType,
-        status: vehicle.status as BikeStatus,
-        ownership: vehicleData.ownership as OwnershipType,
+        status: vehicle.status as VehicleStatus,
+        ownership: vehicle.ownership as OwnershipType,
       };
     } catch (error) {
       if (error instanceof HttpException) throw error;
@@ -125,7 +125,7 @@ export class VehicleService {
         type: updatedVehicle.type as VehicleType,
         fuel_type: updatedVehicle.fuel_type as FuelType,
         transmission: updatedVehicle.transmission as TransmissionType,
-        status: updatedVehicle.status as BikeStatus,
+        status: updatedVehicle.status as VehicleStatus,
         ownership: updatedVehicle.ownership as OwnershipType,
       };
     } catch (error) {
@@ -145,6 +145,11 @@ export class VehicleService {
           id: vehicleId,
           deleted_at: null,
         },
+        include: {
+          customer: true,
+          services: true,
+          payments: true,
+        }
       });
 
       if (!vehicle) {
@@ -169,7 +174,7 @@ export class VehicleService {
           type: vehicle.type as VehicleType,
           fuel_type: vehicle.fuel_type as FuelType,
           transmission: vehicle.transmission as TransmissionType,
-          status: vehicle.status as BikeStatus,
+          status: vehicle.status as VehicleStatus,
           vehicle_image_urls: presignedUrls?.imageUrls || vehicle.vehicle_image_urls || [],
           vehicle_doc_urls: presignedUrls?.docUrls || vehicle.vehicle_doc_urls || [],
           ownership: vehicle.ownership as OwnershipType,
@@ -181,7 +186,7 @@ export class VehicleService {
           type: vehicle.type as VehicleType,
           fuel_type: vehicle.fuel_type as FuelType,
           transmission: vehicle.transmission as TransmissionType,
-          status: vehicle.status as BikeStatus,
+          status: vehicle.status as VehicleStatus,
           ownership: vehicle.ownership as OwnershipType,
           // Fallback to original URLs
           vehicle_image_urls: vehicle.vehicle_image_urls || [],
@@ -268,7 +273,7 @@ export class VehicleService {
               type: vehicle.type as VehicleType,
               fuel_type: vehicle.fuel_type as FuelType,
               transmission: vehicle.transmission as TransmissionType,
-              status: vehicle.status as BikeStatus,
+              status: vehicle.status as VehicleStatus,
               ownership: vehicle.ownership as OwnershipType,
               vehicle_image_urls: presignedUrls?.imageUrls || [],
               vehicle_doc_urls: presignedUrls?.docUrls || [],
@@ -281,7 +286,7 @@ export class VehicleService {
               type: vehicle.type as VehicleType,
               fuel_type: vehicle.fuel_type as FuelType,
               transmission: vehicle.transmission as TransmissionType,
-              status: vehicle.status as BikeStatus,
+              status: vehicle.status as VehicleStatus,
               ownership: vehicle.ownership as OwnershipType,
               // Fallback to original URLs
               vehicle_image_urls: vehicle.vehicle_image_urls || [],
@@ -445,7 +450,7 @@ export class VehicleService {
         type: vehicle.type as VehicleType,
         fuel_type: vehicle.fuel_type as FuelType,
         transmission: vehicle.transmission as TransmissionType,
-        status: vehicle.status as BikeStatus,
+        status: vehicle.status as VehicleStatus,
         ownership: vehicle.ownership as OwnershipType,
       }));
     } catch (error) {

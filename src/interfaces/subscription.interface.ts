@@ -1,3 +1,5 @@
+import { SubscriptionPlanName, PlanDuration, SubscriptionStatus } from "@prisma/client";
+
 export interface ISubscriptionPlan {
   id?: string;
   plan_name: SubscriptionPlanName;
@@ -27,26 +29,4 @@ export interface ShopSubscription {
   auto_renew: boolean;
 }
 
-// ======================= ENUMS =======================
-export enum SubscriptionStatus {
-  TRIAL = "TRIAL",
-  ACTIVE = "ACTIVE",
-  EXPIRED = "EXPIRED",
-  SUSPENDED = "SUSPENDED",
-  CANCELLED = "CANCELLED",
-  PAYMENT_PENDING = "PAYMENT_PENDING"
-}
-
-export enum SubscriptionPlanName {
-  FREE = "FREE",
-  BASIC = "BASIC",
-  PREMIUM = "PREMIUM",
-  ENTERPRISE = "ENTERPRISE"
-}
-
-export enum PlanDuration {
-  ONE_MONTH = "ONE_MONTH",
-  THREE_MONTHS = "THREE_MONTHS",
-  SIX_MONTHS = "SIX_MONTHS",
-  ONE_YEAR = "ONE_YEAR"
-}
+export { SubscriptionPlanName, PlanDuration, SubscriptionStatus };

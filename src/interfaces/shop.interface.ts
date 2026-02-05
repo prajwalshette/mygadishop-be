@@ -1,5 +1,6 @@
 import { SubscriptionPlanName } from "./subscription.interface";
 import { SubscriptionStatus } from "./subscription.interface";
+import { ShopType } from "@prisma/client";
 
 export interface IShop {
   id?: string;
@@ -29,8 +30,4 @@ export interface IShop {
   deleted_at: Date | null;
 }
 
-export enum ShopType {
-  TWO_WHEELER = 'TWO_WHEELER',
-  FOUR_WHEELER = 'FOUR_WHEELER',
-  BOTH = 'BOTH',
-}
+export { ShopType };

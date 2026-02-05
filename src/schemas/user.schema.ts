@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { UserRole } from '@/interfaces/users.interface';
+import { ShopUserRole } from '@/interfaces/users.interface';
 
 // Create User Schema
 export const createUserSchema = z.object({
@@ -7,7 +7,7 @@ export const createUserSchema = z.object({
   email: z.string().email('Invalid email format'),
   phone: z.string().min(10, 'Phone number must be at least 10 digits').optional(),
   password: z.string().min(6, 'Password must be at least 6 characters'),
-  role: z.nativeEnum(UserRole).default(UserRole.STAFF),
+  role: z.nativeEnum(ShopUserRole).default(ShopUserRole.STAFF),
 });
 
 // Update User Schema
@@ -15,7 +15,7 @@ export const updateUserSchema = z.object({
   name: z.string().min(1, 'Name is required').optional(),
   email: z.string().email('Invalid email format').optional(),
   phone: z.string().min(10, 'Phone number must be at least 10 digits').optional(),
-  role: z.nativeEnum(UserRole).optional(),
+  role: z.nativeEnum(ShopUserRole).optional(),
   is_active: z.boolean().optional(),
 });
 
@@ -43,7 +43,7 @@ export const getAllUsersQuerySchema = z.object({
     .default('10')
     .transform(Number)
     .refine(val => val > 0 && val <= 100, 'Limit must be between 1 and 100'),
-  role: z.nativeEnum(UserRole).optional(),
+  role: z.nativeEnum(ShopUserRole).optional(),
   is_active: z
     .string()
     .optional()

@@ -50,7 +50,15 @@ export class VehicleRoute implements Routes {
           { name: 'vehicleFiles', maxCount: 10 }, // For vehicle media
           { name: 'vehicleDocFiles', maxCount: 10 }, // For vehicle documents
         ]),
-        ParseJsonFieldsMiddleware(['year', 'mileage', 'buying_price', 'selling_price', 'engine_capacity', 'features']),
+        ParseJsonFieldsMiddleware([
+          'year',
+          'mileage',
+          'buying_price',
+          'selling_price',
+          'min_selling_price',
+          'engine_capacity',
+          'features',
+        ]),
         ValidationMiddleware(createVehicleSchema, 'body'),
       ],
       this.vehicleController.createVehicle,
@@ -65,7 +73,17 @@ export class VehicleRoute implements Routes {
           { name: 'vehicleFiles', maxCount: 10 }, // For vehicle media
           { name: 'vehicleDocFiles', maxCount: 10 }, // For vehicle documents
         ]),
-        ParseJsonFieldsMiddleware(['year', 'mileage', 'buying_price', 'selling_price', 'engine_capacity', 'features', 'vehicle_image_urls', 'vehicle_doc_urls']),
+        ParseJsonFieldsMiddleware([
+          'year',
+          'mileage',
+          'buying_price',
+          'selling_price',
+          'min_selling_price',
+          'engine_capacity',
+          'features',
+          'vehicle_image_urls',
+          'vehicle_doc_urls',
+        ]),
         ValidateRequest({ body: updateVehicleSchema, params: VehicleIdParamSchema }),
       ],
       this.vehicleController.updateVehicle,

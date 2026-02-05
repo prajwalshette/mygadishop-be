@@ -114,6 +114,9 @@ export class CustomerController {
         'State',
         'Pincode',
         'Customer Type',
+        'Purchases',
+        'Total Spent',
+        'Last Purchase',
         'Created On',
       ];
 
@@ -137,6 +140,9 @@ export class CustomerController {
         customer.state || '',
         customer.pincode || '',
         customer.customer_type || '',
+        String(customer.purchasesCount ?? 0),
+        String(customer.totalSpent ?? 0),
+        formatDate(customer.lastPurchaseDate),
         formatDate(customer.created_at),
       ]);
 
