@@ -9,11 +9,11 @@ export const createVehiclePaymentSchema = z.object({
 
   customer_id: z.string().min(1, 'Customer ID is required'),
 
-  amount: z.number().min(0, 'Amount must be positive'),
+  amount: z.coerce.number().min(0, 'Amount must be positive'),
 
-  paid_amount: z.number().min(0).optional(),
+  paid_amount: z.coerce.number().min(0).optional(),
 
-  balance_due: z.number().min(0).optional(),
+  balance_due: z.coerce.number().min(0).optional(),
 
   payment_type: z.nativeEnum(PaymentType).default(PaymentType.VEHICLE_SALE),
 
@@ -36,11 +36,11 @@ export const updateVehiclePaymentSchema = z.object({
 
   customer_id: z.string().min(1).optional(),
 
-  amount: z.number().min(0).optional(),
+  amount: z.coerce.number().min(0).optional(),
 
-  paid_amount: z.number().min(0).optional(),
+  paid_amount: z.coerce.number().min(0).optional(),
 
-  balance_due: z.number().min(0).optional(),
+  balance_due: z.coerce.number().min(0).optional(),
 
   payment_type: z.nativeEnum(PaymentType).optional(),
 
