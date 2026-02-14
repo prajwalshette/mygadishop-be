@@ -1,4 +1,4 @@
-import { CustomerType, Gender } from "@prisma/client";
+import { CustomerType, Gender } from '@prisma/client';
 export interface ICustomer {
   id?: string;
   shop_id?: string;
@@ -26,3 +26,24 @@ export interface ICustomer {
 }
 
 export { CustomerType, Gender };
+
+export interface ICustomerCsv {
+  Name: string;
+  Phone: string;
+  Email?: string;
+  Address?: string;
+  Pincode?: string;
+  City?: string;
+  State?: string;
+  Gender?: Gender;
+  CustomerType?: CustomerType;
+}
+
+export type CustomerProcessingStatus = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
+
+export interface ICustomerSyncStatus {
+  total: number;
+  processed: number;
+  status: CustomerProcessingStatus;
+  error?: string;
+}

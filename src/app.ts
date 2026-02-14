@@ -6,10 +6,13 @@ import express from 'express';
 import helmet from 'helmet';
 import hpp from 'hpp';
 import morgan from 'morgan';
-import { NODE_ENV, PORT, LOG_FORMAT, ORIGIN, CREDENTIALS, BASE_PATH } from '@config';
+import { NODE_ENV, PORT, LOG_FORMAT, ORIGIN, CREDENTIALS, BASE_PATH, REDIS_CONNECTION_URL, PROCESS1QUEUE } from '@config';
 import { Routes } from '@interfaces/routes.interface';
 import { ErrorMiddleware } from '@middlewares/error.middleware';
 import { logger, stream } from '@utils/logger';
+import { SingleTon } from '@utils/singleTon';
+import { CustomerConsumer } from '@/consumers/customer.consumer';
+import { th } from 'zod/v4/locales';
 
 export class App {
   public app: express.Application;
@@ -24,6 +27,10 @@ export class App {
     this.initializeMiddlewares();
     this.initializeRoutes(routes);
     this.initializeErrorHandling();
+    // this.initializeConsumers().catch(error => {
+    //   logger.error(error, 'Error initializing consumers');
+    //   process.exit(1); // Exit the process if consumer initialization fails
+    // });
   }
 
   public listen() {
@@ -73,7 +80,7 @@ export class App {
     const basePath = BASE_PATH.trim() ?? '/';
 
     this.app.get('/', (request, response) => {
-      console.log('Health check request received');
+      logger.info('Health check request received');
       return response.status(200).send({
         status: 'SUCCESS',
         timestamp: new Date().toISOString(),
@@ -87,5 +94,36 @@ export class App {
 
   private initializeErrorHandling() {
     this.app.use(ErrorMiddleware);
+  }
+
+  /**
+   * Initialize all consumers
+   */
+  private async initializeConsumers() {
+    try {
+      logger.info('Initializing customer consumer');
+      const customerConsumer = new CustomerConsumer();
+      SingleTon.initializeProcess1Instance({
+        queueName: PROCESS1QUEUE,
+        connectionString: REDIS_CONNECTION_URL,
+        messageCallback: customerConsumer.processPayload.bind(customerConsumer),
+        consume: true,
+        workerCount: 4,
+        concurrency: 10,
+      });
+
+      logger.info('All consumers initialized successfully');
+    } catch (error) {
+      logger.error(error, 'Failed to initialize consumers');
+      throw error;
+    }
+  }
+
+  public async shutdown() {
+    try {
+      logger.info('Shutting down gracefully...');
+    } catch (error) {
+      logger.error(error, 'Error during shutdown');
+    }
   }
 }

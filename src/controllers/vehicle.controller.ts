@@ -68,32 +68,33 @@ export class VehicleController {
         throw new NotFoundException(`Vehicle not found with id: ${vehicleId}`);
       }
 
-      // Handle file uploads
-      let vehicle_image_urls: string[] = [...(existingVehicle.vehicle_image_urls || [])];
-      let vehicle_doc_urls: string[] = [...(existingVehicle.vehicle_doc_urls || [])];
+      // Use URLs from request body if provided (indicates which existing files to keep)
+      // Otherwise fallback to existing ones from DB
+      let vehicle_image_urls: string[] = Array.isArray(vehicleData.vehicle_image_urls)
+        ? vehicleData.vehicle_image_urls
+        : [...(existingVehicle.vehicle_image_urls || [])];
+
+      let vehicle_doc_urls: string[] = Array.isArray(vehicleData.vehicle_doc_urls)
+        ? vehicleData.vehicle_doc_urls
+        : [...(existingVehicle.vehicle_doc_urls || [])];
+
+      // Cast request.files to the expected type
+      const files = request.files as { [fieldname: string]: Express.Multer.File[] };
 
       // Upload new vehicle media files if present
-      if (request.vehicleFiles && request.vehicleFiles.vehicleFiles) {
+      if (files && files.vehicleFiles && files.vehicleFiles.length > 0) {
         const newImageUrls = await this.handleVehicleMediaUpload(request, response, shop_id, vehicleId);
 
-        // You can choose to append or replace existing images
-        if (request.body.replaceImages === 'true') {
-          vehicle_image_urls = newImageUrls;
-        } else {
-          vehicle_image_urls = [...vehicle_image_urls, ...newImageUrls];
-        }
+        // Append new images to the existing ones
+        vehicle_image_urls = [...vehicle_image_urls, ...newImageUrls];
       }
 
       // Upload new vehicle document files if present
-      if (request.vehicleDocFiles && request.vehicleDocFiles.vehicleDocFiles) {
+      if (files && files.vehicleDocFiles && files.vehicleDocFiles.length > 0) {
         const newDocUrls = await this.handleVehicleDocMediaUpload(request, response, shop_id, vehicleId);
 
-        // You can choose to append or replace existing documents
-        if (request.body.replaceDocuments === 'true') {
-          vehicle_doc_urls = newDocUrls;
-        } else {
-          vehicle_doc_urls = [...vehicle_doc_urls, ...newDocUrls];
-        }
+        // Append new documents to the existing ones
+        vehicle_doc_urls = [...vehicle_doc_urls, ...newDocUrls];
       }
 
       const vehicleDataWithMedia: Partial<IVehicle> = {

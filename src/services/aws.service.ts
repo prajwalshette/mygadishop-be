@@ -1,10 +1,11 @@
 import { Request } from 'express';
 import { RequestWithUser } from '@/interfaces/auth.interface';
-import { S3Client, PutObjectCommand, GetObjectCommand} from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { AWS_REGION, S3_ACCESS_KEY_ID, S3_BUCKET_NAME, S3_SECRET_KEY } from '@/config';
 import { ulid } from 'ulid';
 import { cacheVehiclePresignedUrls } from '@/utils/cacheVehiclePresignedUrl';
+import { logger } from '@/utils/logger';
 
 function generateFileName(req: Request, file: any): string {
   const splittedFilename = file.originalname.split('.');
@@ -128,7 +129,6 @@ export const uploadVehiclePaymentMedia = async (
   }
 };
 
-
 /**
  * Extract S3 key from URL
  */
@@ -137,18 +137,18 @@ const extractS3Key = (s3Url: string): string | null => {
     // Handle https://bucket.s3.region.amazonaws.com/key format
     if (s3Url.includes('.s3.') && s3Url.includes('.amazonaws.com')) {
       const url = new URL(s3Url);
-      return url.pathname.substring(1); // Remove leading slash
+      return decodeURIComponent(url.pathname.substring(1)); // Remove leading slash and decode
     }
-    
+
     // Handle s3:// format
     if (s3Url.startsWith('s3://')) {
       const parts = s3Url.replace('s3://', '').split('/');
       return parts.slice(1).join('/'); // Remove bucket name, keep key
     }
-    
+
     return null;
   } catch (error) {
-    console.error('Error extracting S3 key:', error);
+    logger.error(`Error extracting S3 key: ${error.message}`);
     return null;
   }
 };
@@ -160,7 +160,7 @@ const generateSinglePresignedUrl = async (s3Url: string, expiresIn: number = 360
   try {
     const key = extractS3Key(s3Url);
     if (!key) {
-      console.error('Invalid S3 URL format:', s3Url);
+      logger.error(`Invalid S3 URL format: ${s3Url}`);
       return null;
     }
 
@@ -170,18 +170,18 @@ const generateSinglePresignedUrl = async (s3Url: string, expiresIn: number = 360
     });
 
     // Generate presigned URL with minimal parameters
-    const presignedUrl = await getSignedUrl(s3, command, { 
+    const presignedUrl = await getSignedUrl(s3, command, {
       expiresIn,
       signableHeaders: new Set(['host']),
       unhoistableHeaders: new Set(),
     });
-    
+
     return presignedUrl;
 
     // const presignedUrl = await getSignedUrl(s3, command, { expiresIn });
     // return presignedUrl;
   } catch (error) {
-    console.error('Error generating presigned URL for:', s3Url, error);
+    logger.error(`Error generating presigned URL for: ${s3Url} - ${error.message}`);
     return null;
   }
 };
@@ -191,16 +191,16 @@ const generateSinglePresignedUrl = async (s3Url: string, expiresIn: number = 360
  */
 const generateMultiplePresignedUrls = async (s3Urls: string[], expiresIn: number = 3600): Promise<string[]> => {
   if (!s3Urls || s3Urls.length === 0) return [];
-  
+
   const promises = s3Urls.map(url => generateSinglePresignedUrl(url, expiresIn));
   const results = await Promise.allSettled(promises);
-  
+
   return results
     .map((result, index) => {
       if (result.status === 'fulfilled' && result.value) {
         return result.value;
       }
-      console.error(`Failed to generate presigned URL for: ${s3Urls[index]}`);
+      logger.error(`Failed to generate presigned URL for: ${s3Urls[index]}`);
       return null;
     })
     .filter(url => url !== null) as string[];
@@ -217,11 +217,11 @@ export const generateVehiclePresignedUrls = async (
   vehicleId: string,
   imageUrls: string[] = [],
   docUrls: string[] = [],
-  expiresIn: number = 3600
+  expiresIn: number = 3600,
 ): Promise<VehicleUrlData | null> => {
   try {
-    console.log(`Generating presigned URLs for vehicle: ${vehicleId}`);
-    
+    logger.info(`Generating presigned URLs for vehicle: ${vehicleId}`);
+
     // Generate presigned URLs for images and documents concurrently
     const [presignedImageUrls, presignedDocUrls] = await Promise.all([
       generateMultiplePresignedUrls(imageUrls, expiresIn),
@@ -236,10 +236,10 @@ export const generateVehiclePresignedUrls = async (
     // Store in cache after successful generation
     await cacheVehiclePresignedUrls(vehicleId, presignedImageUrls, presignedDocUrls, expiresIn);
 
-    console.log(`Generated and cached ${presignedImageUrls.length} image URLs and ${presignedDocUrls.length} doc URLs for vehicle: ${vehicleId}`);
+    logger.info(`Generated and cached ${presignedImageUrls.length} image URLs and ${presignedDocUrls.length} doc URLs for vehicle: ${vehicleId}`);
     return result;
   } catch (error) {
-    console.error('Error generating vehicle presigned URLs:', error);
+    logger.error(`Error generating vehicle presigned URLs: ${error.message}`);
     return null;
   }
 };

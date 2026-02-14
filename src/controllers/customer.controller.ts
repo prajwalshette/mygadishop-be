@@ -8,9 +8,15 @@ import { GetCustomerQueryDto, ExportCustomerQueryDto } from '@/schemas/customer.
 import { stringify } from 'csv-stringify/sync';
 import { logger } from '@utils/logger';
 import { NotFoundException } from '@/exceptions/NotFoundException';
+import axios from 'axios';
+import { RedisService } from '@/services/redis.service';
+import { Readable } from 'stream';
+import { ulid } from 'ulid';
+import Papa from 'papaparse';
 
 export class CustomerController {
   public customerService = Container.get(CustomerService);
+  public redisService = Container.get(RedisService);
 
   // -----------------------------
   // ADD NEW CUSTOMER - Create new customer
@@ -178,4 +184,87 @@ export class CustomerController {
       next(error);
     }
   };
+
+  // -----------------------------
+  // INSERT CUSTOMERS - Bulk insert customers
+  // -----------------------------
+
+  public async uploadCustomerCsv(request: RequestWithUser, response: Response, next: NextFunction): Promise<void> {
+    try {
+      const shop_id = request.user.shop_id;
+      const file = request.file;
+
+      if (!file) {
+        throw new Error('CSV file is required');
+      }
+
+      // Validate CSV Headers
+      const headers = await this.validateCsvHeaders(file.buffer);
+      if (!headers.isValid) {
+        response.status(400).json({ message: `Invalid CSV headers. Missing: ${headers.missing.join(', ')}` });
+        return;
+      }
+
+      const upload_id = ulid();
+      const fileStream = Readable.from(file.buffer);
+
+      // Initialize status in Redis
+      await this.redisService.setSyncStatus(shop_id, upload_id, {
+        total: 0,
+        processed: 0,
+        status: 'PENDING',
+      });
+
+      // Start processing in background (service handles queueing)
+      this.customerService.processCustomerCsv(fileStream, shop_id, upload_id).catch(err => {
+        logger.error(`Background CSV processing failed: ${err.message}`);
+      });
+
+      response.status(202).json({
+        data: { upload_id },
+        message: 'CSV upload successful. Processing started in background.',
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  private async validateCsvHeaders(buffer: Buffer): Promise<{ isValid: boolean; missing: string[] }> {
+    return new Promise(resolve => {
+      const requiredHeaders = ['Name', 'Phone', 'Email', 'Address', 'Pincode', 'City', 'State', 'Gender', 'CustomerType'];
+      const fileContent = buffer.toString('utf8');
+
+      Papa.parse(fileContent, {
+        preview: 1, // Read only first line
+        header: false,
+        complete: results => {
+          const actualHeaders = results.data[0] as string[];
+          const missing = requiredHeaders.filter(h => !actualHeaders.includes(h));
+          resolve({
+            isValid: missing.length === 0,
+            missing,
+          });
+        },
+        error: () => {
+          resolve({ isValid: false, missing: requiredHeaders });
+        },
+      });
+    });
+  }
+
+  public async getSyncStatus(request: RequestWithUser, response: Response, next: NextFunction): Promise<void> {
+    try {
+      const shop_id = request.user.shop_id;
+      const upload_id = request.params.upload_id;
+
+      const status = await this.redisService.getSyncStatus(shop_id, upload_id);
+      if (!status) {
+        throw new NotFoundException('Sync status not found');
+      }
+
+      response.status(200).json({ data: status, message: 'Sync status retrieved successfully' });
+    } catch (error) {
+      next(error);
+    }
+  }
 }

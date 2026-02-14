@@ -2,8 +2,9 @@ import { Router } from 'express';
 import { CustomerController } from '@/controllers/customer.controller';
 import { Routes } from '@interfaces/routes.interface';
 import { AuthMiddleware } from '@middlewares/auth.middleware';
-import { ValidateRequest } from '@middlewares/validation.middleware';
-import { createCustomerSchema, updateCustomerSchema, customerIdParamSchema, getCustomerQuerySchema, exportCustomerQuerySchema } from '@/schemas/customer.schema';
+import { ValidationMiddleware, ValidateRequest } from '@middlewares/validation.middleware';
+import { createCustomerSchema, updateCustomerSchema, getCustomerQuerySchema, exportCustomerQuerySchema } from '@/schemas/customer.schema';
+import multer from 'multer';
 
 export class CustomerRoute implements Routes {
   public path = '/customer';
@@ -15,18 +16,36 @@ export class CustomerRoute implements Routes {
   }
 
   private initializeRoutes() {
-    this.router.post(`${this.path}/add-customer`, [AuthMiddleware, ValidateRequest({ body: createCustomerSchema })], this.customerController.addNewCustomer);
-    
-    this.router.put(`${this.path}/update-customer/:id`, [AuthMiddleware, ValidateRequest({ body: updateCustomerSchema, params: customerIdParamSchema })], this.customerController.updateCustomer);
-    
-    this.router.get(`${this.path}/get-all-customer`, [AuthMiddleware, ValidateRequest({ query: getCustomerQuerySchema })], this.customerController.getAllCustomer);
-    
+    this.router.post(
+      `${this.path}/add-customer`,
+      [AuthMiddleware, ValidationMiddleware(createCustomerSchema, 'body')],
+      this.customerController.addNewCustomer,
+    );
+    this.router.put(
+      `${this.path}/update-customer/:id`,
+      [AuthMiddleware, ValidationMiddleware(updateCustomerSchema, 'body')],
+      this.customerController.updateCustomer,
+    );
+    this.router.get(
+      `${this.path}/get-all-customer`,
+      [AuthMiddleware, ValidateRequest({ query: getCustomerQuerySchema })],
+      this.customerController.getAllCustomer,
+    );
+    this.router.get(`${this.path}/get-customer/:id`, [AuthMiddleware], this.customerController.getCustomer);
     this.router.get(`${this.path}/stats`, [AuthMiddleware], this.customerController.getCustomerStats);
-    
-    this.router.get(`${this.path}/export-customers`, [AuthMiddleware, ValidateRequest({ query: exportCustomerQuerySchema })], this.customerController.exportCustomersToCSV);
-    
-    this.router.get(`${this.path}/get-customer/:id`, [AuthMiddleware, ValidateRequest({ params: customerIdParamSchema })], this.customerController.getCustomer);
-    
-    this.router.delete(`${this.path}/delete-customer/:id`, [AuthMiddleware, ValidateRequest({ params: customerIdParamSchema })], this.customerController.deleteCustomer);
+    this.router.get(
+      `${this.path}/export-customers`,
+      [AuthMiddleware, ValidateRequest({ query: exportCustomerQuerySchema })],
+      this.customerController.exportCustomersToCSV,
+    );
+    this.router.delete(`${this.path}/delete-customer/:id`, [AuthMiddleware], this.customerController.deleteCustomer);
+
+    const upload = multer({
+      storage: multer.memoryStorage(),
+      limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+    });
+
+    this.router.post(`${this.path}/upload-csv`, [AuthMiddleware, upload.single('file')], this.customerController.uploadCustomerCsv);
+    this.router.get(`${this.path}/sync-status/:upload_id`, [AuthMiddleware], this.customerController.getSyncStatus);
   }
 }

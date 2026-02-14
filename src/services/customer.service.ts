@@ -5,14 +5,20 @@ import { ConflictException } from '@/exceptions/ConflictException';
 import { BadRequestException } from '@/exceptions/BadRequestException';
 import prisma from '@/database';
 import { PaymentStatus } from '@prisma/client';
-import { CustomerType, ICustomer } from '@/interfaces/customer.interface';
+import { CustomerType, ICustomer, ICustomerCsv } from '@/interfaces/customer.interface';
 import { ulid } from 'ulid';
 import { logger } from '@utils/logger';
-import { CreateCustomerDto, UpdateCustomerDto, GetCustomerQueryDto, ExportCustomerQueryDto } from '@/schemas/customer.schema';
+import { createCustomerSchema, CreateCustomerDto, UpdateCustomerDto, GetCustomerQueryDto, ExportCustomerQueryDto } from '@/schemas/customer.schema';
+import Papa from 'papaparse';
+import { Readable } from 'stream';
+import { SingleTon } from '@/utils/singleTon';
+import { RedisService } from './redis.service';
+import { Container } from 'typedi';
 
 @Service()
 export class CustomerService {
   private prisma = prisma;
+  private redisService = Container.get(RedisService);
 
   // -----------------------------
   // ADD NEW CUSTOMER - Create new customer record
@@ -27,7 +33,7 @@ export class CustomerService {
         logger.warn(`Add customer failed: Customer already exists - Email: ${customerData.email}, Phone: ${customerData.phone}`);
         throw new ConflictException(`Customer already exists with email: ${customerData.email} or phone: ${customerData.phone}`);
       }
-      
+
       const newCustomer = await this.prisma.customer.create({
         data: {
           id: ulid(),
@@ -35,9 +41,9 @@ export class CustomerService {
           ...customerData,
         },
       });
-      
+
       logger.info(`Customer created successfully: ${newCustomer.name} (${newCustomer.id})`);
-      return {...newCustomer, customer_type: newCustomer.customer_type as CustomerType };
+      return { ...newCustomer, customer_type: newCustomer.customer_type as CustomerType };
     } catch (error) {
       if (error instanceof HttpException) throw error;
       logger.error(`Add customer error: ${error.message}`);
@@ -48,7 +54,7 @@ export class CustomerService {
   // -----------------------------
   // UPDATE CUSTOMER - Modify existing customer details
   // -----------------------------
-   public async updateCustomer(customerData: ICustomer, customer_id: string): Promise<ICustomer> {
+  public async updateCustomer(customerData: ICustomer, customer_id: string): Promise<ICustomer> {
     try {
       const isExistCustomer = await this.prisma.customer.findFirst({
         where: { id: customer_id, deleted_at: null },
@@ -58,16 +64,16 @@ export class CustomerService {
         logger.warn(`Update customer failed: Customer not found - ${customer_id}`);
         throw new NotFoundException(`Customer not found with id: ${customer_id}`);
       }
-      
+
       const customer = await this.prisma.customer.update({
         where: { id: customer_id },
         data: {
           ...customerData,
         },
       });
-      
+
       logger.info(`Customer updated successfully: ${customer.name} (${customer_id})`);
-      return {...customer, customer_type: customer.customer_type as CustomerType };
+      return { ...customer, customer_type: customer.customer_type as CustomerType };
     } catch (error) {
       if (error instanceof HttpException) throw error;
       logger.error(`Update customer error for ${customer_id}: ${error.message}`);
@@ -80,7 +86,7 @@ export class CustomerService {
   // -----------------------------
   public async getAllCustomer(query: GetCustomerQueryDto, shop_id: string): Promise<any> {
     const { page, limit, search, customer_type, last_purchase, sortBy, sortOrder } = query;
-    
+
     try {
       const skip = (page - 1) * limit;
 
@@ -204,9 +210,17 @@ export class CustomerService {
       }
 
       const totalPages = Math.ceil(total / limit);
-      
-      logger.info(`Retrieved ${total} customers (page ${page}, limit ${limit}, filters: ${JSON.stringify({ search, customer_type, last_purchase, sortBy, sortOrder })})`);
-      
+
+      logger.info(
+        `Retrieved ${total} customers (page ${page}, limit ${limit}, filters: ${JSON.stringify({
+          search,
+          customer_type,
+          last_purchase,
+          sortBy,
+          sortOrder,
+        })})`,
+      );
+
       return {
         customers: mappedCustomers,
         pagination: {
@@ -265,9 +279,8 @@ export class CustomerService {
       });
 
       // Calculate growth rate
-      const growthRate = lastMonthCustomers > 0
-        ? Math.round(((newThisMonth - lastMonthCustomers) / lastMonthCustomers) * 100)
-        : (newThisMonth > 0 ? 100 : 0);
+      const growthRate =
+        lastMonthCustomers > 0 ? Math.round(((newThisMonth - lastMonthCustomers) / lastMonthCustomers) * 100) : newThisMonth > 0 ? 100 : 0;
 
       logger.info(`Retrieved customer stats for shop ${shop_id}: total=${totalCustomers}, newThisMonth=${newThisMonth}, growthRate=${growthRate}%`);
 
@@ -289,7 +302,7 @@ export class CustomerService {
   // -----------------------------
   public async exportCustomers(query: ExportCustomerQueryDto, shop_id: string): Promise<ICustomer[]> {
     const { search, customer_type, last_purchase, sortBy, sortOrder } = query;
-    
+
     try {
       const whereClause: any = {
         shop_id,
@@ -323,7 +336,7 @@ export class CustomerService {
         };
       }
 
-      const orderByField = (sortBy === 'total_spent' || sortBy === 'last_purchase') ? 'created_at' : sortBy;
+      const orderByField = sortBy === 'total_spent' || sortBy === 'last_purchase' ? 'created_at' : sortBy;
       const customers = await this.prisma.customer.findMany({
         where: whereClause,
         orderBy: { [orderByField]: sortOrder },
@@ -471,5 +484,173 @@ export class CustomerService {
       logger.error(`Delete customer error for ${customer_id}: ${error.message}`);
       throw error;
     }
+  }
+
+  // -----------------------------
+  // CSV SYNC METHODS
+  // -----------------------------
+
+  public async processCustomerCsv(fileStream: Readable, shop_id: string, upload_id: string): Promise<void> {
+    let totalRows = 0;
+    let chunk: any[] = [];
+    const chunkSize = 1000;
+
+    Papa.parse(fileStream, {
+      header: true,
+      skipEmptyLines: true,
+      step: async (results, parser) => {
+        try {
+          const rawData = results.data as any;
+          // Map PascalCase headers to schema fields
+          const mappedData = {
+            name: rawData.Name,
+            phone: rawData.Phone,
+            email: rawData.Email,
+            address: rawData.Address,
+            pincode: rawData.Pincode,
+            city: rawData.City,
+            state: rawData.State,
+            gender: rawData.Gender,
+            customer_type: rawData.CustomerType,
+          };
+
+          // Validate row against createCustomerSchema
+          const validatedData = await createCustomerSchema.parseAsync(mappedData);
+          totalRows++;
+          chunk.push(validatedData);
+
+          if (chunk.length >= chunkSize) {
+            parser.pause();
+            await this.redisService.setSyncStatus(shop_id, upload_id, {
+              total: 0,
+              processed: 0,
+              status: 'PROCESSING',
+            });
+
+            await SingleTon.getProcess1QueueInstance().addJobIntoQueue({
+              data: chunk,
+              shop_id,
+              upload_id,
+              lastBatch: false,
+            });
+            chunk = [];
+            parser.resume();
+          }
+        } catch (error) {
+          logger.warn(`Row validation failed: ${error.message} for data: ${JSON.stringify(results.data)}`);
+          // We could track individual row errors, but for now we skip and log
+        }
+      },
+      complete: async () => {
+        if (chunk.length > 0) {
+          await SingleTon.getProcess1QueueInstance().addJobIntoQueue({
+            data: chunk,
+            shop_id,
+            upload_id,
+            lastBatch: true,
+          });
+        }
+        // Update total rows in Redis
+        const status = await this.redisService.getSyncStatus(shop_id, upload_id);
+        if (status) {
+          status.total = totalRows;
+          await this.redisService.setSyncStatus(shop_id, upload_id, status);
+        }
+        logger.info(`CSV parsing complete. Total rows: ${totalRows}`);
+      },
+      error: async error => {
+        await this.redisService.setSyncError(shop_id, upload_id, `CSV Parsing Error: ${error.message}`);
+        logger.error(`CSV Parsing error: ${error.message}`);
+      },
+    });
+  }
+
+  public async insertCustomersSync(customers: CreateCustomerDto[], shop_id: string, upload_id: string, isLastBatch: boolean = false): Promise<any> {
+    try {
+      const uniqueCustomersMap = new Map<string, CreateCustomerDto>();
+
+      for (const customer of customers) {
+        if (customer.phone && !uniqueCustomersMap.has(customer.phone)) {
+          uniqueCustomersMap.set(customer.phone, customer);
+        }
+      }
+
+      const deduplicatedCustomers = Array.from(uniqueCustomersMap.values());
+      const result = await this.syncCustomersEfficiently(deduplicatedCustomers, shop_id);
+
+      await this.redisService.updateSyncProcessedCount(shop_id, upload_id, customers.length);
+      if (isLastBatch) {
+        await this.redisService.completeSync(shop_id, upload_id);
+      }
+
+      return result;
+    } catch (error) {
+      await this.redisService.setSyncError(shop_id, upload_id, error.message);
+      logger.error(`Failed to insert customers sync: ${error.message}`);
+      throw error;
+    }
+  }
+
+  private async syncCustomersEfficiently(customers: CreateCustomerDto[], shop_id: string) {
+    if (!customers.length) return { created: 0, updated: 0 };
+
+    const phoneNumbers = customers.map(c => c.phone);
+    const existingCustomers = await this.prisma.customer.findMany({
+      where: {
+        shop_id,
+        phone: { in: phoneNumbers },
+        deleted_at: null,
+      },
+    });
+
+    const existingPhoneMap = new Map(existingCustomers.map(c => [c.phone, c]));
+    const toCreate = [];
+    const toUpdate = [];
+
+    for (const customer of customers) {
+      if (existingPhoneMap.has(customer.phone)) {
+        toUpdate.push({
+          id: existingPhoneMap.get(customer.phone).id,
+          data: customer,
+        });
+      } else {
+        toCreate.push({
+          ...customer,
+          id: ulid(),
+          shop_id,
+        });
+      }
+    }
+
+    let created = 0;
+    if (toCreate.length > 0) {
+      const result = await this.prisma.customer.createMany({
+        data: toCreate,
+        skipDuplicates: true,
+      });
+      created = result.count;
+    }
+
+    let updated = 0;
+    if (toUpdate.length > 0) {
+      const batchSize = 100;
+      for (let i = 0; i < toUpdate.length; i += batchSize) {
+        const batch = toUpdate.slice(i, i + batchSize);
+        await Promise.all(
+          batch.map(item =>
+            this.prisma.customer.update({
+              where: { id: item.id },
+              data: {
+                ...item.data,
+                updated_at: new Date(),
+              } as any,
+            }),
+          ),
+        );
+        updated += batch.length;
+      }
+    }
+
+    return { created, updated };
   }
 }

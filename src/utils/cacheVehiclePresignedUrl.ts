@@ -1,4 +1,5 @@
 import redis from '@/config/redis';
+import { logger } from './logger';
 
 type VehiclePresignedCache = {
   vehicle_id: string;
@@ -29,7 +30,7 @@ export const cacheVehiclePresignedUrls = async (
   vehicle_id: string,
   imageUrls: string[] = [],
   docUrls: string[] = [],
-  expiresIn: number = 3600
+  expiresIn: number = 3600,
 ): Promise<boolean> => {
   try {
     const cacheData: VehiclePresignedCache = {
@@ -44,10 +45,10 @@ export const cacheVehiclePresignedUrls = async (
     const cacheTtl = Math.max(expiresIn - 300, 300);
     await redis.setex(getVehicleCacheKey(vehicle_id), cacheTtl, JSON.stringify(cacheData));
 
-    console.log(`Cached presigned URLs for vehicle: ${vehicle_id}, TTL: ${cacheTtl}s`);
+    logger.info(`Cached presigned URLs for vehicle: ${vehicle_id}, TTL: ${cacheTtl}s`);
     return true;
   } catch (error) {
-    console.error('Error caching vehicle presigned URLs:', error);
+    logger.error(error, 'Error caching vehicle presigned URLs');
     return false;
   }
 };
@@ -60,29 +61,29 @@ export const getCachedVehiclePresignedUrls = async (vehicle_id: string): Promise
   try {
     const cached = await redis.get(getVehicleCacheKey(vehicle_id));
     if (!cached) {
-      console.log(`No cache found for vehicle: ${vehicle_id}`);
+      logger.debug(`No cache found for vehicle: ${vehicle_id}`);
       return null;
     }
 
     const parsed: VehiclePresignedCache = JSON.parse(cached);
-    
+
     // Additional expiration check for safety
     const now = new Date();
     const expiresAt = new Date(parsed.expiresAt);
-    
+
     if (now >= expiresAt) {
-      console.log(`Cache expired for vehicle: ${vehicle_id}, removing...`);
+      logger.info(`Cache expired for vehicle: ${vehicle_id}, removing...`);
       await deleteCachedVehiclePresignedUrls(vehicle_id);
       return null;
     }
 
-    console.log(`Retrieved cached URLs for vehicle: ${vehicle_id}`);
+    logger.debug(`Retrieved cached URLs for vehicle: ${vehicle_id}`);
     return {
       imageUrls: parsed.imageUrls,
       docUrls: parsed.docUrls,
     };
   } catch (error) {
-    console.error('Error getting cached vehicle presigned URLs:', error);
+    logger.error(error, 'Error getting cached vehicle presigned URLs');
     return null;
   }
 };
@@ -95,16 +96,16 @@ export const deleteCachedVehiclePresignedUrls = async (vehicle_id: string): Prom
   try {
     const result = await redis.del(getVehicleCacheKey(vehicle_id));
     const deleted = result > 0;
-    
+
     if (deleted) {
-      console.log(`Deleted cache for vehicle: ${vehicle_id}`);
+      logger.info(`Deleted cache for vehicle: ${vehicle_id}`);
     } else {
-      console.log(`No cache found to delete for vehicle: ${vehicle_id}`);
+      logger.debug(`No cache found to delete for vehicle: ${vehicle_id}`);
     }
-    
+
     return deleted;
   } catch (error) {
-    console.error('Error deleting cached vehicle presigned URLs:', error);
+    logger.error(error, 'Error deleting cached vehicle presigned URLs');
     return false;
   }
 };

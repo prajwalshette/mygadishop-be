@@ -8,7 +8,7 @@ import prisma from '@/database';
 import { ulid } from 'ulid';
 import { FuelType, IVehicle, VehicleType, TransmissionType, VehicleStatus, OwnershipType } from '@/interfaces/vehicle.interface';
 import { generateVehiclePresignedUrls } from './aws.service';
-import { getCachedVehiclePresignedUrls } from '@/utils/cacheVehiclePresignedUrl';
+import { getCachedVehiclePresignedUrls, deleteCachedVehiclePresignedUrls } from '@/utils/cacheVehiclePresignedUrl';
 import { logger } from '@utils/logger';
 import { CreateVehicleDto, UpdateVehicleDto, GetVehicleQueryDto, ExportVehicleQueryDto } from '@/schemas/vehicle.schema';
 
@@ -22,19 +22,26 @@ export class VehicleService {
   public async createVehicle(vehicleData: IVehicle, shop_id: string): Promise<IVehicle> {
     try {
       const isExistVehicle = await this.prisma.vehicle.findFirst({
-        where: { registration_number: vehicleData.registration_number, chassis_number: vehicleData.chassis_number, deleted_at: null, shop_id: shop_id },
+        where: {
+          registration_number: vehicleData.registration_number,
+          chassis_number: vehicleData.chassis_number,
+          deleted_at: null,
+          shop_id: shop_id,
+        },
       });
 
       if (isExistVehicle) {
-        logger.warn(`Create vehicle failed: Vehicle already exists - Registration: ${vehicleData.registration_number}, Chassis: ${vehicleData.chassis_number}`);
+        logger.warn(
+          `Create vehicle failed: Vehicle already exists - Registration: ${vehicleData.registration_number}, Chassis: ${vehicleData.chassis_number}`,
+        );
         throw new ConflictException(
           `Vehicle already exists with registration_number: ${vehicleData.registration_number}, chassis_number: ${vehicleData.chassis_number}`,
         );
       }
-      
+
       // Remove price field if it exists (not in Prisma schema)
       const { price, ...vehicleDataWithoutPrice } = vehicleData as any;
-      
+
       const vehicle = await this.prisma.vehicle.create({
         data: {
           id: ulid(),
@@ -43,9 +50,9 @@ export class VehicleService {
           selling_date: vehicleData.selling_date ? new Date(vehicleData.selling_date) : null,
           buying_date: vehicleData.buying_date ? new Date(vehicleData.buying_date) : null,
           insurance_valid_till: vehicleData.insurance_valid_till ? new Date(vehicleData.insurance_valid_till) : null,
-        }as Prisma.VehicleUncheckedCreateInput,
+        } as Prisma.VehicleUncheckedCreateInput,
       });
-      
+
       logger.info(`Vehicle created successfully: ${vehicle.registration_number} (${vehicle.id})`);
       return {
         ...vehicle,
@@ -115,11 +122,17 @@ export class VehicleService {
           updated_at: new Date(),
           selling_date: vehicleDataWithoutPrice.selling_date ? new Date(vehicleDataWithoutPrice.selling_date) : existingVehicle.selling_date,
           buying_date: vehicleDataWithoutPrice.buying_date ? new Date(vehicleDataWithoutPrice.buying_date) : existingVehicle.buying_date,
-          insurance_valid_till: vehicleDataWithoutPrice.insurance_valid_till ? new Date(vehicleDataWithoutPrice.insurance_valid_till) : existingVehicle.insurance_valid_till,
-        }as Prisma.VehicleUncheckedCreateInput,
+          insurance_valid_till: vehicleDataWithoutPrice.insurance_valid_till
+            ? new Date(vehicleDataWithoutPrice.insurance_valid_till)
+            : existingVehicle.insurance_valid_till,
+        } as Prisma.VehicleUncheckedCreateInput,
       });
 
       logger.info(`Vehicle updated successfully: ${updatedVehicle.registration_number} (${vehicleId})`);
+
+      // Invalidate presigned URL cache
+      await deleteCachedVehiclePresignedUrls(vehicleId);
+
       return {
         ...updatedVehicle,
         type: updatedVehicle.type as VehicleType,
@@ -149,7 +162,7 @@ export class VehicleService {
           customer: true,
           services: true,
           payments: true,
-        }
+        },
       });
 
       if (!vehicle) {
@@ -159,12 +172,12 @@ export class VehicleService {
       try {
         let presignedUrls = await getCachedVehiclePresignedUrls(vehicleId);
         if (!presignedUrls) {
-          console.log(`Cache miss for vehicle ${vehicleId}, generating new presigned URLs`);
+          logger.info(`Cache miss for vehicle ${vehicleId}, generating new presigned URLs`);
           presignedUrls = await generateVehiclePresignedUrls(
             vehicleId,
             vehicle.vehicle_image_urls || [],
             vehicle.vehicle_doc_urls || [],
-            3600 // 1 hour expiration
+            3600, // 1 hour expiration
           );
         }
 
@@ -180,7 +193,7 @@ export class VehicleService {
           ownership: vehicle.ownership as OwnershipType,
         };
       } catch (urlError) {
-        console.error(`Error processing URLs for vehicle ${vehicleId}:`, urlError);
+        logger.error(urlError, `Error processing URLs for vehicle ${vehicleId}`);
         return {
           ...vehicle,
           type: vehicle.type as VehicleType,
@@ -204,7 +217,7 @@ export class VehicleService {
   // -----------------------------
   public async getAllVehicle(query: GetVehicleQueryDto, shop_id: string): Promise<any> {
     const { page, limit, search, status, type, sortBy, sortOrder } = query;
-    
+
     try {
       const skip = (page - 1) * limit;
 
@@ -258,12 +271,12 @@ export class VehicleService {
 
             // If not cached, generate new presigned URLs
             if (!presignedUrls) {
-              console.log(`Cache miss for vehicle ${vehicle.id}, generating new presigned URLs`);
+              logger.info(`Cache miss for vehicle ${vehicle.id}, generating new presigned URLs`);
               presignedUrls = await generateVehiclePresignedUrls(
                 vehicle.id,
                 vehicle.vehicle_image_urls || [],
                 vehicle.vehicle_doc_urls || [],
-                3600 // 1 hour expiration
+                3600, // 1 hour expiration
               );
             }
 
@@ -279,7 +292,7 @@ export class VehicleService {
               vehicle_doc_urls: presignedUrls?.docUrls || [],
             };
           } catch (urlError) {
-            console.error(`Error processing URLs for vehicle ${vehicle.id}:`, urlError);
+            logger.error(urlError, `Error processing URLs for vehicle ${vehicle.id}`);
             // Return vehicle with original URLs if presigned URL generation fails
             return {
               ...vehicle,
@@ -297,7 +310,7 @@ export class VehicleService {
       );
 
       logger.info(`Retrieved ${total} vehicles (page ${page}, limit ${limit}, filters: ${JSON.stringify({ search, status, type })})`);
-      
+
       return {
         vehicles: vehiclesWithPresignedUrls,
         pagination: {
@@ -381,11 +394,12 @@ export class VehicleService {
       });
 
       // Calculate growth rate
-      const growthRate = lastMonthVehicles > 0
-        ? Math.round(((newThisMonth - lastMonthVehicles) / lastMonthVehicles) * 100)
-        : (newThisMonth > 0 ? 100 : 0);
+      const growthRate =
+        lastMonthVehicles > 0 ? Math.round(((newThisMonth - lastMonthVehicles) / lastMonthVehicles) * 100) : newThisMonth > 0 ? 100 : 0;
 
-      logger.info(`Retrieved vehicle stats for shop ${shop_id}: total=${totalVehicles}, available=${availableVehicles}, soldThisMonth=${soldThisMonth}, maintenance=${maintenanceVehicles}, newThisMonth=${newThisMonth}, growthRate=${growthRate}%`);
+      logger.info(
+        `Retrieved vehicle stats for shop ${shop_id}: total=${totalVehicles}, available=${availableVehicles}, soldThisMonth=${soldThisMonth}, maintenance=${maintenanceVehicles}, newThisMonth=${newThisMonth}, growthRate=${growthRate}%`,
+      );
 
       return {
         totalVehicles,
@@ -407,7 +421,7 @@ export class VehicleService {
   // -----------------------------
   public async exportVehicles(query: ExportVehicleQueryDto, shop_id: string): Promise<IVehicle[]> {
     const { search, status, type, sortBy, sortOrder } = query;
-    
+
     try {
       // Build where clause with filters
       const whereClause: any = {
@@ -444,7 +458,7 @@ export class VehicleService {
       });
 
       logger.info(`Exporting ${vehicles.length} vehicles (filters: ${JSON.stringify({ search, status, type })})`);
-      
+
       return vehicles.map(vehicle => ({
         ...vehicle,
         type: vehicle.type as VehicleType,
@@ -485,6 +499,10 @@ export class VehicleService {
       });
 
       logger.info(`Vehicle deleted successfully: ${vehicleId}`);
+
+      // Invalidate presigned URL cache
+      await deleteCachedVehiclePresignedUrls(vehicleId);
+
       return true;
     } catch (error) {
       if (error instanceof HttpException) throw error;
