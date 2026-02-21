@@ -3,7 +3,13 @@ import { VehicleController } from '@/controllers/vehicle.controller';
 import { Routes } from '@interfaces/routes.interface';
 import { AuthMiddleware } from '@middlewares/auth.middleware';
 import { ValidationMiddleware, ValidateRequest } from '@middlewares/validation.middleware';
-import { createVehicleSchema, updateVehicleSchema, VehicleIdParamSchema, getVehicleQuerySchema, exportVehicleQuerySchema } from '@/schemas/vehicle.schema';
+import {
+  createVehicleSchema,
+  updateVehicleSchema,
+  VehicleIdParamSchema,
+  getVehicleQuerySchema,
+  exportVehicleQuerySchema,
+} from '@/schemas/vehicle.schema';
 import multer from 'multer';
 
 export class VehicleRoute implements Routes {
@@ -58,6 +64,8 @@ export class VehicleRoute implements Routes {
           'min_selling_price',
           'engine_capacity',
           'features',
+          'vehicle_image_urls',
+          'vehicle_doc_urls',
         ]),
         ValidationMiddleware(createVehicleSchema, 'body'),
       ],
@@ -103,11 +111,7 @@ export class VehicleRoute implements Routes {
     );
 
     // Get Vehicle Statistics
-    this.router.get(
-      `${this.path}/stats`,
-      [AuthMiddleware],
-      this.vehicleController.getVehicleStats,
-    );
+    this.router.get(`${this.path}/stats`, [AuthMiddleware], this.vehicleController.getVehicleStats);
 
     // Export Vehicles to CSV
     this.router.get(
