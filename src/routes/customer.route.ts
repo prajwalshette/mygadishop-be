@@ -45,7 +45,11 @@ export class CustomerRoute implements Routes {
       limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
     });
 
-    this.router.post(`${this.path}/upload-csv`, [AuthMiddleware, upload.single('file')], this.customerController.uploadCustomerCsv);
-    this.router.get(`${this.path}/sync-status/:upload_id`, [AuthMiddleware], this.customerController.getSyncStatus);
+    this.router.post(`${this.path}/upload-csv`, [AuthMiddleware, upload.single('file')], (req, res, next) =>
+      this.customerController.uploadCustomerCsv(req, res, next),
+    );
+    this.router.get(`${this.path}/sync-status/:upload_id`, [AuthMiddleware], (req, res, next) =>
+      this.customerController.getSyncStatus(req, res, next),
+    );
   }
 }

@@ -27,10 +27,7 @@ export class App {
     this.initializeMiddlewares();
     this.initializeRoutes(routes);
     this.initializeErrorHandling();
-    // this.initializeConsumers().catch(error => {
-    //   logger.error(error, 'Error initializing consumers');
-    //   process.exit(1); // Exit the process if consumer initialization fails
-    // });
+    // this.initializeConsumers();
   }
 
   public listen() {

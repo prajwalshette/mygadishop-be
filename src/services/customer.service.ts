@@ -5,7 +5,7 @@ import { ConflictException } from '@/exceptions/ConflictException';
 import { BadRequestException } from '@/exceptions/BadRequestException';
 import prisma from '@/database';
 import { PaymentStatus } from '@prisma/client';
-import { CustomerType, ICustomer, ICustomerCsv } from '@/interfaces/customer.interface';
+import { CustomerType, Gender, ICustomer, ICustomerCsv } from '@/interfaces/customer.interface';
 import { ulid } from 'ulid';
 import { logger } from '@utils/logger';
 import { createCustomerSchema, CreateCustomerDto, UpdateCustomerDto, GetCustomerQueryDto, ExportCustomerQueryDto } from '@/schemas/customer.schema';
@@ -501,6 +501,16 @@ export class CustomerService {
       step: async (results, parser) => {
         try {
           const rawData = results.data as any;
+
+          // Helper to normalize Enum case-insensitively
+          const normalizeEnum = (value: string, enumObj: any, defaultValue?: any) => {
+            if (!value) return defaultValue;
+            const strVal = String(value).trim();
+            // Find key/value ignoring case
+            const match = Object.values(enumObj).find((e: any) => String(e).toUpperCase() === strVal.toUpperCase());
+            return match || (defaultValue ? defaultValue : undefined);
+          };
+
           // Map PascalCase headers to schema fields
           const mappedData = {
             name: rawData.Name,
@@ -510,8 +520,10 @@ export class CustomerService {
             pincode: rawData.Pincode,
             city: rawData.City,
             state: rawData.State,
-            gender: rawData.Gender,
-            customer_type: rawData.CustomerType,
+            // Normalize Gender (handle "Female" vs "FEMALE" vs "Male" etc)
+            gender: normalizeEnum(rawData.Gender, Gender),
+            // Normalize CustomerType (handle case) and Default to BUYER
+            customer_type: normalizeEnum(rawData.CustomerType, CustomerType, CustomerType.BUYER),
           };
 
           // Validate row against createCustomerSchema
@@ -537,7 +549,7 @@ export class CustomerService {
             parser.resume();
           }
         } catch (error) {
-          logger.warn(`Row validation failed: ${error.message} for data: ${JSON.stringify(results.data)}`);
+          logger.warn(`Row validation failed: ${error.message}. Mapped Data: ${JSON.stringify(results.data)}`);
           // We could track individual row errors, but for now we skip and log
         }
       },
