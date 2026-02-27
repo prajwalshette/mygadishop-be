@@ -1,4 +1,4 @@
-import { Prisma, PrismaClient, SubscriptionPlanName, SubscriptionStatus } from '@prisma/client';
+import { SubscriptionStatus } from '@prisma/client';
 import { compare, hash } from 'bcrypt';
 import { sign } from 'jsonwebtoken';
 import { Service } from 'typedi';

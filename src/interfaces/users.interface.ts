@@ -35,3 +35,4 @@ export interface ShopUserResponseDTO {
 }
 
 export { PlatformAdminRole, ShopUserRole };
+export { PlatformAdminRole as AdminRole, ShopUserRole as UserRole };
