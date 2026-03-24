@@ -1,5 +1,5 @@
 import { SubscriptionStatus } from '@prisma/client';
-import { compare, hash } from 'bcrypt';
+import { compare, hash } from 'bcryptjs';
 import { sign } from 'jsonwebtoken';
 import { Service } from 'typedi';
 import { SECRET_KEY, NODE_ENV } from '@config';

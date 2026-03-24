@@ -128,6 +128,34 @@ export class VehicleController {
     }
   };
 
+  /**
+   * Stream first vehicle image for share (proxied from S3 so frontend can fetch without CORS and attach to WhatsApp share).
+   */
+  public getVehicleShareImage = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
+    try {
+      const vehicleId: string = request.params.id;
+      const shop_id = request.user.shop_id;
+      const result = await this.vehicleService.getVehicleShareImageStream(vehicleId, shop_id);
+
+      if (!result) {
+        throw new NotFoundException(`Vehicle image not found for id: ${vehicleId}`);
+      }
+
+      response.setHeader('Content-Type', result.contentType);
+      result.stream.pipe(response);
+      result.stream.on('error', err => {
+        logger.error(err, 'Vehicle share image stream error');
+        if (!response.headersSent) {
+          response.status(500).end();
+        } else {
+          response.destroy();
+        }
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
   // -----------------------------
   // GET ALL VEHICLES - Retrieve paginated vehicle list
   // -----------------------------

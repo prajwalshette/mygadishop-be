@@ -207,6 +207,33 @@ const generateMultiplePresignedUrls = async (s3Urls: string[], expiresIn: number
 };
 
 /**
+ * Get S3 object as stream (for proxying vehicle image to frontend without CORS)
+ */
+export const getS3ObjectStream = async (
+  s3Url: string,
+): Promise<{ Body: import('stream').Readable; ContentType?: string } | null> => {
+  try {
+    const key = extractS3Key(s3Url);
+    if (!key) {
+      logger.error(`Invalid S3 URL format for getStream: ${s3Url}`);
+      return null;
+    }
+    const command = new GetObjectCommand({
+      Bucket: S3_BUCKET_NAME,
+      Key: key,
+    });
+    const response = await s3.send(command);
+    return {
+      Body: response.Body as import('stream').Readable,
+      ContentType: response.ContentType ?? 'image/jpeg',
+    };
+  } catch (error) {
+    logger.error(`Error getting S3 object stream: ${error.message}`);
+    return null;
+  }
+};
+
+/**
  * Generate presigned URLs for vehicle images and documents and store in cache
  * @param vehicleId - Vehicle ID
  * @param imageUrls - Array of original S3 image URLs

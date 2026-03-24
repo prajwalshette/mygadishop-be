@@ -1,6 +1,6 @@
 import { Service } from 'typedi';
 import prisma from '@/database';
-import { Shop, User } from '@prisma/client';
+import { Prisma, Shop, User } from '@prisma/client';
 import { HttpException } from '@exceptions/HttpException';
 import { NotFoundException } from '@/exceptions/NotFoundException';
 import { ConflictException } from '@/exceptions/ConflictException';
@@ -21,7 +21,7 @@ import {
   CreateSubscriptionPricingDto,
 } from '@/schemas/admin.schema';
 import { ISubscriptionPlan, ISubscriptionPricing, PlanDuration, SubscriptionPlanName } from '@/interfaces/subscription.interface';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import { ulid } from 'ulid';
 
 @Service()
@@ -318,7 +318,7 @@ export class AdminService {
           subscription_status: 'TRIAL',
           is_verified: false,
           is_active: true,
-        },
+        } as Prisma.ShopUncheckedCreateInput,
       });
 
       logger.info(`Shop created by admin: ${shop.shop_name} (${shop.id})`);

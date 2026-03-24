@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { PlatformAdminRole } from '@prisma/client';
+import { PlatformAdminRole, ShopType } from '@prisma/client';
 import { SubscriptionPlanName, PlanDuration } from '@/interfaces/subscription.interface';
 
 // Admin Login Schema
@@ -98,7 +98,7 @@ export const createShopSchema = z.object({
   pincode: z.string().min(6, 'Pincode must be at least 6 digits'),
   gstin: z.string().optional(),
   website_url: z.string().url('Invalid URL format').optional(),
-  shop_type: z.enum(['TWO_WHEELER', 'FOUR_WHEELER', 'BOTH']).optional().default('BOTH'),
+  shop_type: z.nativeEnum(ShopType).optional().default(ShopType.TWO_WHEELER),
   established_year: z.number().int().min(1900).max(new Date().getFullYear()).optional(),
 });
 

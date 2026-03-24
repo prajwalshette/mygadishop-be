@@ -97,6 +97,13 @@ export class VehicleRoute implements Routes {
       this.vehicleController.updateVehicle,
     );
 
+    // Stream first vehicle image for share (must be before get-vehicle/:id so path matches correctly)
+    this.router.get(
+      `${this.path}/get-vehicle/:id/share-image`,
+      [AuthMiddleware, ValidateRequest({ params: VehicleIdParamSchema })],
+      this.vehicleController.getVehicleShareImage,
+    );
+
     // Get Vehicle by ID
     this.router.get(
       `${this.path}/get-vehicle/:id`,

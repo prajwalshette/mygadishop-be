@@ -7,7 +7,7 @@ import { BadRequestException } from '@/exceptions/BadRequestException';
 import prisma from '@/database';
 import { ulid } from 'ulid';
 import { FuelType, IVehicle, VehicleType, TransmissionType, VehicleStatus, OwnershipType } from '@/interfaces/vehicle.interface';
-import { generateVehiclePresignedUrls } from './aws.service';
+import { generateVehiclePresignedUrls, getS3ObjectStream } from './aws.service';
 import { getCachedVehiclePresignedUrls, deleteCachedVehiclePresignedUrls } from '@/utils/cacheVehiclePresignedUrl';
 import { logger } from '@utils/logger';
 import { CreateVehicleDto, UpdateVehicleDto, GetVehicleQueryDto, ExportVehicleQueryDto } from '@/schemas/vehicle.schema';
@@ -210,6 +210,32 @@ export class VehicleService {
       logger.error(`Get vehicle error for ${vehicleId}: ${error.message}`);
       throw error;
     }
+  }
+
+  /**
+   * Get first vehicle image as stream for share (proxied from S3 to avoid CORS).
+   * Returns null if vehicle not found, not owned by shop, or no images.
+   */
+  public async getVehicleShareImageStream(
+    vehicleId: string,
+    shop_id: string,
+  ): Promise<{ stream: import('stream').Readable; contentType: string } | null> {
+    const vehicle = await this.prisma.vehicle.findFirst({
+      where: { id: vehicleId, shop_id, deleted_at: null },
+      select: { vehicle_image_urls: true },
+    });
+    if (!vehicle?.vehicle_image_urls?.length) {
+      return null;
+    }
+    const firstImageUrl = vehicle.vehicle_image_urls[0];
+    const result = await getS3ObjectStream(firstImageUrl);
+    if (!result?.Body) {
+      return null;
+    }
+    return {
+      stream: result.Body,
+      contentType: result.ContentType ?? 'image/jpeg',
+    };
   }
 
   // -----------------------------

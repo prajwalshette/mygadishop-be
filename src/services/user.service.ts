@@ -9,7 +9,7 @@ import { ulid } from 'ulid';
 import { ShopUserRole } from '@/interfaces/users.interface';
 import { CreateUserDto, UpdateUserDto, UpdateUserPasswordDto, GetAllUsersQueryDto } from '@/schemas/user.schema';
 import { logger } from '@utils/logger';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 
 @Service()
 export class UserService {
