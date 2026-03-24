@@ -4,7 +4,7 @@ import { HttpException } from '@/exceptions/HttpException';
 import { NotFoundException } from '@/exceptions/NotFoundException';
 import { ConflictException } from '@/exceptions/ConflictException';
 import { BadRequestException } from '@/exceptions/BadRequestException';
-import prisma from '@/database';
+import prisma from '@/lib/prisma';
 import { ulid } from 'ulid';
 import { FuelType, IVehicle, VehicleType, TransmissionType, VehicleStatus, OwnershipType } from '@/interfaces/vehicle.interface';
 import { generateVehiclePresignedUrls, getS3ObjectStream } from './aws.service';

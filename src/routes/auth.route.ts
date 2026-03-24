@@ -11,7 +11,7 @@ import { onboardShopSchema } from '@/schemas/onboard.schema';
 
 export class AuthRoute implements Routes {
   public path = '/auth';
-  public router = Router();
+  public router: Router = Router();
   public auth = new AuthController();
 
   constructor() {

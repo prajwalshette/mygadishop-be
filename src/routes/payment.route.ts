@@ -15,7 +15,7 @@ import {
 
 export class PaymentRoute implements Routes {
   public path = '/payment';
-  public router = Router();
+  public router: Router = Router();
   public paymentController = new PaymentController();
 
   constructor() {

@@ -1,7 +1,7 @@
 import { Prisma, PrismaClient } from '@prisma/client';
 import { Service } from 'typedi';
 import { HttpException } from '@/exceptions/HttpException';
-import prisma from '@/database';
+import prisma from '@/lib/prisma';
 import { formatPrismaError } from '@/exceptions/prismaException';
 import { DashboardStats } from '@/interfaces/dashboard.interface';
 

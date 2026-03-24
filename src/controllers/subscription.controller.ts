@@ -10,7 +10,7 @@ import {
 import crypto from 'crypto';
 import { UnauthorizedException } from '@/exceptions/UnauthorizedException';
 import { logger } from '@utils/logger';
-import { RAZORPAY_WEBHOOK_SECRET } from '@/config';
+import { RAZORPAY_WEBHOOK_SECRET } from '@/config/env';
 
 export class SubscriptionController {
   public subscriptionService = Container.get(SubscriptionService);

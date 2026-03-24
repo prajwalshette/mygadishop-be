@@ -11,7 +11,7 @@ import {
 
 export class SubscriptionRoute implements Routes {
   public path = '/subscription';
-  public router = Router();
+  public router: Router = Router();
   public subscriptionController = new SubscriptionController();
 
   constructor() {

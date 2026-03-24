@@ -1,5 +1,5 @@
 import { Service } from 'typedi';
-import prisma from '@/database';
+import prisma from '@/lib/prisma';
 import { Prisma, Shop, User } from '@prisma/client';
 import { HttpException } from '@exceptions/HttpException';
 import { NotFoundException } from '@/exceptions/NotFoundException';

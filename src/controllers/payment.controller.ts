@@ -7,7 +7,7 @@ import { ulid } from 'ulid';
 import { uploadVehiclePaymentMedia } from '@/services/aws.service';
 import { HttpException } from '@/exceptions/HttpException';
 import { NotFoundException } from '@/exceptions/NotFoundException';
-import prisma from '@/database';
+import prisma from '@/lib/prisma';
 import { CreateVehiclePaymentDto, UpdateVehiclePaymentDto, GetAllPaymentsQueryDto, ExportPaymentsQueryDto } from '@/schemas/payment.schema';
 import { stringify } from 'csv-stringify/sync';
 import { logger } from '@utils/logger';

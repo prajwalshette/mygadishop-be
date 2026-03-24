@@ -2,7 +2,7 @@ import { Prisma } from '@prisma/client';
 import { Service } from 'typedi';
 import { HttpException } from '@/exceptions/HttpException';
 import { NotFoundException } from '@/exceptions/NotFoundException';
-import prisma from '@/database';
+import prisma from '@/lib/prisma';
 import { IShop, ShopType } from '@/interfaces/shop.interface';
 import { SubscriptionPlanName, SubscriptionStatus } from '@/interfaces/subscription.interface';
 import { UpdateShopDto, GetAllShopsQueryDto } from '@/schemas/shop.schema';

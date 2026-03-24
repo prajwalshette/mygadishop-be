@@ -13,7 +13,7 @@ import {
 
 export class UserRoute implements Routes {
   public path = '/user';
-  public router = Router();
+  public router: Router = Router();
   public userController = new UserController();
 
   constructor() {

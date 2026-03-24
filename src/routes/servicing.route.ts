@@ -7,7 +7,7 @@ import { createServicingSchema, updateServicingSchema, servicingIdParamSchema, g
 
 export class ServicingRoute implements Routes {
   public path = '/servicing';
-  public router = Router();
+  public router: Router = Router();
   public servicingController = new ServicingController();
 
   constructor() {

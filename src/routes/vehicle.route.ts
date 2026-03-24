@@ -14,7 +14,7 @@ import multer from 'multer';
 
 export class VehicleRoute implements Routes {
   public path = '/vehicle';
-  public router = Router();
+  public router: Router = Router();
   public vehicleController = new VehicleController();
 
   constructor() {

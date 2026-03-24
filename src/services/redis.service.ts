@@ -1,6 +1,6 @@
 import Redis from 'ioredis';
 import { Service } from 'typedi';
-import { REDIS_CONNECTION_URL } from '@config';
+import { REDIS_CONNECTION_URL } from '@/config/env';
 import { logger } from '@utils/logger';
 
 @Service()

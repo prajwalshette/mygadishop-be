@@ -5,7 +5,7 @@ import { DashboardController } from '@/controllers/dashboard.controller';
 
 export class DashboardRoute implements Routes {
   public path = '/dashboard';
-  public router = Router();
+  public router: Router = Router();
   private dashboardController = new DashboardController();
 
   constructor() {

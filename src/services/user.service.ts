@@ -4,7 +4,7 @@ import { HttpException } from '@/exceptions/HttpException';
 import { NotFoundException } from '@/exceptions/NotFoundException';
 import { ConflictException } from '@/exceptions/ConflictException';
 import { BadRequestException } from '@/exceptions/BadRequestException';
-import prisma from '@/database';
+import prisma from '@/lib/prisma';
 import { ulid } from 'ulid';
 import { ShopUserRole } from '@/interfaces/users.interface';
 import { CreateUserDto, UpdateUserDto, UpdateUserPasswordDto, GetAllUsersQueryDto } from '@/schemas/user.schema';

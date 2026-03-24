@@ -2,7 +2,7 @@ import { Prisma } from '@prisma/client';
 import { Service } from 'typedi';
 import { HttpException } from '@/exceptions/HttpException';
 import { NotFoundException } from '@/exceptions/NotFoundException';
-import prisma from '@/database';
+import prisma from '@/lib/prisma';
 import { IVehiclePayment, PaymentMethod, PaymentType } from '@/interfaces/vehiclePayment.interface';
 import { ulid } from 'ulid';
 import { PaymentStatus } from '@/interfaces/vehiclePayment.interface';

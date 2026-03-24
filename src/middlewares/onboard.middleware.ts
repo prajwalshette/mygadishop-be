@@ -1,6 +1,6 @@
 import { NextFunction, Response } from 'express';
 import { verify } from 'jsonwebtoken';
-import { SECRET_KEY } from '@config';
+import { SECRET_KEY } from '@/config/env';
 import { HttpException } from '@exceptions/HttpException';
 import { DataStoredInOnboardTempToken, RequestWithOnboardTempUser } from '@interfaces/auth.interface';
 import { onboardTempTokenCache } from '@/utils/onboardTempTokenCache';

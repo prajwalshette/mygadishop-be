@@ -8,7 +8,7 @@ import multer from 'multer';
 
 export class CustomerRoute implements Routes {
   public path = '/customer';
-  public router = Router();
+  public router: Router = Router();
   public customerController = new CustomerController();
 
   constructor() {

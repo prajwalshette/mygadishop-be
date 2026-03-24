@@ -28,7 +28,7 @@ import {
 
 export class AdminRoute implements Routes {
   public path = '/admin';
-  public router = Router();
+  public router: Router = Router();
   public adminController = new AdminController();
 
   constructor() {

@@ -2,7 +2,7 @@ import { Request } from 'express';
 import { RequestWithUser } from '@/interfaces/auth.interface';
 import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { AWS_REGION, S3_ACCESS_KEY_ID, S3_BUCKET_NAME, S3_SECRET_KEY } from '@/config';
+import { AWS_REGION, S3_ACCESS_KEY_ID, S3_BUCKET_NAME, S3_SECRET_KEY } from '@/config/env';
 import { ulid } from 'ulid';
 import { cacheVehiclePresignedUrls } from '@/utils/cacheVehiclePresignedUrl';
 import { logger } from '@/utils/logger';

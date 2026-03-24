@@ -3,7 +3,7 @@ import { Service } from 'typedi';
 import { HttpException } from '@/exceptions/HttpException';
 import { NotFoundException } from '@/exceptions/NotFoundException';
 import { BadRequestException } from '@/exceptions/BadRequestException';
-import prisma from '@/database';
+import prisma from '@/lib/prisma';
 import { IServicing } from '@/interfaces/servicing.interface';
 import { ulid } from 'ulid';
 import { logger } from '@utils/logger';

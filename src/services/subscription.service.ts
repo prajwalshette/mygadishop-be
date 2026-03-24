@@ -3,12 +3,12 @@ import { Service } from 'typedi';
 import { HttpException } from '@/exceptions/HttpException';
 import { NotFoundException } from '@/exceptions/NotFoundException';
 import { ConflictException } from '@/exceptions/ConflictException';
-import prisma from '@/database';
+import prisma from '@/lib/prisma';
 import { ulid } from 'ulid';
 import { PlanDuration, SubscriptionStatus, SubscriptionPlanName } from '@/interfaces/subscription.interface';
 import { logger } from '@utils/logger';
 import axios from 'axios';
-import { RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET } from '@/config';
+import { RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET } from '@/config/env';
 
 @Service()
 export class SubscriptionService {

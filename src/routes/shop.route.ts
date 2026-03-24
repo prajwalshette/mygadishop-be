@@ -8,7 +8,7 @@ import { AdminAuthMiddleware } from '@/middlewares/adminAuth.middleware';
 
 export class ShopRoute implements Routes {
   public path = '/shop';
-  public router = Router();
+  public router: Router = Router();
   public shopController = new ShopController();
 
   constructor() {

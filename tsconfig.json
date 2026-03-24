@@ -14,6 +14,11 @@
     "sourceMap": true,
     "declaration": true,
     "outDir": "dist",
+    "rootDir": "./src",
+    "ignoreDeprecations": "6.0",
+    "useUnknownInCatchVariables": false,
+    "noImplicitAny": false,
+    "strictNullChecks": false,
     "allowJs": true,
     "noEmit": false,
     "esModuleInterop": true,
@@ -32,9 +37,10 @@
       "@routes/*": ["routes/*"],
       "@services/*": ["services/*"],
       "@utils/*": ["utils/*"],
-      "@consumers/*": ["consumers/*"]
+      "@consumers/*": ["consumers/*"],
+      "@prisma/client": ["../generated/prisma"]
     }
   },
-  "include": ["src/**/*.ts", "src/**/*.json", ".env"],
+  "include": ["src/**/*.ts", "src/**/*.json"],
   "exclude": ["node_modules", "src/http", "src/logs"]
 }

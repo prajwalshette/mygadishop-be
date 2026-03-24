@@ -1,10 +1,10 @@
 import { NextFunction, Response } from 'express';
 import { verify } from 'jsonwebtoken';
-import { SECRET_KEY } from '@config';
+import { SECRET_KEY } from '@/config/env';
 import { HttpException } from '@exceptions/HttpException';
 import { DataStoredInToken, RequestWithAdmin } from '@interfaces/auth.interface';
 import { AdminRole } from '@/interfaces/users.interface';
-import prisma from '@/database';
+import prisma from '@/lib/prisma';
 import { SessionCache } from '@/utils/sessionCache';
 
 const getAuthorization = req => {
