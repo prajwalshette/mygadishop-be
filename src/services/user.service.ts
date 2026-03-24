@@ -7,7 +7,7 @@ import { BadRequestException } from '@/exceptions/BadRequestException';
 import prisma from '@/lib/prisma';
 import { ulid } from 'ulid';
 import { ShopUserRole } from '@/interfaces/users.interface';
-import { CreateUserDto, UpdateUserDto, UpdateUserPasswordDto, GetAllUsersQueryDto } from '@/schemas/user.schema';
+import { CreateUserDto, UpdateUserDto, UpdateUserPasswordDto, GetAllUsersQueryDto } from '@/validator/user.validator';
 import { logger } from '@utils/logger';
 import bcrypt from 'bcryptjs';
 

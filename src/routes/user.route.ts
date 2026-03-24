@@ -9,7 +9,7 @@ import {
   updateUserPasswordSchema,
   userIdParamSchema,
   getAllUsersQuerySchema,
-} from '@/schemas/user.schema';
+} from '@/validator/user.validator';
 
 export class UserRoute implements Routes {
   public path = '/user';

@@ -3,7 +3,7 @@ import { CustomerController } from '@/controllers/customer.controller';
 import { Routes } from '@interfaces/routes.interface';
 import { AuthMiddleware } from '@middlewares/auth.middleware';
 import { ValidationMiddleware, ValidateRequest } from '@middlewares/validation.middleware';
-import { createCustomerSchema, updateCustomerSchema, getCustomerQuerySchema, exportCustomerQuerySchema } from '@/schemas/customer.schema';
+import { createCustomerSchema, updateCustomerSchema, getCustomerQuerySchema, exportCustomerQuerySchema } from '@/validator/customer.validator';
 import multer from 'multer';
 
 export class CustomerRoute implements Routes {

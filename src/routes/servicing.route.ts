@@ -3,7 +3,7 @@ import { ServicingController } from '@/controllers/servicing.controller';
 import { Routes } from '@interfaces/routes.interface';
 import { AuthMiddleware } from '@middlewares/auth.middleware';
 import { ValidateRequest } from '@middlewares/validation.middleware';
-import { createServicingSchema, updateServicingSchema, servicingIdParamSchema, getServicingQuerySchema, exportServicingQuerySchema } from '@/schemas/servicing.schema';
+import { createServicingSchema, updateServicingSchema, servicingIdParamSchema, getServicingQuerySchema, exportServicingQuerySchema } from '@/validator/servicing.validator';
 
 export class ServicingRoute implements Routes {
   public path = '/servicing';

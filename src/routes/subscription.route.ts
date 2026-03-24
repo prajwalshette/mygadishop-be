@@ -7,7 +7,7 @@ import {
   getSubscriptionHistoryQuerySchema,
   getPaymentHistoryQuerySchema,
   createSubscriptionOrderSchema,
-} from '@/schemas/subscription.schema';
+} from '@/validator/subscription.validator';
 
 export class SubscriptionRoute implements Routes {
   public path = '/subscription';

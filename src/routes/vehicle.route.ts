@@ -9,7 +9,7 @@ import {
   VehicleIdParamSchema,
   getVehicleQuerySchema,
   exportVehicleQuerySchema,
-} from '@/schemas/vehicle.schema';
+} from '@/validator/vehicle.validator';
 import multer from 'multer';
 
 export class VehicleRoute implements Routes {

@@ -6,7 +6,7 @@ import prisma from '@/lib/prisma';
 import { IVehiclePayment, PaymentMethod, PaymentType } from '@/interfaces/vehiclePayment.interface';
 import { ulid } from 'ulid';
 import { PaymentStatus } from '@/interfaces/vehiclePayment.interface';
-import { CreateVehiclePaymentDto, UpdateVehiclePaymentDto, GetAllPaymentsQueryDto, ExportPaymentsQueryDto } from '@/schemas/payment.schema';
+import { CreateVehiclePaymentDto, UpdateVehiclePaymentDto, GetAllPaymentsQueryDto, ExportPaymentsQueryDto } from '@/validator/payment.validator';
 import { logger } from '@utils/logger';
 
 @Service()

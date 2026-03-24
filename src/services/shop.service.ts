@@ -5,7 +5,7 @@ import { NotFoundException } from '@/exceptions/NotFoundException';
 import prisma from '@/lib/prisma';
 import { IShop, ShopType } from '@/interfaces/shop.interface';
 import { SubscriptionPlanName, SubscriptionStatus } from '@/interfaces/subscription.interface';
-import { UpdateShopDto, GetAllShopsQueryDto } from '@/schemas/shop.schema';
+import { UpdateShopDto, GetAllShopsQueryDto } from '@/validator/shop.validator';
 import { logger } from '@utils/logger';
 
 @Service()

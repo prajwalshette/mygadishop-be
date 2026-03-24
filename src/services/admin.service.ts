@@ -19,7 +19,7 @@ import {
   GetShopUsersQueryDto,
   CreateSubscriptionPlanDto,
   CreateSubscriptionPricingDto,
-} from '@/schemas/admin.schema';
+} from '@/validator/admin.validator';
 import { ISubscriptionPlan, ISubscriptionPricing, PlanDuration, SubscriptionPlanName } from '@/interfaces/subscription.interface';
 import bcrypt from 'bcryptjs';
 import { ulid } from 'ulid';

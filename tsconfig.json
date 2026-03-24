@@ -38,7 +38,8 @@
       "@services/*": ["services/*"],
       "@utils/*": ["utils/*"],
       "@consumers/*": ["consumers/*"],
-      "@prisma/client": ["../generated/prisma"]
+      "@prisma/client": ["../generated/prisma"],
+      "@validator/*": ["validator/*"]
     }
   },
   "include": ["src/**/*.ts", "src/**/*.json"],

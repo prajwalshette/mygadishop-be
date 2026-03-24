@@ -4,7 +4,7 @@ import { User } from '@interfaces/users.interface';
 import { CustomerService } from '@/services/customer.service';
 import { ICustomer } from '@/interfaces/customer.interface';
 import { RequestWithUser } from '@/interfaces/auth.interface';
-import { GetCustomerQueryDto, ExportCustomerQueryDto } from '@/schemas/customer.schema';
+import { GetCustomerQueryDto, ExportCustomerQueryDto } from '@/validator/customer.validator';
 import { stringify } from 'csv-stringify/sync';
 import { logger } from '@utils/logger';
 import { NotFoundException } from '@/exceptions/NotFoundException';

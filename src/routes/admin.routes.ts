@@ -24,7 +24,7 @@ import {
   planIdParamSchema,
   pricingIdParamSchema,
   activeDeactivePlanSchema,
-} from '@/schemas/admin.schema';
+} from '@/validator/admin.validator';
 
 export class AdminRoute implements Routes {
   public path = '/admin';

@@ -2,7 +2,7 @@ import { NextFunction, Request, Response } from 'express';
 import { Container } from 'typedi';
 import { ServicingService } from '@/services/servicing.service';
 import { IServicing } from '@/interfaces/servicing.interface';
-import { GetServicingQueryDto, ExportServicingQueryDto } from '@/schemas/servicing.schema';
+import { GetServicingQueryDto, ExportServicingQueryDto } from '@/validator/servicing.validator';
 import { RequestWithUser } from '@/interfaces/auth.interface';
 import { stringify } from 'csv-stringify/sync';
 import { logger } from '@utils/logger';

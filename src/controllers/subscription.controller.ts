@@ -6,7 +6,7 @@ import {
   GetSubscriptionHistoryQueryDto,
   GetPaymentHistoryQueryDto,
   CreateSubscriptionOrderDto,
-} from '@/schemas/subscription.schema';
+} from '@/validator/subscription.validator';
 import crypto from 'crypto';
 import { UnauthorizedException } from '@/exceptions/UnauthorizedException';
 import { logger } from '@utils/logger';

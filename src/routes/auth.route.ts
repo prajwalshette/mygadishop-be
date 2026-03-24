@@ -5,9 +5,9 @@ import { AuthMiddleware } from '@middlewares/auth.middleware';
 import { AdminAuthMiddleware } from '@middlewares/adminAuth.middleware';
 import { ValidationMiddleware } from '@middlewares/validation.middleware';
 import { OnboardAuthMiddleware } from '@middlewares/onboard.middleware';
-import { loginSchema } from '@/schemas/auth.schema';
-import { addAdminUserSchema } from '@/schemas/admin.schema';
-import { onboardShopSchema } from '@/schemas/onboard.schema';
+import { loginSchema } from '@/validator/auth.validator';
+import { addAdminUserSchema } from '@/validator/admin.validator';
+import { onboardShopSchema } from '@/validator/onboard.validator';
 
 export class AuthRoute implements Routes {
   public path = '/auth';

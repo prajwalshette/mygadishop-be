@@ -9,8 +9,9 @@ const envSchema = z.object({
   SECRET_KEY: z.string().min(1, 'SECRET_KEY is required'),
   CREDENTIALS: z
     .string()
-    .transform(val => val === 'true')
-    .default('false'),
+    .optional()
+    .default('false')
+    .transform(val => val === 'true'),
 
   // Logging
   LOG_FORMAT: z.string().optional(),
@@ -46,7 +47,7 @@ const envSchema = z.object({
 const _parsed = envSchema.safeParse(process.env);
 
 if (!_parsed.success) {
-  const errors = _parsed.error.errors
+  const errors = _parsed.error.issues
     .map(err => `  ✗ ${err.path.join('.')}: ${err.message}`)
     .join('\n');
 

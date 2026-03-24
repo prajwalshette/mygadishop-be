@@ -8,7 +8,7 @@ import { PaymentStatus } from '@prisma/client';
 import { CustomerType, Gender, ICustomer, ICustomerCsv } from '@/interfaces/customer.interface';
 import { ulid } from 'ulid';
 import { logger } from '@utils/logger';
-import { createCustomerSchema, CreateCustomerDto, UpdateCustomerDto, GetCustomerQueryDto, ExportCustomerQueryDto } from '@/schemas/customer.schema';
+import { createCustomerSchema, CreateCustomerDto, UpdateCustomerDto, GetCustomerQueryDto, ExportCustomerQueryDto } from '@/validator/customer.validator';
 import Papa from 'papaparse';
 import { Readable } from 'stream';
 import { SingleTon } from '@/utils/singleTon';

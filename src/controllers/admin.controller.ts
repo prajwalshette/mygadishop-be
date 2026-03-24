@@ -19,7 +19,7 @@ import {
   CreateSubscriptionPlanDto,
   CreateSubscriptionPricingDto,
   ActiveDeactivePlanDto,
-} from '@/schemas/admin.schema';
+} from '@/validator/admin.validator';
 
 export class AdminController {
   public adminService = Container.get(AdminService);

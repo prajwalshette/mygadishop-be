@@ -2,7 +2,7 @@ import { NextFunction, Request, Response } from 'express';
 import { Container } from 'typedi';
 import { RequestWithUser } from '@/interfaces/auth.interface';
 import { UserService } from '@/services/user.service';
-import { CreateUserDto, UpdateUserDto, UpdateUserPasswordDto, GetAllUsersQueryDto } from '@/schemas/user.schema';
+import { CreateUserDto, UpdateUserDto, UpdateUserPasswordDto, GetAllUsersQueryDto } from '@/validator/user.validator';
 // Using UserRole from interface
 import { UserRole } from '@/interfaces/users.interface';
 

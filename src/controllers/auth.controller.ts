@@ -2,8 +2,8 @@ import { NextFunction, Request, Response } from 'express';
 import { Container } from 'typedi';
 import { RequestWithAdmin, RequestWithOnboardTempUser } from '@/interfaces/auth.interface';
 import { AuthService } from '@services/auth.service';
-import { LoginDto } from '@/schemas/auth.schema';
-import { OnboardShopDto } from '@/schemas/onboard.schema';
+import { LoginDto } from '@/validator/auth.validator';
+import { OnboardShopDto } from '@/validator/onboard.validator';
 
 export class AuthController {
   public auth = Container.get(AuthService);

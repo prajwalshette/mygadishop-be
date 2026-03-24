@@ -11,7 +11,7 @@ import {
   exportPaymentsQuerySchema,
   paymentIdParamSchema,
   vehicleIdParamSchema
-} from '@/schemas/payment.schema';
+} from '@/validator/payment.validator';
 
 export class PaymentRoute implements Routes {
   public path = '/payment';

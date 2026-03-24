@@ -2,7 +2,7 @@ import { NextFunction, Request, Response } from 'express';
 import { Container } from 'typedi';
 import { RequestWithUser } from '@/interfaces/auth.interface';
 import { ShopService } from '@/services/shop.service';
-import { UpdateShopDto, GetAllShopsQueryDto } from '@/schemas/shop.schema';
+import { UpdateShopDto, GetAllShopsQueryDto } from '@/validator/shop.validator';
 
 export class ShopController {
   public shopService = Container.get(ShopService);

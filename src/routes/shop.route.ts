@@ -3,7 +3,7 @@ import { ShopController } from '@/controllers/shop.controller';
 import { Routes } from '@interfaces/routes.interface';
 import { AuthMiddleware } from '@middlewares/auth.middleware';
 import { ValidationMiddleware } from '@middlewares/validation.middleware';
-import { updateShopSchema, getAllShopsQuerySchema } from '@/schemas/shop.schema';
+import { updateShopSchema, getAllShopsQuerySchema } from '@/validator/shop.validator';
 import { AdminAuthMiddleware } from '@/middlewares/adminAuth.middleware';
 
 export class ShopRoute implements Routes {

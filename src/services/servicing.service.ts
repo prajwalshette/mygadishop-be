@@ -7,7 +7,7 @@ import prisma from '@/lib/prisma';
 import { IServicing } from '@/interfaces/servicing.interface';
 import { ulid } from 'ulid';
 import { logger } from '@utils/logger';
-import { CreateServicingDto, UpdateServicingDto, GetServicingQueryDto, ExportServicingQueryDto } from '@/schemas/servicing.schema';
+import { CreateServicingDto, UpdateServicingDto, GetServicingQueryDto, ExportServicingQueryDto } from '@/validator/servicing.validator';
 
 @Service()
 export class ServicingService {

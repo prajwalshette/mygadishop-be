@@ -10,7 +10,7 @@ import { FuelType, IVehicle, VehicleType, TransmissionType, VehicleStatus, Owner
 import { generateVehiclePresignedUrls, getS3ObjectStream } from './aws.service';
 import { getCachedVehiclePresignedUrls, deleteCachedVehiclePresignedUrls } from '@/utils/cacheVehiclePresignedUrl';
 import { logger } from '@utils/logger';
-import { CreateVehicleDto, UpdateVehicleDto, GetVehicleQueryDto, ExportVehicleQueryDto } from '@/schemas/vehicle.schema';
+import { CreateVehicleDto, UpdateVehicleDto, GetVehicleQueryDto, ExportVehicleQueryDto } from '@/validator/vehicle.validator';
 
 @Service()
 export class VehicleService {

@@ -7,7 +7,7 @@ import { RequestWithUser } from '@/interfaces/auth.interface';
 import { NotFoundException } from '@/exceptions/NotFoundException';
 import { BadRequestException } from '@/exceptions/BadRequestException';
 import { uploadVehicleMedia, uploadVehicleDocMedia } from '@/services/aws.service';
-import { CreateVehicleDto, GetVehicleQueryDto, ExportVehicleQueryDto } from '@/schemas/vehicle.schema';
+import { CreateVehicleDto, GetVehicleQueryDto, ExportVehicleQueryDto } from '@/validator/vehicle.validator';
 import { stringify } from 'csv-stringify/sync';
 import { logger } from '@utils/logger';
 

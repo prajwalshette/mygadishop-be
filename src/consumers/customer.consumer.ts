@@ -2,7 +2,7 @@ import { isAxiosError } from 'axios';
 import { logger } from '@/utils/logger';
 import { Job } from 'bullmq';
 import { CustomerService } from '@/services/customer.service';
-import { CreateCustomerDto } from '@/schemas/customer.schema';
+import { CreateCustomerDto } from '@/validator/customer.validator';
 
 export class CustomerConsumer {
   public async processPayload(payload: Job) {

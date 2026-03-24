@@ -15,9 +15,9 @@ import { ulid } from 'ulid';
 import { onboardTempTokenCache } from '@/utils/onboardTempTokenCache';
 import { SessionCache } from '@/utils/sessionCache';
 import { IShop, ShopType } from '@/interfaces/shop.interface';
-import { LoginDto } from '@/schemas/auth.schema';
-import { OnboardShopDto } from '@/schemas/onboard.schema';
-import { AdminLoginDto, AddAdminDto } from '@/schemas/admin.schema';
+import { LoginDto } from '@/validator/auth.validator';
+import { OnboardShopDto } from '@/validator/onboard.validator';
+import { AdminLoginDto, AddAdminDto } from '@/validator/admin.validator';
 import { logger } from '@utils/logger';
 
 @Service()
