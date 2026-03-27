@@ -1,20 +1,17 @@
-import './paths-init';
+import '@/paths-init';
 
 import { App } from '@/app';
-import { AuthRoute } from '@routes/auth.route';
-import { ValidateEnv } from '@utils/validateEnv';
-import { VehicleRoute } from './routes/vehicle.route';
-import { CustomerRoute } from './routes/customer.route';
-import { ServicingRoute } from './routes/servicing.route';
-import { PaymentRoute } from './routes/payment.route';
-import { DashboardRoute } from './routes/dashboard.route';
-import { ShopRoute } from './routes/shop.route';
-import { SubscriptionRoute } from './routes/subscription.route';
-import { UserRoute } from './routes/user.route';
+import { AuthRoute } from '@modules/auth/auth.routes';
+import { VehicleRoute } from '@modules/vehicle/vehicle.routes';
+import { CustomerRoute } from '@modules/customer/customer.routes';
+import { ServicingRoute } from '@modules/servicing/servicing.routes';
+import { PaymentRoute } from '@modules/payment/payment.routes';
+import { DashboardRoute } from '@modules/dashboard/dashboard.routes';
+import { ShopRoute } from '@modules/shop/shop.routes';
+import { SubscriptionRoute } from '@modules/subscription/subscription.routes';
+import { UserRoute } from '@modules/user/user.routes';
+import { AdminRoute } from '@modules/admin/admin.routes';
 
-import { AdminRoute } from './routes/admin.routes';
-
-ValidateEnv();
 
 const app = new App([
   new AuthRoute(),

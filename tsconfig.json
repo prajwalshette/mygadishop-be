@@ -29,17 +29,20 @@
     "paths": {
       "@/*": ["*"],
       "@config": ["config"],
-      "@controllers/*": ["controllers/*"],
-      "@dtos/*": ["dtos/*"],
+      "@modules/*": ["modules/*"],
       "@exceptions/*": ["exceptions/*"],
       "@interfaces/*": ["interfaces/*"],
       "@middlewares/*": ["middlewares/*"],
-      "@routes/*": ["routes/*"],
-      "@services/*": ["services/*"],
       "@utils/*": ["utils/*"],
       "@consumers/*": ["consumers/*"],
       "@prisma/client": ["../generated/prisma"],
-      "@validator/*": ["validator/*"]
+      "@services/*": ["services/*"],
+      "@validator/*": ["validator/*"],
+      "@services/redis/*": ["services/redis/*"],
+      "@services/redis/Queue/*": ["services/redis/Queue/*"],
+      "@services/redis/cache/*": ["services/redis/cache/*"],
+      "@services/redis/redisBullMQ": ["services/redis/redisBullMQ"],
+      "@lib/*": ["lib/*"]
     }
   },
   "include": ["src/**/*.ts", "src/**/*.json"],

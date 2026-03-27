@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
 import { ZodError, ZodType } from 'zod';
-import { HttpException } from '@exceptions/HttpException';
+import { HttpException } from '@/exceptions/HttpException';
 
 /**
  * @name ValidationMiddleware

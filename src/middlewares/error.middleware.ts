@@ -11,7 +11,7 @@ import { BadRequestException, HttpException, ValidationException,
   InternalServerErrorException,
   ServiceUnavailableException} from '@/exceptions';
 
-import { logger } from '@utils/logger';
+import { logger } from '@/utils/logger';
 
 /**
  * Custom error interface for handling Prisma errors

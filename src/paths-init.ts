@@ -11,12 +11,12 @@ if (process.env.NODE_ENV !== 'production') {
       '@config': ['config'],
       '@controllers/*': ['controllers/*'],
       '@dtos/*': ['dtos/*'],
-      '@exceptions/*': ['exceptions/*'],
-      '@interfaces/*': ['interfaces/*'],
-      '@middlewares/*': ['middlewares/*'],
+      '@/exceptions/*': ['exceptions/*'],
+      '@/interfaces/*': ['interfaces/*'],
+      '@/middlewares/*': ['middlewares/*'],
       '@routes/*': ['routes/*'],
       '@services/*': ['services/*'],
-      '@utils/*': ['utils/*'],
+      '@/utils/*': ['utils/*'],
     },
   });
 }

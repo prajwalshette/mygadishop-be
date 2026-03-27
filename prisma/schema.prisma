@@ -2,7 +2,7 @@
 // Prisma Schema for Second Hand Vehicle Management Platform
 
 datasource db {
-  provider          = "postgresql"
+  provider = "postgresql"
 }
 
 generator client {
@@ -115,14 +115,15 @@ model Shop {
   updated_at DateTime @updatedAt
 
   // Relations
-  users         User[]
-  customers     Customer[]
-  vehicles      Vehicle[]
-  services      Servicing[]
-  payments      VehiclePayment[]
-  subscriptions ShopSubscription[]
-  transactions  Transaction[]
-  inquiries     Inquiry[]
+  users           User[]
+  customers       Customer[]
+  vehicles        Vehicle[]
+  services        Servicing[]
+  payments        VehiclePayment[]
+  subscriptions   ShopSubscription[]
+  transactions    Transaction[]
+  inquiries       Inquiry[]
+  vehicleExpenses VehicleExpense[]
 }
 
 // ============= SUBSCRIPTION PLANS ===========
@@ -242,11 +243,12 @@ model Customer {
   created_at    DateTime     @default(now())
   updated_at    DateTime     @updatedAt
 
-  shop      Shop             @relation(fields: [shop_id], references: [id], onDelete: Cascade)
-  vehicles  Vehicle[]
-  services  Servicing[]
-  payments  VehiclePayment[]
-  inquiries Inquiry[]
+  shop            Shop             @relation(fields: [shop_id], references: [id], onDelete: Cascade)
+  vehicles_sold   Vehicle[]        @relation("VehicleSeller")
+  vehicles_bought Vehicle[]        @relation("VehicleBuyer")
+  services        Servicing[]
+  payments        VehiclePayment[]
+  inquiries       Inquiry[]
 
   @@unique([shop_id, phone])
   @@index([shop_id, customer_type])
@@ -254,57 +256,73 @@ model Customer {
 
 // ============= VEHICLES ===========
 model Vehicle {
-  id          String  @id
-  shop_id     String
-  customer_id String?
+  id                 String  @id
+  shop_id            String
+  seller_customer_id String? // WHO sold this vehicle TO the shop (filled at purchase)
+  buyer_customer_id  String? // WHO bought this vehicle FROM the shop (filled at sale)
 
-  // Vehicle Basic Info
-  type                VehicleType
-  brand               String
-  model               String
-  variant             String?
-  year                Int
-  registration_number String
-  chassis_number      String
-  engine_number       String
-  color               String
-  mileage             Float
+  // ── Identity ─────────────────────────────────────
+  vehicle_category  VehicleCategory // TWO_WHEELER | FOUR_WHEELER | THREE_WHEELER | COMMERCIAL
+  vehicle_type      VehicleType // BIKE | SCOOTER | CAR | AUTO_RICKSHAW | TRUCK etc.
+  brand             String
+  model             String
+  variant           String?
+  manufacture_year  Int // Year of manufacture
+  registration_year Int? // Year first registered (may differ)
+  color             String
 
-  // Technical Details
-  fuel_type               FuelType
-  transmission            TransmissionType
-  engine_capacity         Int? // in CC
-  ownership               OwnershipType    @default(FIRST)
-  insurance_valid_till    DateTime?
+  // ── Registration & Compliance ─────────────────────
+  registration_number     String
+  chassis_number          String
+  engine_number           String
   registration_valid_till DateTime?
+  insurance_valid_till    DateTime?
+  insurance_type          InsuranceType? // COMPREHENSIVE | THIRD_PARTY | EXPIRED
   puc_valid_till          DateTime?
+  is_hypothecation        Boolean        @default(false) // Bank loan/lien
+  hypothecation_bank      String? // Bank name if under loan
+  rc_available            Boolean        @default(true)
 
-  // Pricing
-  buying_price        Float?
-  selling_price       Float?
-  min_selling_price   Float?
-  is_price_negotiable Boolean @default(true)
+  // ── Ownership ─────────────────────────────────────
+  ownership       OwnershipType @default(FIRST)
+  ownership_city  String? // City where vehicle was previously registered
+  ownership_state String? // State — important for re-registration
 
-  // Media
-  vehicle_image_urls String[]
-  vehicle_doc_urls   String[]
+  // ── Odometer & Condition ──────────────────────────
+  odometer_reading Int // in km — at time of buying
+  condition        VehicleCondition // EXCELLENT | GOOD | FAIR | POOR
+  accident_history Boolean          @default(false)
+  flood_affected   Boolean          @default(false)
+  condition_notes  String? // Free text: "minor dent on left door"
 
-  // Status & Dates
+  // ── Fuel & Drivetrain (universal) ─────────────────
+  fuel_type    FuelType
+  transmission TransmissionType
+
+  // ── Pricing ───────────────────────────────────────
+  buying_price          Float?
+  selling_price         Float?
+  min_selling_price     Float? // Never exposed to public API
+  is_price_negotiable   Boolean @default(true)
+  estimated_rto_charges Float? // Re-registration cost estimate
+
+  // ── Status & Dates ────────────────────────────────
   status       VehicleStatus
   buying_date  DateTime?
   selling_date DateTime?
 
-  // Features & Description
-  features    String[]
-  description String?
+  // ── Media ─────────────────────────────────────────
+  vehicle_image_urls    String[] // Ordered — first image = cover
+  vehicle_doc_urls      String[] // RC, Insurance, PUC scans
+  inspection_report_url String? // Third-party inspection PDF
 
-  // NEW: Featured & Display
-  is_featured    Boolean   @default(false)
-  featured_until DateTime?
-  view_count     Int       @default(0)
-
-  // NEW: SEO for public website
-  slug             String? @unique // URL-friendly identifier
+  // ── Public Listing ────────────────────────────────
+  features         String[] // ["ABS", "Dual Airbags", "Sunroof"]
+  description      String? // Freeform dealer notes
+  is_featured      Boolean   @default(false)
+  featured_until   DateTime?
+  view_count       Int       @default(0)
+  slug             String?   @unique
   meta_title       String?
   meta_description String?
 
@@ -312,24 +330,143 @@ model Vehicle {
   created_at DateTime  @default(now())
   updated_at DateTime  @updatedAt
 
-  shop      Shop             @relation(fields: [shop_id], references: [id], onDelete: Cascade)
-  customer  Customer?        @relation(fields: [customer_id], references: [id])
-  services  Servicing[]
-  payments  VehiclePayment[]
-  inquiries Inquiry[]
+  // ── Relations ─────────────────────────────────────
+  shop            Shop      @relation(fields: [shop_id], references: [id], onDelete: Cascade)
+  seller_customer Customer? @relation("VehicleSeller", fields: [seller_customer_id], references: [id])
+  buyer_customer  Customer? @relation("VehicleBuyer", fields: [buyer_customer_id], references: [id])
+
+  two_wheeler_detail  TwoWheelerDetail?
+  four_wheeler_detail FourWheelerDetail?
+
+  payments         VehiclePayment[]
+  inquiries        Inquiry[]
+  vehicleDocuments VehicleDocument[]
+  vehicleExpenses  VehicleExpense[]
 
   @@unique([shop_id, registration_number])
   @@unique([shop_id, chassis_number])
   @@index([shop_id, status])
-  @@index([shop_id, customer_id])
+  @@index([shop_id, vehicle_category])
+  @@index([shop_id, vehicle_type])
+  @@index([shop_id, seller_customer_id])
+  @@index([shop_id, buyer_customer_id])
+}
+
+model TwoWheelerDetail {
+  id         String @id
+  vehicle_id String @unique
+
+  // Specs
+  engine_capacity_cc   Int? // e.g. 125, 150, 200
+  max_power_bhp        Float? // e.g. 12.5 bhp
+  max_torque_nm        Float? // e.g. 10.5 Nm
+  top_speed_kmh        Int?
+  mileage_kmpl         Float? // Fuel efficiency (petrol)
+  range_km             Float? // Range for electric
+  battery_capacity_kwh Float? // For EV only
+  charging_time_hrs    Float? // For EV only
+
+  // Type-specific
+  two_wheeler_type TwoWheelerType // BIKE | SCOOTER | MOPED | ELECTRIC_SCOOTER | ELECTRIC_BIKE
+  start_type       StartType? // KICK | SELF | BOTH
+  abs_type         AbsType? // NO_ABS | SINGLE_CHANNEL | DUAL_CHANNEL
+  has_disc_brake   Boolean        @default(false)
+  has_alloy_wheels Boolean        @default(false)
+  has_bluetooth    Boolean        @default(false) // Instrument cluster
+
+  vehicle Vehicle @relation(fields: [vehicle_id], references: [id], onDelete: Cascade)
+}
+
+model FourWheelerDetail {
+  id         String @id
+  vehicle_id String @unique
+
+  // Specs
+  body_type            CarBodyType // HATCHBACK | SEDAN | SUV | MUV | CROSSOVER | CONVERTIBLE | COUPE
+  engine_capacity_cc   Int? // e.g. 998, 1497, 1996
+  max_power_bhp        Float?
+  max_torque_nm        Float?
+  mileage_kmpl         Float?
+  range_km             Float? // EV range
+  battery_capacity_kwh Float? // EV battery
+  no_of_cylinders      Int? // 3, 4, 6
+  drive_type           DriveType? // FWD | RWD | AWD | 4WD
+  no_of_doors          Int? // 3, 4, 5
+  seating_capacity     Int?
+  boot_space_litres    Int?
+
+  // Safety & Features
+  no_of_airbags Int?
+  has_abs       Boolean @default(false)
+  has_esp       Boolean @default(false) // Electronic Stability Program
+  ncap_rating   Int? // 0-5 stars
+
+  // Comfort
+  has_sunroof          Boolean @default(false)
+  has_cruise_control   Boolean @default(false)
+  has_android_auto     Boolean @default(false)
+  has_apple_carplay    Boolean @default(false)
+  has_360_camera       Boolean @default(false)
+  has_ventilated_seats Boolean @default(false)
+
+  vehicle Vehicle @relation(fields: [vehicle_id], references: [id], onDelete: Cascade)
+}
+
+// ============================================================
+// VEHICLE DOCUMENTS — NEW
+// ============================================================
+
+model VehicleDocument {
+  id          String         @id
+  vehicle_id  String
+  doc_type    DocumentType
+  status      DocumentStatus @default(AVAILABLE)
+  file_url    String?
+  expiry_date DateTime?
+  notes       String?
+  uploaded_at DateTime       @default(now())
+  updated_at  DateTime       @updatedAt
+
+  vehicle Vehicle @relation(fields: [vehicle_id], references: [id], onDelete: Cascade)
+
+  @@unique([vehicle_id, doc_type])
+  @@map("vehicle_documents")
+}
+
+model VehicleExpense {
+  id           String      @id
+  shop_id      String
+  vehicle_id   String
+  expense_type ExpenseType
+  description  String?
+  amount       Float
+  vendor_name  String? // who did the work
+  receipt_url  String? // photo of bill
+  expense_date DateTime    @default(now())
+  created_by   String? // staff user ID
+
+  deleted_at DateTime?
+  created_at DateTime  @default(now())
+
+  shop    Shop    @relation(fields: [shop_id], references: [id], onDelete: Cascade)
+  vehicle Vehicle @relation(fields: [vehicle_id], references: [id], onDelete: Cascade)
+
+  @@index([vehicle_id])
+  @@index([shop_id, expense_date])
 }
 
 // ============= SERVICING ===========
 model Servicing {
   id          String @id
   shop_id     String
-  vehicle_id  String
   customer_id String
+
+  vehicle_brand      String
+  vehicle_model      String
+  vehicle_variant    String?
+  vehicle_year       Int?
+  vehicle_type       VehicleType
+  vehicle_reg_number String?
 
   service_date   DateTime
   service_type   String
@@ -352,17 +489,21 @@ model Servicing {
   rating            Int? // 1-5 stars
   customer_feedback String?
 
+  // ── Payment ──────────────────────────────────────────
+  payment_status PaymentStatus  @default(PENDING)
+  paid_amount    Float          @default(0)
+  payment_method PaymentMethod?
+  payment_date   DateTime?
+
   service_images String[]
   deleted_at     DateTime?
   created_at     DateTime  @default(now())
   updated_at     DateTime  @updatedAt
 
   shop     Shop     @relation(fields: [shop_id], references: [id], onDelete: Cascade)
-  vehicle  Vehicle  @relation(fields: [vehicle_id], references: [id], onDelete: Cascade)
   customer Customer @relation(fields: [customer_id], references: [id], onDelete: Cascade)
 
   @@index([shop_id, status])
-  @@index([shop_id, vehicle_id])
   @@index([shop_id, customer_id])
 }
 
@@ -374,7 +515,7 @@ model VehiclePayment {
   customer_id String
 
   amount       Float
-  paid_amount   Float?
+  paid_amount  Float?
   balance_due  Float?
   payment_type PaymentType   @default(VEHICLE_SALE)
   method       PaymentMethod
@@ -479,6 +620,38 @@ model InquiryNote {
   @@index([inquiry_id, created_at])
 }
 
+model NotificationLog {
+  id         String              @id
+  user_id    String
+  user_type  UserType
+  title      String
+  body       String
+  data       Json? // deep link payload
+  channel    NotificationChannel
+  status     NotificationStatus  @default(PENDING)
+  sent_at    DateTime?
+  read_at    DateTime?
+  created_at DateTime            @default(now())
+
+  @@index([user_id, user_type])
+  @@index([status])
+}
+
+model DeviceToken {
+  id           String   @id
+  token        String   @unique // FCM token (Android) or APNS token (iOS)
+  platform     Platform // ANDROID | IOS | WEB
+  user_type    UserType // SHOP_USER | PUBLIC_USER
+  user_id      String // ID from User or PublicUser table
+  device_info  Json? // model, OS version, app version
+  is_active    Boolean  @default(true)
+  last_used_at DateTime @default(now())
+  created_at   DateTime @default(now())
+
+  @@index([user_id, user_type])
+  @@index([is_active])
+}
+
 // ============= ENUMS ===========
 enum PlatformAdminRole {
   SUPER_ADMIN
@@ -522,19 +695,26 @@ enum CustomerType {
   BUYER
   SELLER
   BOTH
+  SERVICE_ONLY
 }
 
+// Keep existing VehicleType as sub-type
 enum VehicleType {
-  BIKE              // Motorcycle
-  SCOOTER           // Gearless / Scooter
-  MOPED             // TVS XL, etc.
-  CAR               // Hatchback / Sedan / SUV (handled by BodyType)
-  AUTO_RICKSHAW     // Passenger 3-wheeler
-  E_RICKSHAW        // Electric rickshaw
-  GOODS_AUTO        // Cargo 3-wheeler
-  PICKUP_TRUCK      // Bolero Pickup, Tata Ace
-  TRUCK             // Medium / Heavy truck
-  BUS               // Private / School / Staff bus
+  BIKE
+  SCOOTER
+  MOPED
+  ELECTRIC_SCOOTER
+  ELECTRIC_BIKE
+  CAR
+  AUTO_RICKSHAW
+  E_RICKSHAW
+  GOODS_AUTO
+  PICKUP_TRUCK
+  MINI_TRUCK
+  MEDIUM_TRUCK
+  HEAVY_TRUCK
+  BUS
+  TEMPO
 }
 
 enum FuelType {
@@ -573,6 +753,8 @@ enum ServicingStatus {
   COMPLETED
   CANCELLED
   PENDING
+  WAITING_PARTS
+  DELIVERED
 }
 
 enum PaymentStatus {
@@ -659,5 +841,124 @@ enum InquirySource {
   INSTAGRAM
   REFERRAL
   OLX
+  OTHER
+}
+
+enum VehicleCategory {
+  TWO_WHEELER
+  THREE_WHEELER
+  FOUR_WHEELER
+  COMMERCIAL
+}
+
+enum TwoWheelerType {
+  BIKE
+  SCOOTER
+  MOPED
+  ELECTRIC_SCOOTER
+  ELECTRIC_BIKE
+}
+
+enum VehicleCondition {
+  EXCELLENT
+  GOOD
+  FAIR
+  POOR
+}
+
+enum InsuranceType {
+  COMPREHENSIVE
+  THIRD_PARTY
+  EXPIRED
+}
+
+enum StartType {
+  KICK
+  SELF
+  BOTH
+}
+
+enum AbsType {
+  NO_ABS
+  SINGLE_CHANNEL
+  DUAL_CHANNEL
+}
+
+enum DriveType {
+  FWD
+  RWD
+  AWD
+  FOUR_WD
+}
+
+enum CarBodyType {
+  HATCHBACK
+  SEDAN
+  SUV
+  MUV
+  CROSSOVER
+  CONVERTIBLE
+  COUPE
+  PICKUP
+}
+
+enum DocumentType {
+  RC_BOOK
+  INSURANCE
+  PUC
+  SERVICE_INVOICE
+  NOC
+  FORM_26
+  HYPOTHECATION_NOC
+  OTHER
+}
+
+enum DocumentStatus {
+  AVAILABLE
+  MISSING
+  EXPIRED
+  EXPIRING_SOON
+}
+
+enum NotificationChannel {
+  PUSH // FCM / APNS
+  WHATSAPP // MSG91 / Twilio
+  SMS
+  EMAIL
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  DELIVERED
+  READ
+  FAILED
+}
+
+enum UserType {
+  SHOP_USER
+  PUBLIC_USER
+  ADMIN_USER
+}
+
+enum Platform {
+  ANDROID
+  IOS
+  WEB // PWA web push
+}
+
+enum ExpenseType {
+  PAINT_WORK
+  TYRE_REPLACEMENT
+  BATTERY
+  ENGINE_REPAIR
+  ELECTRICAL
+  BODY_REPAIR
+  CLEANING_POLISH
+  REGISTRATION
+  INSURANCE
+  INSPECTION
+  LABOUR
+  SPARE_PARTS
   OTHER
 }

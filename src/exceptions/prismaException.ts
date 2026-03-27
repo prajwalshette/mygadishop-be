@@ -5,7 +5,8 @@ import { logger } from '@/utils/logger';
 export function formatPrismaError(error: unknown): HttpException {
   logger.error(error);
   if (error instanceof Prisma.PrismaClientKnownRequestError) {
-    switch (error.code) {
+    const e = error as Prisma.PrismaClientKnownRequestError;
+    switch (e.code) {
       case 'P2000':
         return new HttpException(400, 'The provided value is too long for the column.');
       case 'P2001':
@@ -65,12 +66,13 @@ export function formatPrismaError(error: unknown): HttpException {
       case 'P2028':
         return new HttpException(500, 'Timeout occurred during database operation.');
       default:
-        return new HttpException(500, `Prisma error: ${error.message}`);
+        return new HttpException(500, `Prisma error: ${e.message}`);
     }
   }
 
   if (error instanceof Prisma.PrismaClientUnknownRequestError) {
-    return new HttpException(500, `Unknown database error occurred: ${error.message}`);
+    const e = error as Prisma.PrismaClientUnknownRequestError;
+    return new HttpException(500, `Unknown database error occurred: ${e.message}`);
   }
 
   if (error instanceof Prisma.PrismaClientRustPanicError) {

@@ -7,10 +7,10 @@ import helmet from 'helmet';
 import hpp from 'hpp';
 import morgan from 'morgan';
 import { NODE_ENV, PORT, LOG_FORMAT, ORIGIN, CREDENTIALS, BASE_PATH, REDIS_CONNECTION_URL, PROCESS1QUEUE } from '@/config/env';
-import { Routes } from '@interfaces/routes.interface';
-import { ErrorMiddleware } from '@middlewares/error.middleware';
-import { logger, stream } from '@utils/logger';
-import { SingleTon } from '@utils/singleTon';
+import { Routes } from '@/interfaces/routes.interface';
+import { ErrorMiddleware } from '@/middlewares/error.middleware';
+import { logger, stream } from '@/utils/logger';
+import { QueueService } from '@/services/redis/queues/queue.service';
 import { CustomerConsumer } from '@/consumers/customer.consumer';
 import { th } from 'zod/v4/locales';
 
@@ -100,7 +100,7 @@ export class App {
     try {
       logger.info('Initializing customer consumer');
       const customerConsumer = new CustomerConsumer();
-      SingleTon.initializeProcess1Instance({
+      QueueService.initializeProcess1Instance({
         queueName: PROCESS1QUEUE,
         connectionString: REDIS_CONNECTION_URL,
         messageCallback: customerConsumer.processPayload.bind(customerConsumer),

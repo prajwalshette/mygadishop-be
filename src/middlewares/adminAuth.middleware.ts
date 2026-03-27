@@ -1,11 +1,11 @@
 import { NextFunction, Response } from 'express';
 import { verify } from 'jsonwebtoken';
 import { SECRET_KEY } from '@/config/env';
-import { HttpException } from '@exceptions/HttpException';
-import { DataStoredInToken, RequestWithAdmin } from '@interfaces/auth.interface';
-import { AdminRole } from '@/interfaces/users.interface';
+import { HttpException } from '@/exceptions/HttpException';
+import type { DataStoredInToken, RequestWithAdmin } from '@modules/auth/auth.interface';
+import type { AdminRole } from '@modules/user/user.interface';
 import prisma from '@/lib/prisma';
-import { SessionCache } from '@/utils/sessionCache';
+import { SessionCache } from '@/services/redis/cache/session.cache';
 
 const getAuthorization = req => {
   const coockie = req.cookies['Authorization'];

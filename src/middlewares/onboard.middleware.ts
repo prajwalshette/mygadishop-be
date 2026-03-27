@@ -1,9 +1,9 @@
 import { NextFunction, Response } from 'express';
 import { verify } from 'jsonwebtoken';
 import { SECRET_KEY } from '@/config/env';
-import { HttpException } from '@exceptions/HttpException';
-import { DataStoredInOnboardTempToken, RequestWithOnboardTempUser } from '@interfaces/auth.interface';
-import { onboardTempTokenCache } from '@/utils/onboardTempTokenCache';
+import { HttpException } from '@/exceptions/HttpException';
+import type { DataStoredInOnboardTempToken, RequestWithOnboardTempUser } from '@modules/auth/auth.interface';
+import { onboardTempTokenCache } from '@/services/redis/cache/ token.cache';
 
 const getAuthorization = req => {
   const coockie = req.cookies['Authorization'];
