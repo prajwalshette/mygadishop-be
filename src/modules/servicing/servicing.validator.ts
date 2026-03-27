@@ -22,7 +22,7 @@ export const createServicingSchema = z.object({
   
   total_cost: z.number().min(0, 'Total cost must be positive'),
   
-  status: z.nativeEnum(ServicingStatus),
+  status: z.enum(ServicingStatus),
   
   next_service_date: z.string().datetime().or(z.date()).optional(),
   
@@ -63,7 +63,7 @@ export const updateServicingSchema = z.object({
   
   total_cost: z.number().min(0).optional(),
   
-  status: z.nativeEnum(ServicingStatus).optional(),
+  status: z.enum(ServicingStatus).optional(),
   
   next_service_date: z.string().datetime().or(z.date()).optional(),
   
@@ -105,7 +105,7 @@ export const getServicingQuerySchema = z.object({
     
   search: z.string().trim().optional(), // Searches: service_type, description
   
-  status: z.nativeEnum(ServicingStatus).optional(),
+  status: z.enum(ServicingStatus).optional(),
   
   vehicle_id: z.string().optional(),
   
@@ -120,7 +120,7 @@ export const getServicingQuerySchema = z.object({
 export const exportServicingQuerySchema = z.object({
   search: z.string().trim().optional(), // Searches: service_type, description
   
-  status: z.nativeEnum(ServicingStatus).optional(),
+  status: z.enum(ServicingStatus).optional(),
   
   vehicle_id: z.string().optional(),
   

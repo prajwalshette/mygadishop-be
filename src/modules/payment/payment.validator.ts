@@ -15,11 +15,11 @@ export const createVehiclePaymentSchema = z.object({
 
   balance_due: z.coerce.number().min(0).optional(),
 
-  payment_type: z.nativeEnum(PaymentType).default(PaymentType.VEHICLE_SALE),
+  payment_type: z.enum(PaymentType).default(PaymentType.VEHICLE_SALE),
 
-  method: z.nativeEnum(PaymentMethod),
+  method: z.enum(PaymentMethod),
 
-  status: z.nativeEnum(PaymentStatus),
+  status: z.enum(PaymentStatus),
 
   transaction_id: z.string().optional(),
 
@@ -42,11 +42,11 @@ export const updateVehiclePaymentSchema = z.object({
 
   balance_due: z.coerce.number().min(0).optional(),
 
-  payment_type: z.nativeEnum(PaymentType).optional(),
+  payment_type: z.enum(PaymentType).optional(),
 
-  method: z.nativeEnum(PaymentMethod).optional(),
+  method: z.enum(PaymentMethod).optional(),
 
-  status: z.nativeEnum(PaymentStatus).optional(),
+  status: z.enum(PaymentStatus).optional(),
 
   transaction_id: z.string().optional(),
 
@@ -86,9 +86,9 @@ export const getAllPaymentsQuerySchema = z.object({
 export const exportPaymentsQuerySchema = z.object({
   dateFrom: z.string().optional(),
   dateTo: z.string().optional(),
-  status: z.nativeEnum(PaymentStatus).optional(),
-  payment_type: z.nativeEnum(PaymentType).optional(),
-  method: z.nativeEnum(PaymentMethod).optional(),
+  status: z.enum(PaymentStatus).optional(),
+  payment_type: z.enum(PaymentType).optional(),
+  method: z.enum(PaymentMethod).optional(),
   search: z.string().trim().optional(),
 });
 

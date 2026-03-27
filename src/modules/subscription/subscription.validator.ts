@@ -3,7 +3,7 @@ import { PlanDuration, SubscriptionPlanName } from '@prisma/client';
 
 // Create/Update Subscription Plan Schema
 export const createSubscriptionPlanSchema = z.object({
-  plan_name: z.nativeEnum(SubscriptionPlanName),
+  plan_name: z.enum(SubscriptionPlanName),
   
   description: z.string().min(1, 'Description is required'),
   
@@ -19,7 +19,7 @@ export const planIdParamSchema = z.object({
 
 // Create/Update Subscription Pricing Schema
 export const createSubscriptionPricingSchema = z.object({
-  duration: z.nativeEnum(PlanDuration),
+  duration: z.enum(PlanDuration),
   
   price: z.number().min(0, 'Price must be positive'),
   
@@ -77,8 +77,8 @@ export const getPaymentHistoryQuerySchema = z.object({
 
 // Create Subscription Order (Razorpay) Schema
 export const createSubscriptionOrderSchema = z.object({
-  plan_name: z.nativeEnum(SubscriptionPlanName),
-  duration: z.nativeEnum(PlanDuration),
+  plan_name: z.enum(SubscriptionPlanName),
+  duration: z.enum(PlanDuration),
 });
 
 // Export types

@@ -8,7 +8,7 @@ export const createVehicleSchema = z.object({
     .optional()
     .transform((val) => (val === undefined || val === '' ? null : val)),
   
-  type: z.nativeEnum(VehicleType),
+  type: z.enum(VehicleType),
   
   brand: z.string().min(1, 'Brand is required'),
   
@@ -28,13 +28,13 @@ export const createVehicleSchema = z.object({
   
   mileage: z.number().min(0, 'Mileage must be positive'),
   
-  fuel_type: z.nativeEnum(FuelType),
+  fuel_type: z.enum(FuelType),
   
-  transmission: z.nativeEnum(TransmissionType),
+  transmission: z.enum(TransmissionType),
   
   engine_capacity: z.number().positive().optional(),
   
-  ownership: z.nativeEnum(OwnershipType),
+  ownership: z.enum(OwnershipType),
   
   insurance_valid_till: z.union([
     z.string().transform((val) => {
@@ -83,7 +83,7 @@ export const createVehicleSchema = z.object({
   
   vehicle_doc_urls: z.array(z.string().url()).optional(),
   
-  status: z.nativeEnum(VehicleStatus),
+  status: z.enum(VehicleStatus),
   
   buying_date: z.union([
     z.string().transform((val) => {
@@ -137,7 +137,7 @@ export const updateVehicleSchema = z.object({
     .optional()
     .transform((val) => (val === undefined || val === '' ? null : val)),
   
-  type: z.nativeEnum(VehicleType).optional(),
+  type: z.enum(VehicleType).optional(),
   
   brand: z.string().min(1).optional(),
   
@@ -157,13 +157,13 @@ export const updateVehicleSchema = z.object({
   
   mileage: z.number().min(0).optional(),
   
-  fuel_type: z.nativeEnum(FuelType).optional(),
+  fuel_type: z.enum(FuelType).optional(),
   
-  transmission: z.nativeEnum(TransmissionType).optional(),
+  transmission: z.enum(TransmissionType).optional(),
   
   engine_capacity: z.number().positive().optional(),
   
-  ownership: z.nativeEnum(OwnershipType).optional(),
+  ownership: z.enum(OwnershipType).optional(),
   
   insurance_valid_till: z.union([
     z.string().transform((val) => {
@@ -212,7 +212,7 @@ export const updateVehicleSchema = z.object({
   
   vehicle_doc_urls: z.array(z.string().url()).optional(),
   
-  status: z.nativeEnum(VehicleStatus).optional(),
+  status: z.enum(VehicleStatus).optional(),
   
   buying_date: z.union([
     z.string().transform((val) => {
@@ -283,9 +283,9 @@ export const getVehicleQuerySchema = z.object({
     
   search: z.string().trim().optional(), // Searches: brand, model, variant, registration_number, chassis_number, engine_number
   
-  status: z.nativeEnum(VehicleStatus).optional(),
+  status: z.enum(VehicleStatus).optional(),
   
-  type: z.nativeEnum(VehicleType).optional(),
+  type: z.enum(VehicleType).optional(),
   
   sortBy: z.enum(['created_at', 'updated_at']).optional().default('created_at'),
   
@@ -296,9 +296,9 @@ export const getVehicleQuerySchema = z.object({
 export const exportVehicleQuerySchema = z.object({
   search: z.string().trim().optional(), // Searches: brand, model, variant, registration_number, chassis_number, engine_number
   
-  status: z.nativeEnum(VehicleStatus).optional(),
+  status: z.enum(VehicleStatus).optional(),
   
-  type: z.nativeEnum(VehicleType).optional(),
+  type: z.enum(VehicleType).optional(),
   
   sortBy: z.enum(['created_at', 'updated_at']).optional().default('created_at'),
   

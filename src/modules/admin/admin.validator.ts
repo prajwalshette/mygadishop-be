@@ -97,7 +97,7 @@ export const createShopSchema = z.object({
   pincode: z.string().min(6, 'Pincode must be at least 6 digits'),
   gstin: z.string().optional(),
   website_url: z.string().url('Invalid URL format').optional(),
-  shop_type: z.nativeEnum(ShopType).optional().default(ShopType.TWO_WHEELER),
+  shop_type: z.enum(ShopType).optional().default(ShopType.TWO_WHEELER),
   established_year: z.number().int().min(1900).max(new Date().getFullYear()).optional(),
 });
 
@@ -253,7 +253,7 @@ export const getAnalyticsQuerySchema = z.object({
 // Subscription Plan Management Schemas (Admin only)
 // Create/Update Subscription Plan Schema
 export const createSubscriptionPlanSchema = z.object({
-  plan_name: z.nativeEnum(SubscriptionPlanName),
+  plan_name: z.enum(SubscriptionPlanName),
   description: z.string().min(1, 'Description is required'),
   max_vehicles: z.number().int().positive().optional().nullable(),
   max_staff_users: z.number().int().positive('Max staff users must be positive'),
@@ -266,7 +266,7 @@ export const planIdParamSchema = z.object({
 
 // Create/Update Subscription Pricing Schema
 export const createSubscriptionPricingSchema = z.object({
-  duration: z.nativeEnum(PlanDuration),
+  duration: z.enum(PlanDuration),
   price: z.number().min(0, 'Price must be positive'),
   discount: z.number().min(0).max(100, 'Discount must be between 0 and 100').optional().default(0),
 });

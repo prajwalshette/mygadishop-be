@@ -25,7 +25,7 @@ export const updateShopSchema = z.object({
   
   shop_logo_url: z.string().url('Invalid URL format').optional(),
   
-  shop_type: z.nativeEnum(ShopType).optional(),
+  shop_type: z.enum(ShopType).optional(),
 });
 
 // Get All Shops Query Schema

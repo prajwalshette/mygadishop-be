@@ -18,9 +18,9 @@ export const createCustomerSchema = z.object({
   pincode: z.string().optional(),
 
   alt_phone: z.string().optional(),
-  gender: z.nativeEnum(Gender).optional(),
+  gender: z.enum(Gender).optional(),
 
-  customer_type: z.nativeEnum(CustomerType),
+  customer_type: z.enum(CustomerType),
 });
 
 // Update Customer Schema - All fields optional
@@ -40,9 +40,9 @@ export const updateCustomerSchema = z.object({
   pincode: z.string().optional(),
 
   alt_phone: z.string().optional(),
-  gender: z.nativeEnum(Gender).optional(),
+  gender: z.enum(Gender).optional(),
 
-  customer_type: z.nativeEnum(CustomerType).optional(),
+  customer_type: z.enum(CustomerType).optional(),
 });
 
 // Customer ID Param Schema
@@ -68,7 +68,7 @@ export const getCustomerQuerySchema = z.object({
 
   search: z.string().trim().optional(), // Searches: name, email, phone
 
-  customer_type: z.nativeEnum(CustomerType).optional(),
+  customer_type: z.enum(CustomerType).optional(),
 
   last_purchase: z.enum(['all_time', 'this_month', 'last_3_months']).optional().default('all_time'),
 
@@ -81,7 +81,7 @@ export const getCustomerQuerySchema = z.object({
 export const exportCustomerQuerySchema = z.object({
   search: z.string().trim().optional(), // Searches: name, email, phone
 
-  customer_type: z.nativeEnum(CustomerType).optional(),
+  customer_type: z.enum(CustomerType).optional(),
 
   last_purchase: z.enum(['all_time', 'this_month', 'last_3_months']).optional().default('all_time'),
 
