@@ -313,7 +313,6 @@ model Vehicle {
 
   // ── Media ─────────────────────────────────────────
   vehicle_image_urls    String[] // Ordered — first image = cover
-  vehicle_doc_urls      String[] // RC, Insurance, PUC scans
   inspection_report_url String? // Third-party inspection PDF
 
   // ── Public Listing ────────────────────────────────

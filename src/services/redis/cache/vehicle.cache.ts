@@ -11,7 +11,8 @@ type VehiclePresignedCache = {
 
 type VehicleUrlData = {
   imageUrls: string[];
-  docUrls: string[];
+  /** @deprecated Preserved for older cache entries; document URLs are presigned per row in the vehicle service. */
+  docUrls?: string[];
 };
 
 const getVehicleCacheKey = (vehicle_id: string) => `vehicle_presigned:${vehicle_id}`;
@@ -62,7 +63,7 @@ export const getVehiclePresignedCache = async (vehicle_id: string): Promise<Vehi
     }
 
     logger.debug(`Retrieved cached URLs for vehicle: ${vehicle_id}`);
-    return { imageUrls: parsed.imageUrls, docUrls: parsed.docUrls };
+    return { imageUrls: parsed.imageUrls, docUrls: parsed.docUrls ?? [] };
   } catch (error) {
     logger.error(error, 'Error getting cached vehicle presigned URLs');
     return null;

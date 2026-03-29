@@ -1,14 +1,15 @@
 import { Prisma } from '@prisma/client';
+import type { Vehicle, VehicleDocument } from '@prisma/client';
 import { Service } from 'typedi';
-import { BadRequestException, ConflictException, HttpException, NotFoundException } from '@/exceptions';
+import { ConflictException, HttpException, NotFoundException } from '@/exceptions';
 import prisma from '@/lib/prisma';
 import { ulid } from 'ulid';
-import type { IVehicle } from './vehicle.interface';
-import { FuelType, OwnershipType, TransmissionType, VehicleStatus, VehicleType } from '@prisma/client';
-import { generateVehiclePresignedUrls, getS3ObjectStream } from '@/services/aws/aws.service';
+import type { IVehicle, IVehicleDocument } from './vehicle.interface';
+import { DocumentType, FuelType, OwnershipType, TransmissionType, VehicleStatus, VehicleType } from '@prisma/client';
+import { generateVehiclePresignedUrls, getS3ObjectStream, presignS3Url } from '@/services/aws/aws.service';
 import { deleteVehiclePresignedCache, getVehiclePresignedCache } from '@/services/redis/cache/vehicle.cache';
 import { logger } from '@/utils/logger';
-import type { CreateVehicleDto, ExportVehicleQueryDto, GetVehicleQueryDto, UpdateVehicleDto } from './vehicle.validator';
+import type { ExportVehicleQueryDto, GetVehicleQueryDto } from './vehicle.validator';
 
 @Service()
 export class VehicleService {
@@ -17,7 +18,11 @@ export class VehicleService {
   // -----------------------------
   // CREATE VEHICLE - Add new vehicle to inventory
   // -----------------------------
-  public async createVehicle(vehicleData: IVehicle, shop_id: string): Promise<IVehicle> {
+  public async createVehicle(
+    vehicleData: IVehicle,
+    shop_id: string,
+    documentRows?: { doc_type: DocumentType; file_url: string; expiry_date?: Date | null; notes?: string | null }[],
+  ): Promise<IVehicle> {
     try {
       const isExistVehicle = await this.prisma.vehicle.findFirst({
         where: {
@@ -37,8 +42,7 @@ export class VehicleService {
         );
       }
 
-      // Remove price field if it exists (not in Prisma schema)
-      const { price, ...vehicleDataWithoutPrice } = vehicleData as any;
+      const { price, vehicle_documents: _vd, vehicle_doc_urls: _vdu, ...vehicleDataWithoutPrice } = vehicleData as any;
 
       const vehicle = await this.prisma.vehicle.create({
         data: {
@@ -48,18 +52,24 @@ export class VehicleService {
           selling_date: vehicleData.selling_date ? new Date(vehicleData.selling_date) : null,
           buying_date: vehicleData.buying_date ? new Date(vehicleData.buying_date) : null,
           insurance_valid_till: vehicleData.insurance_valid_till ? new Date(vehicleData.insurance_valid_till) : null,
+          vehicleDocuments:
+            documentRows && documentRows.length > 0
+              ? {
+                  create: documentRows.map(row => ({
+                    id: ulid(),
+                    doc_type: row.doc_type,
+                    file_url: row.file_url,
+                    expiry_date: row.expiry_date ?? undefined,
+                    notes: row.notes ?? undefined,
+                  })),
+                }
+              : undefined,
         } as Prisma.VehicleUncheckedCreateInput,
+        include: { vehicleDocuments: true },
       });
 
       logger.info(`Vehicle created successfully: ${vehicle.registration_number} (${vehicle.id})`);
-      return {
-        ...vehicle,
-        type: vehicle.vehicle_type,
-        fuel_type: vehicle.fuel_type,
-        transmission: vehicle.transmission as TransmissionType,
-        status: vehicle.status as VehicleStatus,
-        ownership: vehicle.ownership as OwnershipType,
-      };
+      return this.mapVehicleToIVehicle(vehicle);
     } catch (error) {
       if (error instanceof HttpException) throw error;
       logger.error(`Create vehicle error: ${error.message}`);
@@ -67,12 +77,59 @@ export class VehicleService {
     }
   }
 
+  /** Raw DB row with documents (no presigned URLs) — for update merge logic. */
+  public async getVehicleWithDocumentsRaw(vehicleId: string): Promise<(Vehicle & { vehicleDocuments: VehicleDocument[] }) | null> {
+    return this.prisma.vehicle.findFirst({
+      where: { id: vehicleId, deleted_at: null },
+      include: { vehicleDocuments: true },
+    });
+  }
+
+  private mapVehicleToIVehicle(vehicle: Vehicle & { vehicleDocuments?: VehicleDocument[] }): IVehicle {
+    const { vehicleDocuments, ...v } = vehicle;
+    return {
+      ...v,
+      type: vehicle.vehicle_type,
+      fuel_type: vehicle.fuel_type,
+      transmission: vehicle.transmission as TransmissionType,
+      status: vehicle.status as VehicleStatus,
+      ownership: vehicle.ownership as OwnershipType,
+      vehicle_documents: (vehicleDocuments ?? []).map(d => this.mapVehicleDocumentToIVehicleDocument(d)),
+    } as unknown as IVehicle;
+  }
+
+  private mapVehicleDocumentToIVehicleDocument(d: VehicleDocument): IVehicleDocument {
+    return {
+      id: d.id,
+      vehicle_id: d.vehicle_id,
+      doc_type: d.doc_type,
+      status: d.status,
+      file_url: d.file_url,
+      expiry_date: d.expiry_date,
+      notes: d.notes,
+      uploaded_at: d.uploaded_at,
+      updated_at: d.updated_at,
+    };
+  }
+
+  private async presignVehicleDocumentsForResponse(docs: VehicleDocument[]): Promise<IVehicleDocument[]> {
+    return Promise.all(
+      docs.map(async d => ({
+        ...this.mapVehicleDocumentToIVehicleDocument(d),
+        file_url: d.file_url ? (await presignS3Url(d.file_url)) ?? d.file_url : d.file_url,
+      })),
+    );
+  }
+
   // -----------------------------
   // UPDATE VEHICLE - Modify existing vehicle details
   // -----------------------------
-  public async updateVehicle(vehicleId: string, vehicleData: Partial<IVehicle>): Promise<IVehicle> {
+  public async updateVehicle(
+    vehicleId: string,
+    vehicleData: Partial<IVehicle>,
+    documentRows?: { doc_type: DocumentType; file_url: string; expiry_date?: Date | null; notes?: string | null }[],
+  ): Promise<IVehicle> {
     try {
-      // Check if vehicle exists and is not deleted
       const existingVehicle = await this.prisma.vehicle.findFirst({
         where: {
           id: vehicleId,
@@ -85,10 +142,8 @@ export class VehicleService {
         throw new NotFoundException(`Vehicle not found with id: ${vehicleId}`);
       }
 
-      // Remove price field if it exists (not in Prisma schema)
-      const { price, ...vehicleDataWithoutPrice } = vehicleData as any;
+      const { price, vehicle_documents: _vd, vehicle_doc_urls: _vdu, ...vehicleDataWithoutPrice } = vehicleData as any;
 
-      // Check if registration_number or chassis_number is being updated and already exists
       if (vehicleDataWithoutPrice.registration_number || vehicleDataWithoutPrice.chassis_number) {
         const duplicateVehicle = await this.prisma.vehicle.findFirst({
           where: {
@@ -96,10 +151,7 @@ export class VehicleService {
               ...(vehicleDataWithoutPrice.registration_number ? [{ registration_number: vehicleDataWithoutPrice.registration_number }] : []),
               ...(vehicleData.chassis_number ? [{ chassis_number: vehicleData.chassis_number }] : []),
             ],
-            AND: [
-              { id: { not: vehicleId } }, // Exclude current vehicle
-              { deleted_at: null },
-            ],
+            AND: [{ id: { not: vehicleId } }, { deleted_at: null }],
           },
         });
 
@@ -109,8 +161,6 @@ export class VehicleService {
         }
       }
 
-      // Remove id from update data if present (shouldn't be updated)
-      // price is already removed above
       const { id, ...updateData } = vehicleDataWithoutPrice;
 
       const updatedVehicle = await this.prisma.vehicle.update({
@@ -123,22 +173,43 @@ export class VehicleService {
           insurance_valid_till: vehicleDataWithoutPrice.insurance_valid_till
             ? new Date(vehicleDataWithoutPrice.insurance_valid_till)
             : existingVehicle.insurance_valid_till,
-        } as Prisma.VehicleUncheckedCreateInput,
+        } as Prisma.VehicleUncheckedUpdateInput,
+        include: { vehicleDocuments: true },
+      });
+
+      if (documentRows !== undefined) {
+        for (const row of documentRows) {
+          await this.prisma.vehicleDocument.upsert({
+            where: {
+              vehicle_id_doc_type: { vehicle_id: vehicleId, doc_type: row.doc_type },
+            },
+            create: {
+              id: ulid(),
+              vehicle_id: vehicleId,
+              doc_type: row.doc_type,
+              file_url: row.file_url,
+              expiry_date: row.expiry_date ?? undefined,
+              notes: row.notes ?? undefined,
+            },
+            update: {
+              file_url: row.file_url,
+              expiry_date: row.expiry_date ?? undefined,
+              notes: row.notes ?? undefined,
+            },
+          });
+        }
+      }
+
+      const withDocs = await this.prisma.vehicle.findFirstOrThrow({
+        where: { id: vehicleId },
+        include: { vehicleDocuments: true },
       });
 
       logger.info(`Vehicle updated successfully: ${updatedVehicle.registration_number} (${vehicleId})`);
 
-      // Invalidate presigned URL cache
       await deleteVehiclePresignedCache(vehicleId);
 
-      return {
-        ...updatedVehicle,
-        type: updatedVehicle.type as VehicleType,
-        fuel_type: updatedVehicle.fuel_type as FuelType,
-        transmission: updatedVehicle.transmission as TransmissionType,
-        status: updatedVehicle.status as VehicleStatus,
-        ownership: updatedVehicle.ownership as OwnershipType,
-      };
+      return this.mapVehicleToIVehicle(withDocs);
     } catch (error) {
       if (error instanceof HttpException) throw error;
       logger.error(`Update vehicle error for ${vehicleId}: ${error.message}`);
@@ -157,9 +228,10 @@ export class VehicleService {
           deleted_at: null,
         },
         include: {
-          customer: true,
-          services: true,
+          seller_customer: true,
+          buyer_customer: true,
           payments: true,
+          vehicleDocuments: true,
         },
       });
 
@@ -171,37 +243,25 @@ export class VehicleService {
         let presignedUrls = await getVehiclePresignedCache(vehicleId);
         if (!presignedUrls) {
           logger.info(`Cache miss for vehicle ${vehicleId}, generating new presigned URLs`);
-          presignedUrls = await generateVehiclePresignedUrls(
-            vehicleId,
-            vehicle.vehicle_image_urls || [],
-            vehicle.vehicle_doc_urls || [],
-            3600, // 1 hour expiration
-          );
+          presignedUrls = await generateVehiclePresignedUrls(vehicleId, vehicle.vehicle_image_urls || [], 3600);
         }
 
+        const vehicleDocumentsPresigned = await this.presignVehicleDocumentsForResponse(vehicle.vehicleDocuments ?? []);
+
         logger.info(`Vehicle retrieved successfully: ${vehicleId}`);
+        const mapped = this.mapVehicleToIVehicle(vehicle);
         return {
-          ...vehicle,
-          type: vehicle.type as VehicleType,
-          fuel_type: vehicle.fuel_type as FuelType,
-          transmission: vehicle.transmission as TransmissionType,
-          status: vehicle.status as VehicleStatus,
+          ...mapped,
           vehicle_image_urls: presignedUrls?.imageUrls || vehicle.vehicle_image_urls || [],
-          vehicle_doc_urls: presignedUrls?.docUrls || vehicle.vehicle_doc_urls || [],
-          ownership: vehicle.ownership as OwnershipType,
+          vehicle_documents: vehicleDocumentsPresigned,
         };
       } catch (urlError) {
         logger.error(urlError, `Error processing URLs for vehicle ${vehicleId}`);
+        const mapped = this.mapVehicleToIVehicle(vehicle);
         return {
-          ...vehicle,
-          type: vehicle.type as VehicleType,
-          fuel_type: vehicle.fuel_type as FuelType,
-          transmission: vehicle.transmission as TransmissionType,
-          status: vehicle.status as VehicleStatus,
-          ownership: vehicle.ownership as OwnershipType,
-          // Fallback to original URLs
+          ...mapped,
           vehicle_image_urls: vehicle.vehicle_image_urls || [],
-          vehicle_doc_urls: vehicle.vehicle_doc_urls || [],
+          vehicle_documents: (vehicle.vehicleDocuments ?? []).map(d => this.mapVehicleDocumentToIVehicleDocument(d)),
         };
       }
     } catch (error) {
@@ -270,7 +330,7 @@ export class VehicleService {
 
       // Add type filter
       if (type) {
-        whereClause.type = type;
+        whereClause.vehicle_type = type;
       }
 
       // Fetch vehicles and total count in parallel using Promise.all
@@ -280,6 +340,7 @@ export class VehicleService {
           orderBy: { [sortBy]: sortOrder },
           skip,
           take: limit,
+          include: { vehicleDocuments: true },
         }),
         this.prisma.vehicle.count({ where: whereClause }),
       ]);
@@ -293,41 +354,26 @@ export class VehicleService {
           try {
             let presignedUrls = await getVehiclePresignedCache(vehicle.id);
 
-            // If not cached, generate new presigned URLs
             if (!presignedUrls) {
               logger.info(`Cache miss for vehicle ${vehicle.id}, generating new presigned URLs`);
-              presignedUrls = await generateVehiclePresignedUrls(
-                vehicle.id,
-                vehicle.vehicle_image_urls || [],
-                vehicle.vehicle_doc_urls || [],
-                3600, // 1 hour expiration
-              );
+              presignedUrls = await generateVehiclePresignedUrls(vehicle.id, vehicle.vehicle_image_urls || [], 3600);
             }
 
-            // Return vehicle with presigned URLs
+            const vehicleDocumentsPresigned = await this.presignVehicleDocumentsForResponse(vehicle.vehicleDocuments ?? []);
+            const mapped = this.mapVehicleToIVehicle(vehicle);
+
             return {
-              ...vehicle,
-              type: vehicle.type as VehicleType,
-              fuel_type: vehicle.fuel_type as FuelType,
-              transmission: vehicle.transmission as TransmissionType,
-              status: vehicle.status as VehicleStatus,
-              ownership: vehicle.ownership as OwnershipType,
+              ...mapped,
               vehicle_image_urls: presignedUrls?.imageUrls || [],
-              vehicle_doc_urls: presignedUrls?.docUrls || [],
+              vehicle_documents: vehicleDocumentsPresigned,
             };
           } catch (urlError) {
             logger.error(urlError, `Error processing URLs for vehicle ${vehicle.id}`);
-            // Return vehicle with original URLs if presigned URL generation fails
+            const mapped = this.mapVehicleToIVehicle(vehicle);
             return {
-              ...vehicle,
-              type: vehicle.type as VehicleType,
-              fuel_type: vehicle.fuel_type as FuelType,
-              transmission: vehicle.transmission as TransmissionType,
-              status: vehicle.status as VehicleStatus,
-              ownership: vehicle.ownership as OwnershipType,
-              // Fallback to original URLs
+              ...mapped,
               vehicle_image_urls: vehicle.vehicle_image_urls || [],
-              vehicle_doc_urls: vehicle.vehicle_doc_urls || [],
+              vehicle_documents: (vehicle.vehicleDocuments ?? []).map(d => this.mapVehicleDocumentToIVehicleDocument(d)),
             };
           }
         }),
@@ -472,7 +518,7 @@ export class VehicleService {
 
       // Add type filter
       if (type) {
-        whereClause.type = type;
+        whereClause.vehicle_type = type;
       }
 
       // Fetch all vehicles without pagination
@@ -485,12 +531,12 @@ export class VehicleService {
 
       return vehicles.map(vehicle => ({
         ...vehicle,
-        type: vehicle.type as VehicleType,
+        type: vehicle.vehicle_type as VehicleType,
         fuel_type: vehicle.fuel_type as FuelType,
         transmission: vehicle.transmission as TransmissionType,
         status: vehicle.status as VehicleStatus,
         ownership: vehicle.ownership as OwnershipType,
-      }));
+      })) as unknown as IVehicle[];
     } catch (error) {
       logger.error(`Export vehicles error: ${error.message}`);
       throw error;

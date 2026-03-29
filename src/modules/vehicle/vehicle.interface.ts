@@ -1,4 +1,18 @@
+import type { DocumentType, DocumentStatus } from '@prisma/client';
 import { FuelType, OwnershipType, TransmissionType, VehicleStatus, VehicleType } from '@prisma/client';
+
+/** Stored vehicle document row (API may return `file_url` presigned). */
+export interface IVehicleDocument {
+  id: string;
+  vehicle_id?: string;
+  doc_type: DocumentType;
+  status: DocumentStatus;
+  file_url: string | null;
+  expiry_date?: Date | string | null;
+  notes?: string | null;
+  uploaded_at?: Date | string;
+  updated_at?: Date | string;
+}
 
 export interface IVehicle {
   id: string;
@@ -26,7 +40,8 @@ export interface IVehicle {
   min_selling_price?: number;
   is_price_negotiable?: boolean;
   vehicle_image_urls?: string[];
-  vehicle_doc_urls?: string[];
+  /** Typed documents (replaces flat `vehicle_doc_urls`). */
+  vehicle_documents?: IVehicleDocument[];
   status: VehicleStatus;
   buying_date?: Date | string | null;
   selling_date?: Date | string | null;

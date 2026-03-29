@@ -1,7 +1,9 @@
 import { NextFunction, Request, Response } from 'express';
 import { Container } from 'typedi';
 import type { IVehicle } from './vehicle.interface';
-import type { CreateVehicleDto, ExportVehicleQueryDto, GetVehicleQueryDto } from './vehicle.validator';
+import type { CreateVehicleDto, ExportVehicleQueryDto, GetVehicleQueryDto, UpdateVehicleDto } from './vehicle.validator';
+import { VEHICLE_DOCUMENT_FIELD_NAMES } from './vehicle.documents';
+import { DocumentType } from '@prisma/client';
 import type { RequestWithUser } from '@modules/auth/auth.interface';
 import { VehicleService } from './vehicle.service';
 import { ulid } from 'ulid';
@@ -23,29 +25,28 @@ export class VehicleController {
       const shop_id = request.user.shop_id;
 
       let vehicle_image_urls: string[] = [];
-      let vehicle_doc_urls: string[] = [];
 
-      // Cast request.files to the expected type
       const files = request.files as { [fieldname: string]: Express.Multer.File[] };
 
-      // Upload vehicle media files if present
       if (files && files.vehicleFiles && files.vehicleFiles.length > 0) {
         vehicle_image_urls = await this.handleVehicleMediaUpload(request, response, shop_id, vehicle_id);
       }
 
-      // Upload vehicle document files if present
-      if (files && files.vehicleDocFiles && files.vehicleDocFiles.length > 0) {
-        vehicle_doc_urls = await this.handleVehicleDocMediaUpload(request, response, shop_id, vehicle_id);
-      }
+      const documentUploads = await this.collectTypedDocumentUploads(request, response, shop_id, vehicle_id);
+      const documentRows = this.mergeVehicleDocumentsForCreate(
+        (vehicleData as unknown as CreateVehicleDto).vehicle_documents,
+        documentUploads,
+      );
+
+      const { vehicle_documents: _omitDocs, ...vehicleRest } = vehicleData as IVehicle & { vehicle_documents?: CreateVehicleDto['vehicle_documents'] };
 
       const vehicleDataWithMedia: IVehicle = {
-        ...vehicleData,
+        ...vehicleRest,
         id: vehicle_id,
-        vehicle_doc_urls: vehicle_doc_urls,
         vehicle_image_urls: vehicle_image_urls,
       };
 
-      const vehicle = await this.vehicleService.createVehicle(vehicleDataWithMedia, shop_id);
+      const vehicle = await this.vehicleService.createVehicle(vehicleDataWithMedia, shop_id, documentRows);
       response.status(201).json({ data: vehicle, message: 'Successfully Add New Vehicle' });
     } catch (error) {
       next(error);
@@ -61,48 +62,41 @@ export class VehicleController {
       const vehicleData: Partial<IVehicle> = request.body;
       const shop_id = request.user.shop_id;
 
-      // Check if vehicle exists
-      const existingVehicle = await this.vehicleService.getVehicleById(vehicleId);
-      if (!existingVehicle) {
+      const existingRow = await this.vehicleService.getVehicleWithDocumentsRaw(vehicleId);
+      if (!existingRow) {
         throw new NotFoundException(`Vehicle not found with id: ${vehicleId}`);
       }
 
-      // Use URLs from request body if provided (indicates which existing files to keep)
-      // Otherwise fallback to existing ones from DB
       let vehicle_image_urls: string[] = Array.isArray(vehicleData.vehicle_image_urls)
         ? vehicleData.vehicle_image_urls
-        : [...(existingVehicle.vehicle_image_urls || [])];
+        : [...(existingRow.vehicle_image_urls || [])];
 
-      let vehicle_doc_urls: string[] = Array.isArray(vehicleData.vehicle_doc_urls)
-        ? vehicleData.vehicle_doc_urls
-        : [...(existingVehicle.vehicle_doc_urls || [])];
-
-      // Cast request.files to the expected type
       const files = request.files as { [fieldname: string]: Express.Multer.File[] };
 
-      // Upload new vehicle media files if present
       if (files && files.vehicleFiles && files.vehicleFiles.length > 0) {
         const newImageUrls = await this.handleVehicleMediaUpload(request, response, shop_id, vehicleId);
-
-        // Append new images to the existing ones
         vehicle_image_urls = [...vehicle_image_urls, ...newImageUrls];
       }
 
-      // Upload new vehicle document files if present
-      if (files && files.vehicleDocFiles && files.vehicleDocFiles.length > 0) {
-        const newDocUrls = await this.handleVehicleDocMediaUpload(request, response, shop_id, vehicleId);
+      const documentUploads = await this.collectTypedDocumentUploads(request, response, shop_id, vehicleId);
+      const hasUploadedDocs = documentUploads.length > 0;
+      const bodyDocs = (vehicleData as { vehicle_documents?: UpdateVehicleDto['vehicle_documents'] }).vehicle_documents;
+      const hasBodyDocs = !!(bodyDocs && bodyDocs.length > 0);
+      const documentRows =
+        hasUploadedDocs || hasBodyDocs
+          ? this.mergeVehicleDocumentsForUpdate(existingRow.vehicleDocuments, bodyDocs, documentUploads)
+          : undefined;
 
-        // Append new documents to the existing ones
-        vehicle_doc_urls = [...vehicle_doc_urls, ...newDocUrls];
-      }
+      const { vehicle_documents: _omitDocs, ...vehicleRest } = vehicleData as Partial<IVehicle> & {
+        vehicle_documents?: UpdateVehicleDto['vehicle_documents'];
+      };
 
       const vehicleDataWithMedia: Partial<IVehicle> = {
-        ...vehicleData,
-        vehicle_doc_urls: vehicle_doc_urls,
+        ...vehicleRest,
         vehicle_image_urls: vehicle_image_urls,
       };
 
-      const updatedVehicle = await this.vehicleService.updateVehicle(vehicleId, vehicleDataWithMedia);
+      const updatedVehicle = await this.vehicleService.updateVehicle(vehicleId, vehicleDataWithMedia, documentRows);
       response.status(200).json({ data: updatedVehicle, message: 'Successfully Updated Vehicle' });
     } catch (error) {
       next(error);
@@ -329,36 +323,94 @@ export class VehicleController {
     }
   }
 
-  // -----------------------------
-  // HELPER: Handle vehicle document upload
-  // -----------------------------
-  private async handleVehicleDocMediaUpload(request: RequestWithUser, response: Response, shop_id: string, vehicle_id: string): Promise<string[]> {
-    try {
-      // Access files from request.files, not request.vehicleDocFiles
-      const files = (request.files as { [fieldname: string]: Express.Multer.File[] }).vehicleDocFiles as Express.Multer.File[];
+  private async collectTypedDocumentUploads(
+    request: RequestWithUser,
+    response: Response,
+    shop_id: string,
+    vehicle_id: string,
+  ): Promise<{ doc_type: DocumentType; file_url: string }[]> {
+    const files = request.files as { [fieldname: string]: Express.Multer.File[] } | undefined;
+    if (!files) return [];
 
-      if (!files || files.length === 0) {
-        return [];
-      }
+    const out: { doc_type: DocumentType; file_url: string }[] = [];
 
-      const vehicleDocFilesUrls: string[] = [];
+    for (const docType of VEHICLE_DOCUMENT_FIELD_NAMES) {
+      const arr = files[docType] as Express.Multer.File[] | undefined;
+      if (!arr?.[0]) continue;
 
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-
-        // Create a temporary request object for each file
-        const tempRequest = {
-          ...request,
-          file: file,
-        } as RequestWithUser;
-
-        const uploadResult = await uploadVehicleDocMedia(tempRequest, response, 'file', shop_id, vehicle_id);
-        vehicleDocFilesUrls.push(uploadResult.fileUrl);
-      }
-
-      return vehicleDocFilesUrls;
-    } catch (uploadError) {
-      throw new BadRequestException(`Failed to upload Vehicle Doc: ${uploadError.message}`);
+      const tempRequest = { ...request, file: arr[0] } as RequestWithUser;
+      const uploadResult = await uploadVehicleDocMedia(tempRequest, response, 'file', shop_id, vehicle_id, docType);
+      out.push({ doc_type: docType, file_url: uploadResult.fileUrl });
     }
+
+    return out;
+  }
+
+  private mergeVehicleDocumentsForCreate(
+    bodyDocs: CreateVehicleDto['vehicle_documents'] | undefined,
+    uploads: { doc_type: DocumentType; file_url: string }[],
+  ): { doc_type: DocumentType; file_url: string; expiry_date?: Date | null; notes?: string | null }[] {
+    const map = new Map<DocumentType, { file_url?: string; expiry_date?: Date | null; notes?: string | null }>();
+
+    for (const d of bodyDocs ?? []) {
+      map.set(d.doc_type, {
+        file_url: d.file_url,
+        expiry_date: d.expiry_date ?? undefined,
+        notes: d.notes ?? undefined,
+      });
+    }
+    for (const u of uploads) {
+      const prev = map.get(u.doc_type);
+      map.set(u.doc_type, { ...prev, file_url: u.file_url });
+    }
+
+    return Array.from(map.entries())
+      .filter(([, v]) => !!v.file_url)
+      .map(([doc_type, v]) => ({
+        doc_type,
+        file_url: v.file_url!,
+        expiry_date: v.expiry_date,
+        notes: v.notes,
+      }));
+  }
+
+  private mergeVehicleDocumentsForUpdate(
+    existing: { doc_type: DocumentType; file_url: string | null; expiry_date: Date | null; notes: string | null }[],
+    bodyDocs: UpdateVehicleDto['vehicle_documents'] | undefined,
+    uploads: { doc_type: DocumentType; file_url: string }[],
+  ): { doc_type: DocumentType; file_url: string; expiry_date?: Date | null; notes?: string | null }[] {
+    const map = new Map<DocumentType, { file_url?: string; expiry_date?: Date | null; notes?: string | null }>();
+
+    for (const d of existing) {
+      if (d.file_url) {
+        map.set(d.doc_type, {
+          file_url: d.file_url,
+          expiry_date: d.expiry_date ?? undefined,
+          notes: d.notes ?? undefined,
+        });
+      }
+    }
+    for (const d of bodyDocs ?? []) {
+      const prev = map.get(d.doc_type) ?? {};
+      map.set(d.doc_type, {
+        ...prev,
+        file_url: d.file_url !== undefined ? d.file_url : prev.file_url,
+        expiry_date: d.expiry_date !== undefined ? d.expiry_date : prev.expiry_date,
+        notes: d.notes !== undefined ? d.notes : prev.notes,
+      });
+    }
+    for (const u of uploads) {
+      const prev = map.get(u.doc_type) ?? {};
+      map.set(u.doc_type, { ...prev, file_url: u.file_url });
+    }
+
+    return Array.from(map.entries())
+      .filter(([, v]) => !!v.file_url)
+      .map(([doc_type, v]) => ({
+        doc_type,
+        file_url: v.file_url!,
+        expiry_date: v.expiry_date,
+        notes: v.notes,
+      }));
   }
 }

@@ -1,5 +1,22 @@
 import { z } from 'zod';
-import { FuelType, OwnershipType, TransmissionType, VehicleStatus, VehicleType } from '@prisma/client';
+import { DocumentType, FuelType, OwnershipType, TransmissionType, VehicleStatus, VehicleType } from '@prisma/client';
+
+const vehicleDocumentBodySchema = z.object({
+  doc_type: z.nativeEnum(DocumentType),
+  file_url: z.string().url().optional(),
+  expiry_date: z
+    .union([
+      z.string().transform(val => {
+        if (!val || val === '') return null;
+        const date = new Date(val);
+        return isNaN(date.getTime()) ? null : date;
+      }),
+      z.date(),
+      z.null(),
+    ])
+    .optional(),
+  notes: z.string().optional(),
+});
 
 // Create Vehicle Schema
 export const createVehicleSchema = z.object({
@@ -80,9 +97,10 @@ export const createVehicleSchema = z.object({
     .optional(),
   
   vehicle_image_urls: z.array(z.string().url()).optional(),
-  
-  vehicle_doc_urls: z.array(z.string().url()).optional(),
-  
+
+  /** Existing document URLs / metadata when not uploading a new file for that type. */
+  vehicle_documents: z.array(vehicleDocumentBodySchema).optional(),
+
   status: z.enum(VehicleStatus),
   
   buying_date: z.union([
@@ -209,9 +227,9 @@ export const updateVehicleSchema = z.object({
     .optional(),
   
   vehicle_image_urls: z.array(z.string().url()).optional(),
-  
-  vehicle_doc_urls: z.array(z.string().url()).optional(),
-  
+
+  vehicle_documents: z.array(vehicleDocumentBodySchema).optional(),
+
   status: z.enum(VehicleStatus).optional(),
   
   buying_date: z.union([

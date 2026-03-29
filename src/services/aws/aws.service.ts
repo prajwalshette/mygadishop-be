@@ -22,7 +22,8 @@ export const s3 = new S3Client({
 
 type VehicleUrlData = {
   imageUrls: string[];
-  docUrls: string[];
+  /** Unused; kept optional for compatibility with presigned-cache typing. */
+  docUrls?: string[];
 };
 
 // Vehicle Media Upload Function
@@ -188,24 +189,28 @@ const generateSinglePresignedUrl = async (s3Url: string, expiresIn: number = 360
   }
 };
 
+/** Public helper to presign a single stored S3 URL (e.g. vehicle document `file_url`). */
+export const presignS3Url = async (s3Url: string | null | undefined, expiresIn: number = 3600): Promise<string | null> => {
+  if (!s3Url) return null;
+  return generateSinglePresignedUrl(s3Url, expiresIn);
+};
+
 /**
  * Generate presigned URLs for multiple S3 URLs
  */
 const generateMultiplePresignedUrls = async (s3Urls: string[], expiresIn: number = 3600): Promise<string[]> => {
   if (!s3Urls || s3Urls.length === 0) return [];
 
-  const promises = s3Urls.map(url => generateSinglePresignedUrl(url, expiresIn));
-  const results = await Promise.allSettled(promises);
+  const results = await Promise.all(
+    s3Urls.map(async url => {
+      const presigned = await generateSinglePresignedUrl(url, expiresIn);
+      if (presigned) return presigned;
+      logger.error(`Failed to generate presigned URL for: ${url}`);
+      return url;
+    }),
+  );
 
-  return results
-    .map((result, index) => {
-      if (result.status === 'fulfilled' && result.value) {
-        return result.value;
-      }
-      logger.error(`Failed to generate presigned URL for: ${s3Urls[index]}`);
-      return null;
-    })
-    .filter(url => url !== null) as string[];
+  return results;
 };
 
 /**
@@ -236,36 +241,27 @@ export const getS3ObjectStream = async (
 };
 
 /**
- * Generate presigned URLs for vehicle images and documents and store in cache
- * @param vehicleId - Vehicle ID
- * @param imageUrls - Array of original S3 image URLs
- * @param docUrls - Array of original S3 document URLs
- * @param expiresIn - Presigned URL expiration time in seconds (default: 3600 = 1 hour)
+ * Generate presigned URLs for vehicle images and store in cache.
+ * Typed vehicle documents are presigned separately in the vehicle service (`presignS3Url` per row).
  */
 export const generateVehiclePresignedUrls = async (
   vehicleId: string,
   imageUrls: string[] = [],
-  docUrls: string[] = [],
   expiresIn: number = 3600,
 ): Promise<VehicleUrlData | null> => {
   try {
     logger.info(`Generating presigned URLs for vehicle: ${vehicleId}`);
 
-    // Generate presigned URLs for images and documents concurrently
-    const [presignedImageUrls, presignedDocUrls] = await Promise.all([
-      generateMultiplePresignedUrls(imageUrls, expiresIn),
-      generateMultiplePresignedUrls(docUrls, expiresIn),
-    ]);
+    const presignedImageUrls = await generateMultiplePresignedUrls(imageUrls, expiresIn);
 
     const result: VehicleUrlData = {
       imageUrls: presignedImageUrls,
-      docUrls: presignedDocUrls,
+      docUrls: [],
     };
 
-    // Store in cache after successful generation
-    await setVehiclePresignedCache(vehicleId, presignedImageUrls, presignedDocUrls, expiresIn);
+    await setVehiclePresignedCache(vehicleId, presignedImageUrls, [], expiresIn);
 
-    logger.info(`Generated and cached ${presignedImageUrls.length} image URLs and ${presignedDocUrls.length} doc URLs for vehicle: ${vehicleId}`);
+    logger.info(`Generated and cached ${presignedImageUrls.length} image URLs for vehicle: ${vehicleId}`);
     return result;
   } catch (error) {
     logger.error(`Error generating vehicle presigned URLs: ${error.message}`);
