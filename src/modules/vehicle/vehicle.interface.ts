@@ -42,6 +42,3 @@ export interface IVehicle {
   created_at?: Date;
   updated_at?: Date;
 }
-
-// Use Prisma enums directly (single source of truth)
-export { VehicleType, FuelType, TransmissionType, VehicleStatus, OwnershipType };

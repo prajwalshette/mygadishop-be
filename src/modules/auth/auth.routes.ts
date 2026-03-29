@@ -4,7 +4,7 @@ import { AdminAuthMiddleware } from '@/middlewares/adminAuth.middleware';
 import { AuthMiddleware } from '@/middlewares/auth.middleware';
 import { OnboardAuthMiddleware } from '@/middlewares/onboard.middleware';
 import { ValidationMiddleware } from '@/middlewares/validation.middleware';
-import { onboardShopSchema } from '@validator/onboard.validator';
+import { onboardShopSchema } from './auth.validator';
 import { addAdminUserSchema } from '@modules/admin/admin.validator';
 import { loginSchema } from './auth.validator';
 import { AuthController } from './auth.controller';

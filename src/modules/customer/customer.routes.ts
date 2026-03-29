@@ -2,7 +2,13 @@ import { Router } from 'express';
 import { Routes } from '@/interfaces/routes.interface';
 import { AuthMiddleware } from '@/middlewares/auth.middleware';
 import { ValidationMiddleware, ValidateRequest } from '@/middlewares/validation.middleware';
-import { createCustomerSchema, exportCustomerQuerySchema, getCustomerQuerySchema, updateCustomerSchema } from './customer.validator';
+import {
+  createCustomerSchema,
+  exportCustomerQuerySchema,
+  getCustomerQuerySchema,
+  searchCustomerByPhoneNumberSchema,
+  updateCustomerSchema,
+} from './customer.validator';
 import { CustomerController } from './customer.controller';
 import multer from 'multer';
 
@@ -32,6 +38,7 @@ export class CustomerRoute implements Routes {
       this.customerController.getAllCustomer,
     );
     this.router.get(`${this.path}/get-customer/:id`, [AuthMiddleware], this.customerController.getCustomer);
+    this.router.get(`${this.path}/search-customer-by-phone-number`, [AuthMiddleware, ValidateRequest({ query: searchCustomerByPhoneNumberSchema })], this.customerController.searchCustomerByPhoneNumber);
     this.router.get(`${this.path}/stats`, [AuthMiddleware], this.customerController.getCustomerStats);
     this.router.get(
       `${this.path}/export-customers`,

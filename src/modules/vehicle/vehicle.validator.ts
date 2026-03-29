@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { FuelType, OwnershipType, TransmissionType, VehicleStatus, VehicleType } from './vehicle.interface';
+import { FuelType, OwnershipType, TransmissionType, VehicleStatus, VehicleType } from '@prisma/client';
 
 // Create Vehicle Schema
 export const createVehicleSchema = z.object({

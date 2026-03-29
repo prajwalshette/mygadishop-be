@@ -1,5 +1,5 @@
 import { SubscriptionPlanName, SubscriptionStatus } from '@modules/subscription/subscription.interface';
-import { ShopType } from "@prisma/client";
+import { ShopBusinessType } from '@prisma/client';
 
 export interface IShop {
   id?: string;
@@ -16,7 +16,7 @@ export interface IShop {
   // Shop Details
   website_url?: string | null;
   shop_logo_url?: string | null;
-  shop_type: ShopType;
+  shop_business_type: ShopBusinessType;
   established_year?: number | null;
 
   // Subscription & Status
@@ -29,4 +29,4 @@ export interface IShop {
   deleted_at: Date | null;
 }
 
-export { ShopType };
+export { ShopBusinessType };

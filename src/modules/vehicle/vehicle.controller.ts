@@ -57,7 +57,7 @@ export class VehicleController {
   // -----------------------------
   public updateVehicle = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
     try {
-      const vehicleId: string = request.params.id;
+      const vehicleId: string = request.params.id as string;
       const vehicleData: Partial<IVehicle> = request.body;
       const shop_id = request.user.shop_id;
 
@@ -114,7 +114,7 @@ export class VehicleController {
   // -----------------------------
   public getVehicleById = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
     try {
-      const vehicleId: string = request.params.id;
+      const vehicleId = request.params.id as string;
       const vehicle = await this.vehicleService.getVehicleById(vehicleId);
 
       if (!vehicle) {
@@ -132,7 +132,7 @@ export class VehicleController {
    */
   public getVehicleShareImage = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
     try {
-      const vehicleId: string = request.params.id;
+      const vehicleId: string = request.params.id as string;
       const shop_id = request.user.shop_id;
       const result = await this.vehicleService.getVehicleShareImageStream(vehicleId, shop_id);
 
@@ -287,7 +287,7 @@ export class VehicleController {
   // -----------------------------
   public deleteVehicle = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
     try {
-      const vehicleId: string = request.params.id;
+      const vehicleId: string = request.params.id as string;
       await this.vehicleService.deleteVehicle(vehicleId);
 
       response.status(200).json({ message: 'Successfully Deleted Vehicle' });

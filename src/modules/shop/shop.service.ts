@@ -2,7 +2,7 @@ import { Prisma } from '@prisma/client';
 import { Service } from 'typedi';
 import { HttpException, NotFoundException } from '@/exceptions';
 import prisma from '@/lib/prisma';
-import type { IShop, ShopType } from './shop.interface';
+import type { IShop, ShopBusinessType } from './shop.interface';
 import type { SubscriptionPlanName, SubscriptionStatus } from '@prisma/client';
 import type { GetAllShopsQueryDto, UpdateShopDto } from './shop.validator';
 import { logger } from '@/utils/logger';
@@ -35,7 +35,7 @@ export class ShopService {
         ...updatedShop,
         subscription_plan: updatedShop.subscription_plan as SubscriptionPlanName,
         subscription_status: updatedShop.subscription_status as SubscriptionStatus,
-        shop_type: updatedShop.shop_type as ShopType,
+        shop_business_type: updatedShop.shop_business_type as ShopBusinessType,
         deleted_at: updatedShop.deleted_at,
       };
     } catch (error: any) {
@@ -64,7 +64,7 @@ export class ShopService {
         ...shop,
         subscription_plan: shop.subscription_plan as SubscriptionPlanName,
         subscription_status: shop.subscription_status as SubscriptionStatus,
-        shop_type: shop.shop_type as ShopType,
+        shop_business_type: shop.shop_business_type as ShopBusinessType,
         deleted_at: shop.deleted_at,
       };
     } catch (error: any) {
@@ -98,7 +98,7 @@ export class ShopService {
           ...shop,
           subscription_plan: shop.subscription_plan as SubscriptionPlanName,
           subscription_status: shop.subscription_status as SubscriptionStatus,
-          shop_type: shop.shop_type as ShopType,
+          shop_business_type: shop.shop_business_type as ShopBusinessType,
           deleted_at: shop.deleted_at,
         })),
         pagination: {

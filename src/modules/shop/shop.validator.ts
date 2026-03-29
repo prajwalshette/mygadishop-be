@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ShopType } from './shop.interface';
+import { ShopBusinessType } from '@prisma/client';
 
 // Update Shop Schema
 export const updateShopSchema = z.object({
@@ -24,8 +24,10 @@ export const updateShopSchema = z.object({
   established_year: z.number().int().min(1900).max(new Date().getFullYear()).optional(),
   
   shop_logo_url: z.string().url('Invalid URL format').optional(),
-  
-  shop_type: z.enum(ShopType).optional(),
+
+  shop_business_type: z.nativeEnum(ShopBusinessType, {
+    message: 'Select a valid shop business type',
+  }),
 });
 
 // Get All Shops Query Schema

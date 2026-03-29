@@ -1,6 +1,6 @@
-import { ServicingStatus } from './servicing.interface';
 import { Service } from 'typedi';
-import { BadRequestException, HttpException, NotFoundException } from '@/exceptions';
+import { PaymentStatus, Prisma, ServicingStatus } from '@prisma/client';
+import { HttpException, NotFoundException } from '@/exceptions';
 import prisma from '@/lib/prisma';
 import type { IServicing } from './servicing.interface';
 import { ulid } from 'ulid';
@@ -12,37 +12,46 @@ export class ServicingService {
   private prisma = prisma;
 
   // -----------------------------
-  // CREATE SERVICING - Create new servicing record
+  // CREATE SERVICING
   // -----------------------------
-  public async createServicing(data: IServicing): Promise<IServicing> {
+  public async createServicing(shop_id: string, data: CreateServicingDto): Promise<IServicing> {
     try {
       const newServicing = await this.prisma.servicing.create({
         data: {
           id: ulid(),
-          shop_id: data.shop_id,
-          vehicle_id: data.vehicle_id,
+          shop_id,
           customer_id: data.customer_id,
+          vehicle_brand: data.vehicle_brand,
+          vehicle_model: data.vehicle_model,
+          vehicle_variant: data.vehicle_variant ?? null,
+          vehicle_year: data.vehicle_year ?? null,
+          vehicle_type: data.vehicle_type,
+          vehicle_reg_number: data.vehicle_reg_number ?? null,
           service_date: data.service_date,
           service_type: data.service_type,
-          description: data.description,
+          description: data.description ?? null,
           parts_replaced: data.parts_replaced ?? [],
           labor_cost: data.labor_cost,
           parts_cost: data.parts_cost,
           other_charges: data.other_charges ?? 0,
           total_cost: data.total_cost,
-          status: data.status || ServicingStatus.PENDING,
-          next_service_date: data.next_service_date,
-          next_service_km: data.next_service_km,
-          technician_name: data.technician_name,
-          odometer_reading: data.odometer_reading,
-          rating: data.rating,
-          customer_feedback: data.customer_feedback,
+          status: data.status,
+          next_service_date: data.next_service_date ?? null,
+          next_service_km: data.next_service_km ?? null,
+          technician_name: data.technician_name ?? null,
+          odometer_reading: data.odometer_reading ?? null,
+          rating: data.rating ?? null,
+          customer_feedback: data.customer_feedback ?? null,
+          payment_status: data.payment_status ?? PaymentStatus.PENDING,
+          paid_amount: data.paid_amount ?? 0,
+          payment_method: data.payment_method ?? null,
+          payment_date: data.payment_date ?? null,
           service_images: data.service_images ?? [],
         },
       });
-      
+
       logger.info(`Servicing created successfully: ${newServicing.service_type} (${newServicing.id})`);
-      return { ...newServicing, status: newServicing.status as ServicingStatus };
+      return newServicing as IServicing;
     } catch (error: any) {
       if (error instanceof HttpException) throw error;
       logger.error(`Create servicing error: ${error.message}`);
@@ -51,41 +60,41 @@ export class ServicingService {
   }
 
   // -----------------------------
-  // GET ALL SERVICINGS - Retrieve paginated servicing list
+  // GET ALL SERVICINGS (scoped to shop)
   // -----------------------------
-  public async getServicings(query: GetServicingQueryDto): Promise<any> {
-    const { page, limit, search, status, vehicle_id, customer_id, sortBy, sortOrder } = query;
-    
+  public async getServicings(query: GetServicingQueryDto, shop_id: string): Promise<any> {
+    const { page, limit, search, status, vehicle_reg_number, customer_id, sortBy, sortOrder } = query;
+
     try {
       const skip = (page - 1) * limit;
 
-      // Build where clause with filters
-      const whereClause: any = {};
+      const whereClause: Prisma.ServicingWhereInput = {
+        shop_id,
+        deleted_at: null,
+      };
 
-      // Add search filter (searches across service_type and description)
       if (search) {
         whereClause.OR = [
           { service_type: { contains: search, mode: 'insensitive' } },
           { description: { contains: search, mode: 'insensitive' } },
+          { vehicle_brand: { contains: search, mode: 'insensitive' } },
+          { vehicle_model: { contains: search, mode: 'insensitive' } },
+          { vehicle_reg_number: { contains: search, mode: 'insensitive' } },
         ];
       }
 
-      // Add status filter
       if (status) {
         whereClause.status = status;
       }
 
-      // Add vehicle_id filter
-      if (vehicle_id) {
-        whereClause.vehicle_id = vehicle_id;
+      if (vehicle_reg_number) {
+        whereClause.vehicle_reg_number = { contains: vehicle_reg_number, mode: 'insensitive' };
       }
 
-      // Add customer_id filter
       if (customer_id) {
         whereClause.customer_id = customer_id;
       }
 
-      // Fetch servicings and total count in parallel using Promise.all
       const [servicings, total] = await Promise.all([
         this.prisma.servicing.findMany({
           where: whereClause,
@@ -96,16 +105,19 @@ export class ServicingService {
         this.prisma.servicing.count({ where: whereClause }),
       ]);
 
-      // Calculate total pages
       const totalPages = Math.ceil(total / limit);
 
-      logger.info(`Retrieved ${total} servicings (page ${page}, limit ${limit}, filters: ${JSON.stringify({ search, status, vehicle_id, customer_id })})`);
-      
+      logger.info(
+        `Retrieved ${total} servicings (page ${page}, limit ${limit}, filters: ${JSON.stringify({
+          search,
+          status,
+          vehicle_reg_number,
+          customer_id,
+        })})`,
+      );
+
       return {
-        servicings: servicings.map(s => ({
-          ...s,
-          status: s.status as ServicingStatus,
-        })),
+        servicings: servicings as IServicing[],
         pagination: {
           page,
           limit,
@@ -121,19 +133,21 @@ export class ServicingService {
   }
 
   // -----------------------------
-  // GET SERVICING BY ID - Retrieve single servicing record
+  // GET SERVICING BY ID (scoped to shop)
   // -----------------------------
-  public async getServicingById(id: string): Promise<IServicing> {
+  public async getServicingById(id: string, shop_id: string): Promise<IServicing> {
     try {
-      const servicing = await this.prisma.servicing.findUnique({ where: { id } });
-      
+      const servicing = await this.prisma.servicing.findFirst({
+        where: { id, shop_id, deleted_at: null },
+      });
+
       if (!servicing) {
         logger.warn(`Get servicing failed: Servicing not found - ${id}`);
         throw new NotFoundException('Servicing not found');
       }
-      
+
       logger.info(`Servicing retrieved successfully: ${id}`);
-      return { ...servicing, status: servicing.status as ServicingStatus };
+      return servicing as IServicing;
     } catch (error: any) {
       if (error instanceof HttpException) throw error;
       logger.error(`Get servicing error for ${id}: ${error.message}`);
@@ -142,19 +156,26 @@ export class ServicingService {
   }
 
   // -----------------------------
-  // UPDATE SERVICING - Modify existing servicing record
+  // UPDATE SERVICING
   // -----------------------------
-  public async updateServicing(id: string, data: Partial<IServicing>): Promise<IServicing> {
+  public async updateServicing(id: string, shop_id: string, data: UpdateServicingDto): Promise<IServicing> {
     try {
+      const existing = await this.prisma.servicing.findFirst({
+        where: { id, shop_id, deleted_at: null },
+      });
+      if (!existing) {
+        throw new NotFoundException('Servicing not found');
+      }
+
+      const payload = stripUndefined(data) as Prisma.ServicingUpdateInput;
+
       const servicing = await this.prisma.servicing.update({
         where: { id },
-        data: {
-          ...data,
-        },
+        data: payload,
       });
-      
+
       logger.info(`Servicing updated successfully: ${id}`);
-      return { ...servicing, status: servicing.status as ServicingStatus };
+      return servicing as IServicing;
     } catch (error: any) {
       if (error instanceof HttpException) throw error;
       if (error.code === 'P2025') {
@@ -167,7 +188,7 @@ export class ServicingService {
   }
 
   // -----------------------------
-  // GET SERVICING STATISTICS - Get servicing stats for dashboard
+  // GET SERVICING STATISTICS
   // -----------------------------
   public async getServicingStats(shop_id: string): Promise<any> {
     try {
@@ -176,7 +197,6 @@ export class ServicingService {
       const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
       const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
 
-      // Total servicings
       const totalServicings = await this.prisma.servicing.count({
         where: {
           shop_id,
@@ -184,34 +204,30 @@ export class ServicingService {
         },
       });
 
-      // Completed servicings
       const completedServicings = await this.prisma.servicing.count({
         where: {
           shop_id,
           deleted_at: null,
-          status: 'COMPLETED',
+          status: ServicingStatus.COMPLETED,
         },
       });
 
-      // In progress servicings
       const inProgressServicings = await this.prisma.servicing.count({
         where: {
           shop_id,
           deleted_at: null,
-          status: 'IN_PROGRESS',
+          status: ServicingStatus.IN_PROGRESS,
         },
       });
 
-      // Scheduled servicings
       const scheduledServicings = await this.prisma.servicing.count({
         where: {
           shop_id,
           deleted_at: null,
-          status: 'SCHEDULED',
+          status: ServicingStatus.SCHEDULED,
         },
       });
 
-      // New servicings this month
       const newThisMonth = await this.prisma.servicing.count({
         where: {
           shop_id,
@@ -220,7 +236,6 @@ export class ServicingService {
         },
       });
 
-      // Servicings from last month
       const lastMonthServicings = await this.prisma.servicing.count({
         where: {
           shop_id,
@@ -232,12 +247,16 @@ export class ServicingService {
         },
       });
 
-      // Calculate growth rate
-      const growthRate = lastMonthServicings > 0
-        ? Math.round(((newThisMonth - lastMonthServicings) / lastMonthServicings) * 100)
-        : (newThisMonth > 0 ? 100 : 0);
+      const growthRate =
+        lastMonthServicings > 0
+          ? Math.round(((newThisMonth - lastMonthServicings) / lastMonthServicings) * 100)
+          : newThisMonth > 0
+            ? 100
+            : 0;
 
-      logger.info(`Retrieved servicing stats for shop ${shop_id}: total=${totalServicings}, completed=${completedServicings}, inProgress=${inProgressServicings}, scheduled=${scheduledServicings}, newThisMonth=${newThisMonth}, growthRate=${growthRate}%`);
+      logger.info(
+        `Retrieved servicing stats for shop ${shop_id}: total=${totalServicings}, completed=${completedServicings}, inProgress=${inProgressServicings}, scheduled=${scheduledServicings}, newThisMonth=${newThisMonth}, growthRate=${growthRate}%`,
+      );
 
       return {
         totalServicings,
@@ -248,73 +267,84 @@ export class ServicingService {
         growthRate,
         lastMonthServicings,
       };
-    } catch (error) {
+    } catch (error: any) {
       logger.error(`Get servicing stats error: ${error.message}`);
       throw error;
     }
   }
 
   // -----------------------------
-  // EXPORT SERVICINGS - Get all servicings for CSV export (no pagination)
+  // EXPORT SERVICINGS
   // -----------------------------
   public async exportServicings(query: ExportServicingQueryDto, shop_id: string): Promise<IServicing[]> {
-    const { search, status, vehicle_id, customer_id, sortBy, sortOrder } = query;
-    
+    const { search, status, vehicle_reg_number, customer_id, sortBy, sortOrder } = query;
+
     try {
-      // Build where clause with filters
-      const whereClause: any = {
+      const whereClause: Prisma.ServicingWhereInput = {
         shop_id,
         deleted_at: null,
       };
 
-      // Add search filter (searches across service_type and description)
       if (search) {
         whereClause.OR = [
           { service_type: { contains: search, mode: 'insensitive' } },
           { description: { contains: search, mode: 'insensitive' } },
+          { vehicle_brand: { contains: search, mode: 'insensitive' } },
+          { vehicle_model: { contains: search, mode: 'insensitive' } },
+          { vehicle_reg_number: { contains: search, mode: 'insensitive' } },
         ];
       }
 
-      // Add status filter
       if (status) {
         whereClause.status = status;
       }
 
-      // Add vehicle_id filter
-      if (vehicle_id) {
-        whereClause.vehicle_id = vehicle_id;
+      if (vehicle_reg_number) {
+        whereClause.vehicle_reg_number = { contains: vehicle_reg_number, mode: 'insensitive' };
       }
 
-      // Add customer_id filter
       if (customer_id) {
         whereClause.customer_id = customer_id;
       }
 
-      // Fetch all servicings without pagination
       const servicings = await this.prisma.servicing.findMany({
         where: whereClause,
         orderBy: { [sortBy]: sortOrder },
       });
 
-      logger.info(`Exporting ${servicings.length} servicings (filters: ${JSON.stringify({ search, status, vehicle_id, customer_id })})`);
-      
-      return servicings.map(servicing => ({
-        ...servicing,
-        status: servicing.status as ServicingStatus,
-      }));
-    } catch (error) {
+      logger.info(
+        `Exporting ${servicings.length} servicings (filters: ${JSON.stringify({
+          search,
+          status,
+          vehicle_reg_number,
+          customer_id,
+        })})`,
+      );
+
+      return servicings as IServicing[];
+    } catch (error: any) {
       logger.error(`Export servicings error: ${error.message}`);
       throw error;
     }
   }
 
   // -----------------------------
-  // DELETE SERVICING - Soft delete servicing record
+  // DELETE SERVICING (soft)
   // -----------------------------
-  public async deleteServicing(id: string): Promise<any> {
+  public async deleteServicing(id: string, shop_id: string): Promise<boolean> {
     try {
-      const servicing = await this.prisma.servicing.update({ where: { id }, data: { deleted_at: new Date() } });
-      
+      const existing = await this.prisma.servicing.findFirst({
+        where: { id, shop_id, deleted_at: null },
+      });
+      if (!existing) {
+        throw new NotFoundException('Servicing not found');
+      }
+
+      await this.prisma.servicing.update({
+        where: { id },
+        data: { deleted_at: new Date() },
+      });
+
       logger.info(`Servicing deleted successfully: ${id}`);
       return true;
     } catch (error: any) {
@@ -327,4 +357,8 @@ export class ServicingService {
       throw error;
     }
   }
+}
+
+function stripUndefined<T extends Record<string, unknown>>(obj: T): Partial<T> {
+  return Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined)) as Partial<T>;
 }

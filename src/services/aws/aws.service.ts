@@ -6,6 +6,7 @@ import { AWS_REGION, S3_ACCESS_KEY_ID, S3_BUCKET_NAME, S3_SECRET_KEY } from '@/c
 import { ulid } from 'ulid';
 import { setVehiclePresignedCache } from '@/services/redis/cache/vehicle.cache';
 import { logger } from '@/utils/logger';
+import { DocumentType } from '@prisma/client';
 
 function generateFileName(req: Request, file: any): string {
   const splittedFilename = file.originalname.split('.');
@@ -66,6 +67,7 @@ export const uploadVehicleDocMedia = async (
   fieldName: string,
   shop_id: string,
   vehicle_id: string,
+  document_type: DocumentType,
 ): Promise<{ fileUrl: string }> => {
   try {
     if (!request.file) {
@@ -74,7 +76,7 @@ export const uploadVehicleDocMedia = async (
 
     const file = request.file;
     const fileName = generateFileName(request, file);
-    const key = `data/${shop_id}/vehicles/${vehicle_id}/documents/${fileName}`;
+    const key = `data/${shop_id}/vehicles/${vehicle_id}/documents/${document_type}/${fileName}`;
 
     const uploadParams = {
       Bucket: S3_BUCKET_NAME,

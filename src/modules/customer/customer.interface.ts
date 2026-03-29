@@ -4,8 +4,8 @@ export interface ICustomer {
   shop_id?: string;
   name: string;
   phone: string;
-  email: string;
-  address: string;
+  email?: string | null;
+  address?: string | null;
   city?: string;
   state?: string;
   pincode?: string;
@@ -25,7 +25,6 @@ export interface ICustomer {
   updated_at?: Date;
 }
 
-export { CustomerType, Gender };
 
 export interface ICustomerCsv {
   Name: string;

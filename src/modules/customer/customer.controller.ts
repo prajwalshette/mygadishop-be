@@ -2,7 +2,7 @@ import { NextFunction, Request, Response } from 'express';
 import { Container } from 'typedi';
 import type { User } from '@modules/user/user.interface';
 import type { RequestWithUser } from '@modules/auth/auth.interface';
-import type { ExportCustomerQueryDto, GetCustomerQueryDto } from './customer.validator';
+import type { ExportCustomerQueryDto, GetCustomerQueryDto, SearchCustomerByPhoneNumberDto } from './customer.validator';
 import type { ICustomer } from './customer.interface';
 import { CustomerService } from './customer.service';
 import { stringify } from 'csv-stringify/sync';
@@ -38,7 +38,7 @@ export class CustomerController {
   // -----------------------------
   public updateCustomer = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
     try {
-      const customer_id = request.params.id;
+      const customer_id = request.params.id as string;
       if (!customer_id) {
         throw new Error('Customer ID is required');
       }
@@ -72,7 +72,7 @@ export class CustomerController {
   // -----------------------------
   public getCustomer = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
     try {
-      const customer_id = request.params.id;
+      const customer_id = request.params.id as string;
       const customers = await this.customerService.getCustomer(customer_id);
       response.status(200).json({ data: customers, message: 'Successfully Featch Customer' });
     } catch (error) {
@@ -80,6 +80,19 @@ export class CustomerController {
     }
   };
 
+  // -----------------------------
+  // SEARCH CUSTOMER BY PHONE NUMBER - Search customer by phone number
+  // -----------------------------
+  public searchCustomerByPhoneNumber = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
+    try {
+      const shop_id = request.user.shop_id;
+      const query = request.query as unknown as SearchCustomerByPhoneNumberDto;
+      const customer = await this.customerService.searchCustomerByPhoneNumber(query, shop_id);
+      response.status(200).json({ data: customer, message: 'Successfully Searched Customer' });
+    } catch (error) {
+      next(error);
+    }
+  };
   // -----------------------------
   // GET CUSTOMER STATISTICS - Get customer stats for dashboard
   // -----------------------------
@@ -177,7 +190,7 @@ export class CustomerController {
   // -----------------------------
   public deleteCustomer = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
     try {
-      const customer_id = request.params.id;
+      const customer_id = request.params.id as string;
       const customers = await this.customerService.deleteCustomer(customer_id);
       response.status(200).json({ data: true, message: 'Successfully delete customer' });
     } catch (error) {
@@ -255,7 +268,7 @@ export class CustomerController {
   public async getSyncStatus(request: RequestWithUser, response: Response, next: NextFunction): Promise<void> {
     try {
       const shop_id = request.user.shop_id;
-      const upload_id = request.params.upload_id;
+      const upload_id = request.params.upload_id as string;
 
       const status = await this.redisService.getSyncStatus(shop_id, upload_id);
       if (!status) {

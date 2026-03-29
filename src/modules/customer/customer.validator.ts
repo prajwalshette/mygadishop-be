@@ -1,15 +1,23 @@
 import { z } from 'zod';
-import { CustomerType, Gender } from './customer.interface';
+import { CustomerType, Gender } from '@prisma/client';
 
 // Create Customer Schema
 export const createCustomerSchema = z.object({
   name: z.string().min(1, 'Name is required'),
 
-  email: z.email('Invalid email address'),
+  email: z.preprocess(
+    val => (val === '' || val === null || val === undefined ? undefined : val),
+    z.email('Invalid email address').optional(),
+  ),
 
-  phone: z.string().min(1, 'Phone number is required'),
+  phone: z
+    .string()
+    .regex(/^[6-9]\d{9}$/, 'Enter a valid 10-digit Indian mobile number'),
 
-  address: z.string().min(1, 'Address is required'),
+  address: z.preprocess(
+    val => (val === '' || val === null || val === undefined ? undefined : val),
+    z.string().optional(),
+  ),
 
   city: z.string().optional(),
 
@@ -17,7 +25,12 @@ export const createCustomerSchema = z.object({
 
   pincode: z.string().optional(),
 
-  alt_phone: z.string().optional(),
+  alt_phone: z
+    .string()
+    .optional()
+    .refine(val => val === undefined || val === '' || /^[6-9]\d{9}$/.test(val), {
+      message: 'Enter a valid 10-digit Indian mobile number',
+    }),
   gender: z.enum(Gender).optional(),
 
   customer_type: z.enum(CustomerType),
@@ -27,11 +40,20 @@ export const createCustomerSchema = z.object({
 export const updateCustomerSchema = z.object({
   name: z.string().min(1).optional(),
 
-  email: z.email().optional(),
+  email: z.preprocess(
+    val => (val === '' || val === null || val === undefined ? undefined : val),
+    z.email('Invalid email address').optional(),
+  ),
 
-  phone: z.string().min(1).optional(),
+  phone: z
+    .string()
+    .regex(/^[6-9]\d{9}$/, 'Enter a valid 10-digit Indian mobile number')
+    .optional(),
 
-  address: z.string().min(1).optional(),
+  address: z.preprocess(
+    val => (val === '' || val === null || val === undefined ? undefined : val),
+    z.string().optional(),
+  ),
 
   city: z.string().optional(),
 
@@ -39,7 +61,12 @@ export const updateCustomerSchema = z.object({
 
   pincode: z.string().optional(),
 
-  alt_phone: z.string().optional(),
+  alt_phone: z
+    .string()
+    .optional()
+    .refine(val => val === undefined || val === '' || /^[6-9]\d{9}$/.test(val), {
+      message: 'Enter a valid 10-digit Indian mobile number',
+    }),
   gender: z.enum(Gender).optional(),
 
   customer_type: z.enum(CustomerType).optional(),
@@ -90,8 +117,14 @@ export const exportCustomerQuerySchema = z.object({
   sortOrder: z.enum(['asc', 'desc']).optional().default('desc'),
 });
 
+//Search Cutomer by phone number
+export const searchCustomerByPhoneNumberSchema = z.object({
+  phone: z.string().regex(/^[6-9]\d{9}$/, 'Enter a valid 10-digit Indian mobile number'),
+});
+
 // Export types
 export type CreateCustomerDto = z.infer<typeof createCustomerSchema>;
 export type UpdateCustomerDto = z.infer<typeof updateCustomerSchema>;
 export type GetCustomerQueryDto = z.infer<typeof getCustomerQuerySchema>;
 export type ExportCustomerQueryDto = z.infer<typeof exportCustomerQuerySchema>;
+export type SearchCustomerByPhoneNumberDto = z.infer<typeof searchCustomerByPhoneNumberSchema>;

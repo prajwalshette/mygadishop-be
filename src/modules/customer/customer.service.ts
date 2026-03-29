@@ -1,11 +1,11 @@
 import { Service } from 'typedi';
 import { BadRequestException, ConflictException, HttpException, NotFoundException } from '@/exceptions';
 import prisma from '@/lib/prisma';
-import { PaymentStatus } from '@prisma/client';
-import type { CustomerType, Gender, ICustomer, ICustomerCsv } from './customer.interface';
+import { PaymentStatus , CustomerType, Gender} from '@prisma/client';
+import type {ICustomer, ICustomerCsv } from './customer.interface';
 import { ulid } from 'ulid';
 import { logger } from '@/utils/logger';
-import type { CreateCustomerDto, ExportCustomerQueryDto, GetCustomerQueryDto, UpdateCustomerDto } from './customer.validator';
+import type { CreateCustomerDto, ExportCustomerQueryDto, GetCustomerQueryDto, SearchCustomerByPhoneNumberDto, UpdateCustomerDto } from './customer.validator';
 import { createCustomerSchema } from './customer.validator';
 import Papa from 'papaparse';
 import { Readable } from 'stream';
@@ -24,12 +24,25 @@ export class CustomerService {
   public async addNewCustomer(customerData: ICustomer, shop_id): Promise<ICustomer> {
     try {
       const isExistCustomer = await this.prisma.customer.findFirst({
-        where: { phone: customerData.phone, email: customerData.email, deleted_at: null, shop_id },
+        where: {
+          shop_id,
+          deleted_at: null,
+          OR: [
+            { phone: customerData.phone },
+            ...(customerData.email ? [{ email: customerData.email }] : []),
+          ],
+        },
       });
 
       if (isExistCustomer) {
-        logger.warn(`Add customer failed: Customer already exists - Email: ${customerData.email}, Phone: ${customerData.phone}`);
-        throw new ConflictException(`Customer already exists with email: ${customerData.email} or phone: ${customerData.phone}`);
+        logger.warn(
+          `Add customer failed: Customer already exists - Email: ${customerData.email ?? '—'}, Phone: ${customerData.phone}`,
+        );
+        throw new ConflictException(
+          customerData.email
+            ? `Customer already exists with this email or phone`
+            : `Customer already exists with this phone number`,
+        );
       }
 
       const newCustomer = await this.prisma.customer.create({
@@ -385,20 +398,22 @@ export class CustomerService {
             orderBy: { payment_date: 'desc' },
             include: {
               vehicle: {
-                select: { id: true, brand: true, model: true, registration_number: true, type: true },
+                select: {
+                  id: true,
+                  brand: true,
+                  model: true,
+                  registration_number: true,
+                  vehicle_category: true,
+                  vehicle_type: true,
+                },
               },
             },
           },
           services: {
             where: { deleted_at: null },
             orderBy: { service_date: 'desc' },
-            include: {
-              vehicle: {
-                select: { id: true, brand: true, model: true, registration_number: true },
-              },
-            },
           },
-          vehicles: {
+          vehicles_sold: {
             where: { deleted_at: null },
             orderBy: { buying_date: 'desc' },
             select: {
@@ -406,7 +421,23 @@ export class CustomerService {
               brand: true,
               model: true,
               registration_number: true,
-              type: true,
+              vehicle_category: true,
+              vehicle_type: true,
+              buying_price: true,
+              buying_date: true,
+              status: true,
+            },
+          },
+          vehicles_bought: {
+            where: { deleted_at: null },
+            orderBy: { buying_date: 'desc' },
+            select: {
+              id: true,
+              brand: true,
+              model: true,
+              registration_number: true,
+              vehicle_category: true,
+              vehicle_type: true,
               buying_price: true,
               buying_date: true,
               status: true,
@@ -430,7 +461,12 @@ export class CustomerService {
         payment_date: p.payment_date,
         vehicle: p.vehicle,
       }));
-      const { payments, ...rest } = customer;
+      const { payments, vehicles_sold, vehicles_bought, ...rest } = customer;
+      const vehiclesList = [...(vehicles_sold || []), ...(vehicles_bought || [])].sort((a, b) => {
+        const ta = a.buying_date ? new Date(a.buying_date).getTime() : 0;
+        const tb = b.buying_date ? new Date(b.buying_date).getTime() : 0;
+        return tb - ta;
+      });
       const completedPayments = (customer.payments || []).filter((p: any) => p.status === 'COMPLETED');
       const totalSpent = completedPayments.reduce((sum: number, p: any) => sum + Number(p.amount), 0);
       const lastPurchaseDate = completedPayments.length
@@ -446,7 +482,7 @@ export class CustomerService {
         customer_type: customer.customer_type as CustomerType,
         payments: paymentsWithVehicle,
         services: customer.services || [],
-        vehicles: customer.vehicles || [],
+        vehicles: vehiclesList,
         purchasesCount: completedPayments.length,
         totalSpent: Math.round(totalSpent * 100) / 100,
         lastPurchaseDate: lastPurchaseDate ? lastPurchaseDate.toISOString() : null,
@@ -454,6 +490,31 @@ export class CustomerService {
     } catch (error) {
       if (error instanceof HttpException) throw error;
       logger.error(`Get customer error for ${customer_id}: ${error.message}`);
+      throw error;
+    }
+  }
+
+  // -----------------------------
+  // SEARCH CUSTOMER BY PHONE NUMBER - Search customer by phone number
+  // -----------------------------
+  public async searchCustomerByPhoneNumber(query: SearchCustomerByPhoneNumberDto, shop_id: string): Promise<any> {
+    try {
+      const customer = await this.prisma.customer.findFirst({
+        where: {
+          shop_id,
+          phone: query.phone,
+          deleted_at: null,
+        },
+        select: { id: true },
+      });
+      if (!customer) {
+        logger.warn(`Search customer by phone failed: not found — phone=${query.phone}, shop_id=${shop_id}`);
+        throw new NotFoundException(`Customer not found with phone number: ${query.phone}`);
+      }
+      return customer;
+    } catch (error) {
+      if (error instanceof HttpException) throw error;
+      logger.error(`Search customer by phone number error: ${error.message}`);
       throw error;
     }
   }

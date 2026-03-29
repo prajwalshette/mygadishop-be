@@ -3,7 +3,8 @@ import { Service } from 'typedi';
 import { BadRequestException, ConflictException, HttpException, NotFoundException } from '@/exceptions';
 import prisma from '@/lib/prisma';
 import { ulid } from 'ulid';
-import type { FuelType, IVehicle, OwnershipType, TransmissionType, VehicleStatus, VehicleType } from './vehicle.interface';
+import type { IVehicle } from './vehicle.interface';
+import { FuelType, OwnershipType, TransmissionType, VehicleStatus, VehicleType } from '@prisma/client';
 import { generateVehiclePresignedUrls, getS3ObjectStream } from '@/services/aws/aws.service';
 import { deleteVehiclePresignedCache, getVehiclePresignedCache } from '@/services/redis/cache/vehicle.cache';
 import { logger } from '@/utils/logger';
@@ -53,8 +54,8 @@ export class VehicleService {
       logger.info(`Vehicle created successfully: ${vehicle.registration_number} (${vehicle.id})`);
       return {
         ...vehicle,
-        type: vehicle.type as VehicleType,
-        fuel_type: vehicle.fuel_type as FuelType,
+        type: vehicle.vehicle_type,
+        fuel_type: vehicle.fuel_type,
         transmission: vehicle.transmission as TransmissionType,
         status: vehicle.status as VehicleStatus,
         ownership: vehicle.ownership as OwnershipType,

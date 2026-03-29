@@ -1,8 +1,12 @@
 import { NextFunction, Request, Response } from 'express';
 import { Container } from 'typedi';
 import type { RequestWithUser } from '@modules/auth/auth.interface';
-import type { ExportServicingQueryDto, GetServicingQueryDto } from './servicing.validator';
-import type { IServicing } from './servicing.interface';
+import type {
+  CreateServicingDto,
+  ExportServicingQueryDto,
+  GetServicingQueryDto,
+  UpdateServicingDto,
+} from './servicing.validator';
 import { ServicingService } from './servicing.service';
 import { stringify } from 'csv-stringify/sync';
 import { logger } from '@/utils/logger';
@@ -16,9 +20,9 @@ export class ServicingController {
   // -----------------------------
   public createServicing = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
     try {
-      const servicingData: IServicing = request.body;
       const shop_id = request.user.shop_id;
-      const newServicing = await this.servicingService.createServicing({...servicingData, shop_id: shop_id});
+      const body = request.body as CreateServicingDto;
+      const newServicing = await this.servicingService.createServicing(shop_id, body);
       response.status(201).json({ data: newServicing, message: 'Servicing created successfully' });
     } catch (error) {
       next(error);
@@ -32,7 +36,8 @@ export class ServicingController {
     try {
       // Query is validated by ValidateRequest middleware
       const query = request.query as unknown as GetServicingQueryDto;
-      const result = await this.servicingService.getServicings(query);
+      const shop_id = request.user.shop_id;
+      const result = await this.servicingService.getServicings(query, shop_id);
       response.status(200).json({ data: result, message: 'Servicings fetched successfully' });
     } catch (error) {
       next(error);
@@ -43,9 +48,10 @@ export class ServicingController {
   // GET SERVICING BY ID - Retrieve single servicing record
   // -----------------------------
   public getServicingById = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
-    try { 
-      const { id } = request.params;
-      const servicing = await this.servicingService.getServicingById(id);
+    try {
+      const id = request.params.id as string;
+      const shop_id = request.user.shop_id;
+      const servicing = await this.servicingService.getServicingById(id, shop_id);
       response.status(200).json({ data: servicing, message: 'Servicing fetched successfully' });
     } catch (error) {
       next(error);
@@ -57,9 +63,10 @@ export class ServicingController {
   // -----------------------------
   public updateServicing = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
     try {
-      const { id } = request.params;
-      const servicingData: Partial<IServicing> = request.body;
-      const updatedServicing = await this.servicingService.updateServicing(id, servicingData);
+      const id = request.params.id as string;
+      const shop_id = request.user.shop_id;
+      const servicingData = request.body as UpdateServicingDto;
+      const updatedServicing = await this.servicingService.updateServicing(id, shop_id, servicingData);
       response.status(200).json({ data: updatedServicing, message: 'Servicing updated successfully' });
     } catch (error) {
       next(error);
@@ -98,13 +105,20 @@ export class ServicingController {
 
       // Define CSV columns
       const columns = [
+        'Vehicle Brand',
+        'Vehicle Model',
+        'Reg Number',
+        'Vehicle Type',
         'Service Type',
         'Service Date',
         'Description',
         'Labor Cost',
         'Parts Cost',
+        'Other Charges',
         'Total Cost',
         'Status',
+        'Payment Status',
+        'Paid Amount',
         'Next Service Date',
         'Created On',
       ];
@@ -121,13 +135,20 @@ export class ServicingController {
 
       // Convert servicings to CSV rows
       const rows = servicings.map((servicing: any) => [
+        servicing.vehicle_brand || '',
+        servicing.vehicle_model || '',
+        servicing.vehicle_reg_number || '',
+        servicing.vehicle_type || '',
         servicing.service_type || '',
         formatDate(servicing.service_date),
         servicing.description || '',
         servicing.labor_cost?.toString() || '0',
         servicing.parts_cost?.toString() || '0',
+        servicing.other_charges?.toString() || '0',
         servicing.total_cost?.toString() || '0',
         servicing.status || '',
+        servicing.payment_status || '',
+        servicing.paid_amount?.toString() || '0',
         formatDate(servicing.next_service_date),
         formatDate(servicing.created_at),
       ]);
@@ -157,8 +178,9 @@ export class ServicingController {
   // -----------------------------
   public deleteServicing = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
     try {
-      const { id } = request.params;
-      const deletedServicing = await this.servicingService.deleteServicing(id);
+      const id = request.params.id as string;
+      const shop_id = request.user.shop_id;
+      const deletedServicing = await this.servicingService.deleteServicing(id, shop_id);
       response.status(200).json({ data: deletedServicing, message: 'Servicing deleted successfully' });
     } catch (error) {
       next(error);

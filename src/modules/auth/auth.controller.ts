@@ -3,7 +3,7 @@ import { Container } from 'typedi';
 import type { RequestWithAdmin, RequestWithOnboardTempUser } from './auth.interface';
 import { AuthService } from './auth.service';
 import type { LoginDto } from './auth.validator';
-import type { OnboardShopDto } from '@validator/onboard.validator';
+import type { OnboardShopDto } from './auth.validator';
 
 export class AuthController {
   public auth = Container.get(AuthService);

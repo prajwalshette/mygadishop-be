@@ -10,11 +10,12 @@ import prisma from '@/lib/prisma';
 import { ulid } from 'ulid';
 import { onboardTempTokenCache } from '@/services/redis/cache/ token.cache';
 import { SessionCache } from '@/services/redis/cache/session.cache';
-import type { IShop, ShopType } from '@modules/shop/shop.interface';
+import type { IShop } from '@modules/shop/shop.interface';
 import type { LoginDto } from './auth.validator';
-import type { OnboardShopDto } from '@validator/onboard.validator';
+import type { OnboardShopDto } from './auth.validator';
 import type { AddAdminDto, AdminLoginDto } from '@modules/admin/admin.validator';
 import { logger } from '@/utils/logger';
+import { ShopUserRole } from '@prisma/client';
 
 @Service()
 export class AuthService {
@@ -275,7 +276,7 @@ export class AuthService {
             state: onboardDetails.state,
             pincode: onboardDetails.pincode,
             owner_name: onboardDetails.owner_name,
-            shop_type: ShopType.TWO_WHEELER,
+            shop_business_type: onboardDetails.shop_business_type,
             subscription_status: SubscriptionStatus.TRIAL,
             is_verified: false,
             is_active: true,
@@ -284,7 +285,6 @@ export class AuthService {
         });
         shop = {
           ...createdShop,
-          shop_type: ShopType[createdShop.shop_type as keyof typeof ShopType],
         } as IShop;
 
         // Create user
@@ -300,7 +300,7 @@ export class AuthService {
             id: ulid(),
             email,
             password: tempUser.password,
-            role: UserRole.OWNER,
+            role: ShopUserRole.OWNER,
             shop_id: shop.id,
           },
           select: {
