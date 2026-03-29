@@ -142,10 +142,6 @@ export const createVehicleSchema = z.object({
     z.date(),
     z.null(),
   ]).optional(),
-
-  slug: z.string().trim().min(1).optional(),
-  meta_title: z.string().trim().optional(),
-  meta_description: z.string().trim().optional(),
 });
 
 // Update Vehicle Schema - All fields optional
@@ -272,10 +268,6 @@ export const updateVehicleSchema = z.object({
     z.date(),
     z.null(),
   ]).optional(),
-
-  slug: z.string().trim().min(1).optional(),
-  meta_title: z.string().trim().optional(),
-  meta_description: z.string().trim().optional(),
 });
 
 // Vehicle ID Param Schema

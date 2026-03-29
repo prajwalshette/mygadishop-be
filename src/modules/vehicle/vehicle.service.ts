@@ -5,7 +5,16 @@ import { ConflictException, HttpException, NotFoundException } from '@/exception
 import prisma from '@/lib/prisma';
 import { ulid } from 'ulid';
 import type { IVehicle, IVehicleDocument } from './vehicle.interface';
-import { DocumentType, FuelType, OwnershipType, TransmissionType, VehicleStatus, VehicleType } from '@prisma/client';
+import {
+  DocumentType,
+  FuelType,
+  OwnershipType,
+  TransmissionType,
+  VehicleCategory,
+  VehicleStatus,
+  VehicleType,
+} from '@prisma/client';
+import { buildMetaDescription, buildMetaTitle, generateUniqueSlug } from '@/utils/seo';
 import { generateVehiclePresignedUrls, getS3ObjectStream, presignS3Url } from '@/services/aws/aws.service';
 import { deleteVehiclePresignedCache, getVehiclePresignedCache } from '@/services/redis/cache/vehicle.cache';
 import { logger } from '@/utils/logger';
@@ -14,6 +23,99 @@ import type { ExportVehicleQueryDto, GetVehicleQueryDto } from './vehicle.valida
 @Service()
 export class VehicleService {
   private prisma = prisma;
+
+  /** Merges API/partial payload with an existing DB row for SEO (maps `year` → manufacture_year, `mileage` → odometer_reading). */
+  private mergeVehicleSnapshotForSeo(
+    partial: Partial<IVehicle> & Record<string, unknown>,
+    existing: Vehicle | null | undefined,
+  ) {
+    const p = partial;
+    const e = existing ?? undefined;
+    const num = (a: unknown, b: unknown, fallback: number) => {
+      const x = a ?? b;
+      return typeof x === 'number' && !Number.isNaN(x) ? x : fallback;
+    };
+
+    const rawCat = (p as { vehicle_category?: VehicleCategory }).vehicle_category ?? e?.vehicle_category;
+    const vehicle_category =
+      rawCat && (Object.values(VehicleCategory) as string[]).includes(rawCat as string)
+        ? (rawCat as VehicleCategory)
+        : e?.vehicle_category ?? VehicleCategory.TWO_WHEELER;
+
+    return {
+      brand: (p.brand as string) ?? e?.brand ?? '',
+      model: (p.model as string) ?? e?.model ?? '',
+      variant: (p.variant as string | undefined) ?? e?.variant,
+      registration_number: (p.registration_number as string) ?? e?.registration_number ?? '',
+      manufacture_year: num((p as { manufacture_year?: number }).manufacture_year ?? p.year, e?.manufacture_year, new Date().getFullYear()),
+      ownership_city: (p as { ownership_city?: string | null }).ownership_city ?? e?.ownership_city,
+      vehicle_category,
+      selling_price: (p.selling_price as number | undefined) ?? e?.selling_price ?? undefined,
+      odometer_reading: num((p as { odometer_reading?: number }).odometer_reading ?? p.mileage, e?.odometer_reading, 0),
+      ownership: String((p.ownership as string) ?? e?.ownership ?? 'FIRST'),
+      fuel_type: String((p.fuel_type as string) ?? e?.fuel_type ?? 'PETROL'),
+      condition: String((p as { condition?: string }).condition ?? e?.condition ?? 'GOOD'),
+      accident_history: Boolean((p as { accident_history?: boolean }).accident_history ?? e?.accident_history ?? false),
+      rc_available: Boolean((p as { rc_available?: boolean }).rc_available ?? e?.rc_available ?? true),
+      insurance_valid_till:
+        p.insurance_valid_till !== undefined
+          ? p.insurance_valid_till
+            ? new Date(p.insurance_valid_till as string | Date)
+            : null
+          : e?.insurance_valid_till ?? null,
+    };
+  }
+
+  /** SEO fields are server-only; not accepted from clients in validators. */
+  private async resolveVehicleSeoFields(
+    shop_id: string,
+    snapshot: ReturnType<VehicleService['mergeVehicleSnapshotForSeo']>,
+    options: { excludeVehicleId?: string },
+  ): Promise<{ slug: string; meta_title: string; meta_description: string }> {
+    const shop = await this.prisma.shop.findUnique({ where: { id: shop_id }, select: { shop_name: true } });
+    const shopName = shop?.shop_name ?? 'MyGadiShop';
+
+    const slugInput = {
+      brand: snapshot.brand,
+      model: snapshot.model,
+      ownership_city: snapshot.ownership_city,
+      manufacture_year: snapshot.manufacture_year,
+      registration_number: snapshot.registration_number,
+      vehicle_category: snapshot.vehicle_category,
+    };
+
+    return {
+      slug: await generateUniqueSlug(slugInput, this.prisma, {
+        excludeVehicleId: options.excludeVehicleId,
+      }),
+      meta_title: buildMetaTitle(
+        {
+          manufacture_year: snapshot.manufacture_year,
+          brand: snapshot.brand,
+          model: snapshot.model,
+          variant: snapshot.variant,
+          ownership_city: snapshot.ownership_city,
+          selling_price: snapshot.selling_price,
+        },
+        shopName,
+      ),
+      meta_description: buildMetaDescription({
+        manufacture_year: snapshot.manufacture_year,
+        brand: snapshot.brand,
+        model: snapshot.model,
+        variant: snapshot.variant,
+        ownership_city: snapshot.ownership_city,
+        selling_price: snapshot.selling_price,
+        odometer_reading: snapshot.odometer_reading,
+        ownership: snapshot.ownership,
+        fuel_type: snapshot.fuel_type,
+        condition: snapshot.condition,
+        accident_history: snapshot.accident_history,
+        rc_available: snapshot.rc_available,
+        insurance_valid_till: snapshot.insurance_valid_till ?? null,
+      }),
+    };
+  }
 
   // -----------------------------
   // CREATE VEHICLE - Add new vehicle to inventory
@@ -42,13 +144,27 @@ export class VehicleService {
         );
       }
 
-      const { price, vehicle_documents: _vd, vehicle_doc_urls: _vdu, ...vehicleDataWithoutPrice } = vehicleData as any;
+      const {
+        price,
+        vehicle_documents: _vd,
+        vehicle_doc_urls: _vdu,
+        slug: _omitSlug,
+        meta_title: _omitMetaTitle,
+        meta_description: _omitMetaDesc,
+        ...vehicleDataWithoutPrice
+      } = vehicleData as any;
+
+      const snapshot = this.mergeVehicleSnapshotForSeo(vehicleData as Partial<IVehicle> & Record<string, unknown>, null);
+      const seo = await this.resolveVehicleSeoFields(shop_id, snapshot, {});
 
       const vehicle = await this.prisma.vehicle.create({
         data: {
           id: ulid(),
           shop_id: shop_id,
           ...vehicleDataWithoutPrice,
+          slug: seo.slug,
+          meta_title: seo.meta_title,
+          meta_description: seo.meta_description,
           selling_date: vehicleData.selling_date ? new Date(vehicleData.selling_date) : null,
           buying_date: vehicleData.buying_date ? new Date(vehicleData.buying_date) : null,
           insurance_valid_till: vehicleData.insurance_valid_till ? new Date(vehicleData.insurance_valid_till) : null,
@@ -142,7 +258,15 @@ export class VehicleService {
         throw new NotFoundException(`Vehicle not found with id: ${vehicleId}`);
       }
 
-      const { price, vehicle_documents: _vd, vehicle_doc_urls: _vdu, ...vehicleDataWithoutPrice } = vehicleData as any;
+      const {
+        price,
+        vehicle_documents: _vd,
+        vehicle_doc_urls: _vdu,
+        slug: _omitSlug,
+        meta_title: _omitMetaTitle,
+        meta_description: _omitMetaDesc,
+        ...vehicleDataWithoutPrice
+      } = vehicleData as any;
 
       if (vehicleDataWithoutPrice.registration_number || vehicleDataWithoutPrice.chassis_number) {
         const duplicateVehicle = await this.prisma.vehicle.findFirst({
@@ -163,10 +287,16 @@ export class VehicleService {
 
       const { id, ...updateData } = vehicleDataWithoutPrice;
 
+      const snapshot = this.mergeVehicleSnapshotForSeo(vehicleData as Partial<IVehicle> & Record<string, unknown>, existingVehicle);
+      const seo = await this.resolveVehicleSeoFields(existingVehicle.shop_id, snapshot, { excludeVehicleId: vehicleId });
+
       const updatedVehicle = await this.prisma.vehicle.update({
         where: { id: vehicleId },
         data: {
           ...updateData,
+          slug: seo.slug,
+          meta_title: seo.meta_title,
+          meta_description: seo.meta_description,
           updated_at: new Date(),
           selling_date: vehicleDataWithoutPrice.selling_date ? new Date(vehicleDataWithoutPrice.selling_date) : existingVehicle.selling_date,
           buying_date: vehicleDataWithoutPrice.buying_date ? new Date(vehicleDataWithoutPrice.buying_date) : existingVehicle.buying_date,
