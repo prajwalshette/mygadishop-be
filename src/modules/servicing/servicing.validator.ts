@@ -2,8 +2,21 @@ import { z } from 'zod';
 import { PaymentMethod, PaymentStatus, ServicingStatus, VehicleType } from '@prisma/client';
 
 // Create Servicing Schema (matches Prisma Servicing — vehicle snapshot, no vehicle_id)
-export const createServicingSchema = z.object({
-  customer_id: z.string().min(1, 'Customer ID is required'),
+export const createServicingSchema = z
+  .object({
+    customer_id: z.preprocess(
+      val => (val === '' || val === null || val === undefined ? undefined : String(val).trim()),
+      z.string().min(1).optional(),
+    ),
+    /** When customer_id is omitted: used to create a SERVICE_ONLY customer first */
+    customer_name: z.preprocess(
+      val => (val === '' || val === null || val === undefined ? undefined : String(val).trim()),
+      z.string().min(1, 'Name is required').optional(),
+    ),
+    customer_phone: z.preprocess(
+      val => (val === '' || val === null || val === undefined ? undefined : String(val).trim()),
+      z.string().regex(/^[6-9]\d{9}$/, 'Enter a valid 10-digit Indian mobile number').optional(),
+    ),
 
   vehicle_brand: z.string().min(1, 'Vehicle brand is required'),
   vehicle_model: z.string().min(1, 'Vehicle model is required'),
@@ -40,7 +53,26 @@ export const createServicingSchema = z.object({
 
   service_images: z.array(z.string()).optional().default([]),
   parts_replaced: z.array(z.string()).optional().default([]),
-});
+  })
+  .superRefine((data, ctx) => {
+    const hasCustomerId = !!data.customer_id;
+    if (hasCustomerId) return;
+
+    if (!data.customer_name?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'customer_name is required when customer_id is omitted',
+        path: ['customer_name'],
+      });
+    }
+    if (!data.customer_phone) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'customer_phone is required when customer_id is omitted',
+        path: ['customer_phone'],
+      });
+    }
+  });
 
 // Update Servicing Schema — all optional except nothing required
 export const updateServicingSchema = z.object({

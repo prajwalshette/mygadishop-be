@@ -1,5 +1,5 @@
 import { Service } from 'typedi';
-import { PaymentStatus, Prisma, ServicingStatus } from '@prisma/client';
+import { CustomerType, PaymentStatus, Prisma, ServicingStatus } from '@prisma/client';
 import { HttpException, NotFoundException } from '@/exceptions';
 import prisma from '@/lib/prisma';
 import type { IServicing } from './servicing.interface';
@@ -16,11 +16,13 @@ export class ServicingService {
   // -----------------------------
   public async createServicing(shop_id: string, data: CreateServicingDto): Promise<IServicing> {
     try {
+      const customer_id = await this.resolveCustomerForServicing(shop_id, data);
+
       const newServicing = await this.prisma.servicing.create({
         data: {
           id: ulid(),
           shop_id,
-          customer_id: data.customer_id,
+          customer_id,
           vehicle_brand: data.vehicle_brand,
           vehicle_model: data.vehicle_model,
           vehicle_variant: data.vehicle_variant ?? null,
@@ -57,6 +59,43 @@ export class ServicingService {
       logger.error(`Create servicing error: ${error.message}`);
       throw error;
     }
+  }
+
+  /**
+   * Uses existing customer_id when provided; otherwise finds by phone or creates
+   * a SERVICE_ONLY customer with the given name and phone.
+   */
+  private async resolveCustomerForServicing(shop_id: string, data: CreateServicingDto): Promise<string> {
+    if (data.customer_id) {
+      const customer = await this.prisma.customer.findFirst({
+        where: { id: data.customer_id, shop_id, deleted_at: null },
+      });
+      if (!customer) {
+        throw new NotFoundException('Customer not found');
+      }
+      return data.customer_id;
+    }
+
+    const name = data.customer_name!.trim();
+    const phone = data.customer_phone!;
+
+    const existing = await this.prisma.customer.findFirst({
+      where: { shop_id, phone, deleted_at: null },
+    });
+    if (existing) {
+      return existing.id;
+    }
+
+    const created = await this.prisma.customer.create({
+      data: {
+        id: ulid(),
+        shop_id,
+        name,
+        phone,
+        customer_type: CustomerType.SERVICE_ONLY,
+      },
+    });
+    return created.id;
   }
 
   // -----------------------------
