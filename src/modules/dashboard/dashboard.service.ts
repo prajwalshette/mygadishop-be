@@ -297,7 +297,6 @@ export class DashboardService {
         this.prisma.servicing.findMany({
           where: { shop_id, deleted_at: null },
           include: {
-            vehicle: true,
             customer: true
           },
           orderBy: { service_date: 'desc' },
@@ -348,7 +347,7 @@ export class DashboardService {
         activities.push({
           id: service.id,
           type,
-          message: `${service.status === 'COMPLETED' ? 'Bike service completed' : service.status === 'PENDING' ? 'Service pending' : 'Service in progress'} for ${service.vehicle.brand} ${service.vehicle.model}`,
+          message: `${service.status === 'COMPLETED' ? 'Bike service completed' : service.status === 'PENDING' ? 'Service pending' : 'Service in progress'} for ${service.vehicle_brand} ${service.vehicle_model}`,
           timestamp: service.service_date,
           timeString,
           status
