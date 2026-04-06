@@ -7,6 +7,41 @@ import { ulid } from 'ulid';
 import { logger } from '@/utils/logger';
 import type { CreateServicingDto, ExportServicingQueryDto, GetServicingQueryDto, UpdateServicingDto } from './servicing.validator';
 
+type ServicingWithCustomer = Prisma.ServicingGetPayload<{
+  include: { customer: { select: { name: true; phone: true } } };
+}>;
+
+function mapServicingWithCustomer(s: ServicingWithCustomer): IServicing {
+  const { customer, ...rest } = s;
+  return {
+    ...rest,
+    customer_name: customer?.name ?? null,
+    customer_phone: customer?.phone ?? null,
+  } as IServicing;
+}
+
+function buildServicingSearchOr(search: string): Prisma.ServicingWhereInput[] {
+  return [
+    { service_type: { contains: search, mode: 'insensitive' } },
+    { description: { contains: search, mode: 'insensitive' } },
+    { vehicle_brand: { contains: search, mode: 'insensitive' } },
+    { vehicle_model: { contains: search, mode: 'insensitive' } },
+    { vehicle_reg_number: { contains: search, mode: 'insensitive' } },
+    {
+      customer: {
+        deleted_at: null,
+        name: { contains: search, mode: 'insensitive' },
+      },
+    },
+    {
+      customer: {
+        deleted_at: null,
+        phone: { contains: search, mode: 'insensitive' },
+      },
+    },
+  ];
+}
+
 @Service()
 export class ServicingService {
   private prisma = prisma;
@@ -113,13 +148,7 @@ export class ServicingService {
       };
 
       if (search) {
-        whereClause.OR = [
-          { service_type: { contains: search, mode: 'insensitive' } },
-          { description: { contains: search, mode: 'insensitive' } },
-          { vehicle_brand: { contains: search, mode: 'insensitive' } },
-          { vehicle_model: { contains: search, mode: 'insensitive' } },
-          { vehicle_reg_number: { contains: search, mode: 'insensitive' } },
-        ];
+        whereClause.OR = buildServicingSearchOr(search);
       }
 
       if (status) {
@@ -134,15 +163,22 @@ export class ServicingService {
         whereClause.customer_id = customer_id;
       }
 
-      const [servicings, total] = await Promise.all([
+      const [rows, total] = await Promise.all([
         this.prisma.servicing.findMany({
           where: whereClause,
           orderBy: { [sortBy]: sortOrder },
           skip,
           take: limit,
+          include: {
+            customer: {
+              select: { name: true, phone: true },
+            },
+          },
         }),
         this.prisma.servicing.count({ where: whereClause }),
       ]);
+
+      const servicings = rows.map((row) => mapServicingWithCustomer(row));
 
       const totalPages = Math.ceil(total / limit);
 
@@ -156,7 +192,7 @@ export class ServicingService {
       );
 
       return {
-        servicings: servicings as IServicing[],
+        servicings,
         pagination: {
           page,
           limit,
@@ -176,17 +212,22 @@ export class ServicingService {
   // -----------------------------
   public async getServicingById(id: string, shop_id: string): Promise<IServicing> {
     try {
-      const servicing = await this.prisma.servicing.findFirst({
+      const row = await this.prisma.servicing.findFirst({
         where: { id, shop_id, deleted_at: null },
+        include: {
+          customer: {
+            select: { name: true, phone: true },
+          },
+        },
       });
 
-      if (!servicing) {
+      if (!row) {
         logger.warn(`Get servicing failed: Servicing not found - ${id}`);
         throw new NotFoundException('Servicing not found');
       }
 
       logger.info(`Servicing retrieved successfully: ${id}`);
-      return servicing as IServicing;
+      return mapServicingWithCustomer(row);
     } catch (error: any) {
       if (error instanceof HttpException) throw error;
       logger.error(`Get servicing error for ${id}: ${error.message}`);
@@ -325,13 +366,7 @@ export class ServicingService {
       };
 
       if (search) {
-        whereClause.OR = [
-          { service_type: { contains: search, mode: 'insensitive' } },
-          { description: { contains: search, mode: 'insensitive' } },
-          { vehicle_brand: { contains: search, mode: 'insensitive' } },
-          { vehicle_model: { contains: search, mode: 'insensitive' } },
-          { vehicle_reg_number: { contains: search, mode: 'insensitive' } },
-        ];
+        whereClause.OR = buildServicingSearchOr(search);
       }
 
       if (status) {
@@ -346,10 +381,17 @@ export class ServicingService {
         whereClause.customer_id = customer_id;
       }
 
-      const servicings = await this.prisma.servicing.findMany({
+      const rows = await this.prisma.servicing.findMany({
         where: whereClause,
         orderBy: { [sortBy]: sortOrder },
+        include: {
+          customer: {
+            select: { name: true, phone: true },
+          },
+        },
       });
+
+      const servicings = rows.map((row) => mapServicingWithCustomer(row));
 
       logger.info(
         `Exporting ${servicings.length} servicings (filters: ${JSON.stringify({
@@ -360,7 +402,7 @@ export class ServicingService {
         })})`,
       );
 
-      return servicings as IServicing[];
+      return servicings;
     } catch (error: any) {
       logger.error(`Export servicings error: ${error.message}`);
       throw error;

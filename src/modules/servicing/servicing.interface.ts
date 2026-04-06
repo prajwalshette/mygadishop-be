@@ -12,6 +12,10 @@ export interface IServicing {
   vehicle_type: VehicleType;
   vehicle_reg_number?: string | null;
 
+  /** Populated on list/export responses via customer join (not stored on Servicing row). */
+  customer_name?: string | null;
+  customer_phone?: string | null;
+
   service_date: Date;
   service_type: string;
   description?: string | null;
