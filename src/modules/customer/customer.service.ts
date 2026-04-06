@@ -96,18 +96,16 @@ export class CustomerService {
   // GET ALL CUSTOMERS - Retrieve paginated customer list
   // -----------------------------
   public async getAllCustomer(query: GetCustomerQueryDto, shop_id: string): Promise<any> {
-    const { page, limit, search, customer_type, last_purchase, sortBy, sortOrder } = query;
+    const { page, limit, search, customer_type } = query;
 
     try {
       const skip = (page - 1) * limit;
 
-      // Build where clause with filters
       const whereClause: any = {
         shop_id,
         deleted_at: null,
       };
 
-      // Add search filter (searches across multiple fields)
       if (search) {
         whereClause.OR = [
           { name: { contains: search, mode: 'insensitive' } },
@@ -116,119 +114,32 @@ export class CustomerService {
         ];
       }
 
-      // Add customer_type filter
       if (customer_type) {
         whereClause.customer_type = customer_type;
       }
 
-      // Add last_purchase filter: customers who have at least one completed payment in the period
-      if (last_purchase === 'this_month') {
-        const now = new Date();
-        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-        whereClause.payments = {
-          some: { status: PaymentStatus.COMPLETED, deleted_at: null, payment_date: { gte: startOfMonth, lte: now } },
-        };
-      } else if (last_purchase === 'last_3_months') {
-        const now = new Date();
-        const threeMonthsAgo = new Date(now);
-        threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
-        whereClause.payments = {
-          some: { status: PaymentStatus.COMPLETED, deleted_at: null, payment_date: { gte: threeMonthsAgo, lte: now } },
-        };
-      }
-      // all_time: no extra filter
-
-      const includePayments = {
-        payments: {
-          where: { status: PaymentStatus.COMPLETED, deleted_at: null },
-          select: { amount: true, payment_date: true },
-        },
-      };
-
-      const isAggregateSort = sortBy === 'total_spent' || sortBy === 'last_purchase';
-
-      let mappedCustomers: any[];
-      let total: number;
-
-      if (isAggregateSort) {
-        // Fetch all matching customers (no skip/take), map with aggregates, sort in memory, then paginate
-        const allCustomers = await this.prisma.customer.findMany({
+      const [customers, totalCount] = await Promise.all([
+        this.prisma.customer.findMany({
           where: whereClause,
-          include: includePayments,
-        });
-        total = allCustomers.length;
-        const withAggregates = allCustomers.map(customer => {
-          const completedPayments = customer.payments || [];
-          const totalSpent = completedPayments.reduce((sum, p) => sum + Number(p.amount), 0);
-          const lastPurchaseDate = completedPayments.length
-            ? completedPayments.reduce((latest, p) => {
-                const d = p.payment_date ? new Date(p.payment_date) : null;
-                return d && (!latest || d > latest) ? d : latest;
-              }, null as Date | null)
-            : null;
-          const { payments, ...rest } = customer;
-          return {
-            ...rest,
-            customer_type: customer.customer_type as CustomerType,
-            purchasesCount: completedPayments.length,
-            totalSpent: Math.round(totalSpent * 100) / 100,
-            lastPurchaseDate: lastPurchaseDate ? lastPurchaseDate.toISOString() : null,
-            _lastPurchaseDate: lastPurchaseDate,
-          };
-        });
-        withAggregates.sort((a, b) => {
-          let cmp = 0;
-          if (sortBy === 'total_spent') {
-            cmp = (a.totalSpent ?? 0) - (b.totalSpent ?? 0);
-          } else {
-            const aTime = a._lastPurchaseDate ? a._lastPurchaseDate.getTime() : 0;
-            const bTime = b._lastPurchaseDate ? b._lastPurchaseDate.getTime() : 0;
-            cmp = aTime - bTime;
-          }
-          return sortOrder === 'desc' ? -cmp : cmp;
-        });
-        mappedCustomers = withAggregates.slice(skip, skip + limit).map(({ _lastPurchaseDate, ...c }) => c);
-      } else {
-        const [customers, totalCount] = await Promise.all([
-          this.prisma.customer.findMany({
-            where: whereClause,
-            orderBy: { [sortBy]: sortOrder },
-            skip,
-            take: limit,
-            include: includePayments,
-          }),
-          this.prisma.customer.count({ where: whereClause }),
-        ]);
-        total = totalCount;
-        mappedCustomers = customers.map(customer => {
-          const completedPayments = customer.payments || [];
-          const totalSpent = completedPayments.reduce((sum, p) => sum + Number(p.amount), 0);
-          const lastPurchase = completedPayments.length
-            ? completedPayments.reduce((latest, p) => {
-                const d = p.payment_date ? new Date(p.payment_date) : null;
-                return d && (!latest || d > latest) ? d : latest;
-              }, null as Date | null)
-            : null;
-          const { payments, ...rest } = customer;
-          return {
-            ...rest,
-            customer_type: customer.customer_type as CustomerType,
-            purchasesCount: completedPayments.length,
-            totalSpent: Math.round(totalSpent * 100) / 100,
-            lastPurchaseDate: lastPurchase ? lastPurchase.toISOString() : null,
-          };
-        });
-      }
+          orderBy: { name: 'asc' },
+          skip,
+          take: limit,
+        }),
+        this.prisma.customer.count({ where: whereClause }),
+      ]);
 
+      const mappedCustomers = customers.map(customer => ({
+        ...customer,
+        customer_type: customer.customer_type as CustomerType,
+      }));
+
+      const total = totalCount;
       const totalPages = Math.ceil(total / limit);
 
       logger.info(
         `Retrieved ${total} customers (page ${page}, limit ${limit}, filters: ${JSON.stringify({
           search,
           customer_type,
-          last_purchase,
-          sortBy,
-          sortOrder,
         })})`,
       );
 
@@ -312,7 +223,7 @@ export class CustomerService {
   // EXPORT CUSTOMERS - Get all customers for CSV export (no pagination)
   // -----------------------------
   public async exportCustomers(query: ExportCustomerQueryDto, shop_id: string): Promise<ICustomer[]> {
-    const { search, customer_type, last_purchase, sortBy, sortOrder } = query;
+    const { search, customer_type } = query;
 
     try {
       const whereClause: any = {
@@ -332,25 +243,9 @@ export class CustomerService {
         whereClause.customer_type = customer_type;
       }
 
-      if (last_purchase === 'this_month') {
-        const now = new Date();
-        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-        whereClause.payments = {
-          some: { status: PaymentStatus.COMPLETED, deleted_at: null, payment_date: { gte: startOfMonth, lte: now } },
-        };
-      } else if (last_purchase === 'last_3_months') {
-        const now = new Date();
-        const threeMonthsAgo = new Date(now);
-        threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
-        whereClause.payments = {
-          some: { status: PaymentStatus.COMPLETED, deleted_at: null, payment_date: { gte: threeMonthsAgo, lte: now } },
-        };
-      }
-
-      const orderByField = sortBy === 'total_spent' || sortBy === 'last_purchase' ? 'created_at' : sortBy;
       const customers = await this.prisma.customer.findMany({
         where: whereClause,
-        orderBy: { [orderByField]: sortOrder },
+        orderBy: { name: 'asc' },
         include: {
           payments: {
             where: { status: PaymentStatus.COMPLETED, deleted_at: null },

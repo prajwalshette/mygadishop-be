@@ -96,12 +96,6 @@ export const getCustomerQuerySchema = z.object({
   search: z.string().trim().optional(), // Searches: name, email, phone
 
   customer_type: z.enum(CustomerType).optional(),
-
-  last_purchase: z.enum(['all_time', 'this_month', 'last_3_months']).optional().default('all_time'),
-
-  sortBy: z.enum(['created_at', 'updated_at', 'name', 'total_spent', 'last_purchase']).optional().default('created_at'),
-
-  sortOrder: z.enum(['asc', 'desc']).optional().default('desc'),
 });
 
 // Query Schema for export customers (no pagination)
@@ -109,12 +103,6 @@ export const exportCustomerQuerySchema = z.object({
   search: z.string().trim().optional(), // Searches: name, email, phone
 
   customer_type: z.enum(CustomerType).optional(),
-
-  last_purchase: z.enum(['all_time', 'this_month', 'last_3_months']).optional().default('all_time'),
-
-  sortBy: z.enum(['created_at', 'updated_at', 'name', 'total_spent', 'last_purchase']).optional().default('created_at'),
-
-  sortOrder: z.enum(['asc', 'desc']).optional().default('desc'),
 });
 
 //Search Cutomer by phone number
