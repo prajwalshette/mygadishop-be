@@ -135,6 +135,24 @@ export class VehicleRoute implements Routes {
       [auth, ValidateRequest({ params: VehicleIdParamSchema })],
       this.vehicleController.deleteVehicle as RequestHandler,
     );
+
+    // Extract Vehicle Details from RC
+    const rcUpload = multer({
+      storage: multer.memoryStorage(),
+      limits: {
+        fileSize: 10 * 1024 * 1024, // 10 MB max
+      },
+      fileFilter: (_req, file, cb) => {
+        const ALLOWED_MIMES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'application/pdf'];
+        if (ALLOWED_MIMES.includes(file.mimetype)) {
+          cb(null, true);
+        } else {
+          cb(new Error(`Unsupported file type: ${file.mimetype}. Allowed: JPEG, PNG, WEBP, HEIC, PDF`) as any);
+        }
+      },
+    });
+
+    this.router.post(`${this.path}/extract-rc`, [auth, rcUpload.single('rc_image')], this.vehicleController.extractRC as RequestHandler);
   }
 }
 

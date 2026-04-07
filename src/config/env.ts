@@ -42,6 +42,11 @@ const envSchema = z.object({
   RAZORPAY_KEY_ID: z.string().min(1, 'RAZORPAY_KEY_ID is required'),
   RAZORPAY_KEY_SECRET: z.string().min(1, 'RAZORPAY_KEY_SECRET is required'),
   RAZORPAY_WEBHOOK_SECRET: z.string().min(1, 'RAZORPAY_WEBHOOK_SECRET is required'),
+
+  // Gemini API
+  GEMINI_API_KEY_ONE: z.string().min(1, 'GEMINI_API_KEY is required'),
+  GEMINI_API_KEY_TWO: z.string().min(1, 'GEMINI_API_KEY is required'),
+
 });
 
 const _parsed = envSchema.safeParse(process.env);
@@ -79,3 +84,5 @@ export const SHADOW_DATABASE_URL = env.SHADOW_DATABASE_URL;
 export const RAZORPAY_KEY_ID = env.RAZORPAY_KEY_ID;
 export const RAZORPAY_KEY_SECRET = env.RAZORPAY_KEY_SECRET;
 export const RAZORPAY_WEBHOOK_SECRET = env.RAZORPAY_WEBHOOK_SECRET;
+export const GEMINI_API_KEY_ONE = env.GEMINI_API_KEY_ONE;
+export const GEMINI_API_KEY_TWO = env.GEMINI_API_KEY_TWO;

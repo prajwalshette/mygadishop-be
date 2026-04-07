@@ -11,9 +11,11 @@ import { BadRequestException, NotFoundException } from '@/exceptions';
 import { uploadVehicleDocMedia, uploadVehicleMedia } from '@/services/aws/aws.service';
 import { stringify } from 'csv-stringify/sync';
 import { logger } from '@/utils/logger';
+import { RCExtractService } from '@/services/gemini/gemini-rc-extract.service';
 
 export class VehicleController {
   public vehicleService = Container.get(VehicleService);
+  public rcExtractService = Container.get(RCExtractService);
 
   // -----------------------------
   // CREATE VEHICLE - Handle vehicle creation with file uploads
@@ -286,6 +288,31 @@ export class VehicleController {
 
       response.status(200).json({ message: 'Successfully Deleted Vehicle' });
     } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * Extract vehicle details from RC image using Gemini.
+   */
+  public extractRC = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
+    try {
+      if (!request.file) {
+        throw new BadRequestException('RC image is required');
+      }
+
+      const file = request.file;
+      const base64Data = file.buffer.toString('base64');
+      const mimeType = file.mimetype;
+
+      const extractedData = await this.rcExtractService.extractFromBase64(base64Data, mimeType);
+
+      response.status(200).json({
+        data: extractedData,
+        message: 'Successfully Extracted Vehicle Details from RC',
+      });
+    } catch (error) {
+      logger.error(`RC extraction error: ${error.message}`);
       next(error);
     }
   };
