@@ -22,7 +22,7 @@ export class VehicleController {
   // -----------------------------
   public createVehicle = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
     try {
-      const vehicleData: IVehicle = request.body;
+      const vehicleData: IVehicle = this.parseNestedBody(request.body);
       const vehicle_id = ulid();
       const shop_id = request.user.shop_id;
 
@@ -61,7 +61,7 @@ export class VehicleController {
   public updateVehicle = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
     try {
       const vehicleId: string = request.params.id as string;
-      const vehicleData: Partial<IVehicle> = request.body;
+      const vehicleData: Partial<IVehicle> = this.parseNestedBody(request.body);
       const shop_id = request.user.shop_id;
 
       const existingRow = await this.vehicleService.getVehicleWithDocumentsRaw(vehicleId);
@@ -235,19 +235,19 @@ export class VehicleController {
 
       // Convert vehicles to CSV rows
       const rows = vehicles.map((vehicle: any) => [
-        vehicle.type || '',
+        vehicle.vehicle_type || '',
         vehicle.brand || '',
         vehicle.model || '',
         vehicle.variant || '',
-        vehicle.year?.toString() || '',
+        vehicle.manufacture_year?.toString() || '',
         vehicle.registration_number || '',
         vehicle.chassis_number || '',
         vehicle.engine_number || '',
         vehicle.color || '',
-        vehicle.mileage?.toString() || '',
+        vehicle.odometer_reading?.toString() || '',
         vehicle.fuel_type || '',
         vehicle.transmission || '',
-        vehicle.engine_capacity?.toString() || '',
+        vehicle.vehicle_category === 'TWO_WHEELER' ? vehicle.two_wheeler_detail?.engine_capacity_cc?.toString() || '' : vehicle.four_wheeler_detail?.engine_capacity_cc?.toString() || '',
         vehicle.ownership || '',
         formatDate(vehicle.insurance_valid_till),
         vehicle.buying_price?.toString() || '',
@@ -297,18 +297,30 @@ export class VehicleController {
    */
   public extractRC = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
     try {
-      if (!request.file) {
-        throw new BadRequestException('RC image is required');
+      const files = request.files as { [fieldname: string]: Express.Multer.File[] } | undefined;
+      const rcFront = files?.rc_front?.[0] ?? null;
+      const rcBack = files?.rc_back?.[0] ?? null;
+      const rcImageLegacy = files?.rc_image?.[0] ?? null;
+
+      // Backward compatibility: if client still sends rc_image, treat it as "front".
+      const frontFile = rcFront ?? rcImageLegacy;
+      const backFile = rcBack;
+
+      if (!frontFile && !backFile) {
+        throw new BadRequestException('RC images are required. Upload `rc_front` and `rc_back` (or legacy `rc_image`).');
       }
 
-      const file = request.file;
-      const base64Data = file.buffer.toString('base64');
-      const mimeType = file.mimetype;
-
-      const extractedData = await this.rcExtractService.extractFromBase64(base64Data, mimeType);
+      const extracted = await this.rcExtractService.extractFromTwoBase64(
+        frontFile ? { base64Data: frontFile.buffer.toString('base64'), mimeType: frontFile.mimetype } : null,
+        backFile ? { base64Data: backFile.buffer.toString('base64'), mimeType: backFile.mimetype } : null,
+      );
 
       response.status(200).json({
-        data: extractedData,
+        data: extracted.merged,
+        details: {
+          front: extracted.front,
+          back: extracted.back,
+        },
         message: 'Successfully Extracted Vehicle Details from RC',
       });
     } catch (error) {
@@ -439,5 +451,52 @@ export class VehicleController {
         expiry_date: v.expiry_date,
         notes: v.notes,
       }));
+  }
+
+  private parseNestedBody(body: any): any {
+    const out = { ...body };
+    if (typeof out.two_wheeler_detail === 'string') {
+      try {
+        out.two_wheeler_detail = JSON.parse(out.two_wheeler_detail);
+      } catch (e) {
+        logger.error(`Error parsing two_wheeler_detail in body: ${e.message}`);
+      }
+    }
+    if (typeof out.four_wheeler_detail === 'string') {
+      try {
+        out.four_wheeler_detail = JSON.parse(out.four_wheeler_detail);
+      } catch (e) {
+        logger.error(`Error parsing four_wheeler_detail in body: ${e.message}`);
+      }
+    }
+    if (typeof out.vehicle_documents === 'string') {
+      try {
+        out.vehicle_documents = JSON.parse(out.vehicle_documents);
+      } catch (e) {
+        logger.error(`Error parsing vehicle_documents in body: ${e.message}`);
+      }
+    }
+    // Also parse numbers that might be sent as strings in FormData
+    [
+      'manufacture_year',
+      'registration_year',
+      'odometer_reading',
+      'buying_price',
+      'selling_price',
+      'min_selling_price',
+      'estimated_rto_charges',
+    ].forEach(key => {
+      if (typeof out[key] === 'string' && out[key] !== '') {
+        out[key] = Number(out[key]);
+      }
+    });
+    // Parse booleans
+    ['is_hypothecation', 'rc_available', 'is_price_negotiable', 'accident_history', 'flood_affected', 'is_featured'].forEach(key => {
+      if (typeof out[key] === 'string') {
+        out[key] = out[key].toLowerCase() === 'true';
+      }
+    });
+
+    return out;
   }
 }

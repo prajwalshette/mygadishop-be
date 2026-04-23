@@ -1,10 +1,10 @@
 import { Prisma } from '@prisma/client';
-import type { Vehicle, VehicleDocument } from '@prisma/client';
+import type { Vehicle, VehicleDocument, TwoWheelerDetail, FourWheelerDetail } from '@prisma/client';
 import { Service } from 'typedi';
 import { ConflictException, HttpException, NotFoundException } from '@/exceptions';
 import prisma from '@/lib/prisma';
 import { ulid } from 'ulid';
-import type { IVehicle, IVehicleDocument } from './vehicle.interface';
+import type { IVehicle, IVehicleDocument, ITwoWheelerDetail, IFourWheelerDetail } from './vehicle.interface';
 import {
   DocumentType,
   FuelType,
@@ -24,7 +24,7 @@ import type { ExportVehicleQueryDto, GetVehicleQueryDto } from './vehicle.valida
 export class VehicleService {
   private prisma = prisma;
 
-  /** Merges API/partial payload with an existing DB row for SEO (maps `year` → manufacture_year, `mileage` → odometer_reading). */
+  /** Merges API/partial payload with an existing DB row for SEO. */
   private mergeVehicleSnapshotForSeo(
     partial: Partial<IVehicle> & Record<string, unknown>,
     existing: Vehicle | null | undefined,
@@ -36,22 +36,18 @@ export class VehicleService {
       return typeof x === 'number' && !Number.isNaN(x) ? x : fallback;
     };
 
-    const rawCat = (p as { vehicle_category?: VehicleCategory }).vehicle_category ?? e?.vehicle_category;
-    const vehicle_category =
-      rawCat && (Object.values(VehicleCategory) as string[]).includes(rawCat as string)
-        ? (rawCat as VehicleCategory)
-        : e?.vehicle_category ?? VehicleCategory.TWO_WHEELER;
+    const vehicle_category = p.vehicle_category ?? e?.vehicle_category ?? VehicleCategory.TWO_WHEELER;
 
     return {
       brand: (p.brand as string) ?? e?.brand ?? '',
       model: (p.model as string) ?? e?.model ?? '',
       variant: (p.variant as string | undefined) ?? e?.variant,
       registration_number: (p.registration_number as string) ?? e?.registration_number ?? '',
-      manufacture_year: num((p as { manufacture_year?: number }).manufacture_year ?? p.year, e?.manufacture_year, new Date().getFullYear()),
+      manufacture_year: num(p.manufacture_year, e?.manufacture_year, new Date().getFullYear()),
       ownership_city: (p as { ownership_city?: string | null }).ownership_city ?? e?.ownership_city,
       vehicle_category,
       selling_price: (p.selling_price as number | undefined) ?? e?.selling_price ?? undefined,
-      odometer_reading: num((p as { odometer_reading?: number }).odometer_reading ?? p.mileage, e?.odometer_reading, 0),
+      odometer_reading: num(p.odometer_reading, e?.odometer_reading, 0),
       ownership: String((p.ownership as string) ?? e?.ownership ?? 'FIRST'),
       fuel_type: String((p.fuel_type as string) ?? e?.fuel_type ?? 'PETROL'),
       condition: String((p as { condition?: string }).condition ?? e?.condition ?? 'GOOD'),
@@ -145,13 +141,13 @@ export class VehicleService {
       }
 
       const {
-        price,
         vehicle_documents: _vd,
-        vehicle_doc_urls: _vdu,
         slug: _omitSlug,
         meta_title: _omitMetaTitle,
         meta_description: _omitMetaDesc,
-        ...vehicleDataWithoutPrice
+        two_wheeler_detail,
+        four_wheeler_detail,
+        ...vehicleRest
       } = vehicleData as any;
 
       const snapshot = this.mergeVehicleSnapshotForSeo(vehicleData as Partial<IVehicle> & Record<string, unknown>, null);
@@ -161,13 +157,18 @@ export class VehicleService {
         data: {
           id: ulid(),
           shop_id: shop_id,
-          ...vehicleDataWithoutPrice,
+          ...vehicleRest,
+          // If client omits it, persist as 0 by default.
+          estimated_rto_charges:
+            vehicleRest.estimated_rto_charges ?? 0,
           slug: seo.slug,
           meta_title: seo.meta_title,
           meta_description: seo.meta_description,
           selling_date: vehicleData.selling_date ? new Date(vehicleData.selling_date) : null,
           buying_date: vehicleData.buying_date ? new Date(vehicleData.buying_date) : null,
           insurance_valid_till: vehicleData.insurance_valid_till ? new Date(vehicleData.insurance_valid_till) : null,
+          registration_valid_till: vehicleData.registration_valid_till ? new Date(vehicleData.registration_valid_till) : null,
+          puc_valid_till: vehicleData.puc_valid_till ? new Date(vehicleData.puc_valid_till) : null,
           vehicleDocuments:
             documentRows && documentRows.length > 0
               ? {
@@ -180,8 +181,26 @@ export class VehicleService {
                   })),
                 }
               : undefined,
+          two_wheeler_detail:
+            vehicleData.vehicle_category === VehicleCategory.TWO_WHEELER && two_wheeler_detail
+              ? {
+                  create: {
+                    id: ulid(),
+                    ...two_wheeler_detail,
+                  },
+                }
+              : undefined,
+          four_wheeler_detail:
+            vehicleData.vehicle_category === VehicleCategory.FOUR_WHEELER && four_wheeler_detail
+              ? {
+                  create: {
+                    id: ulid(),
+                    ...four_wheeler_detail,
+                  },
+                }
+              : undefined,
         } as Prisma.VehicleUncheckedCreateInput,
-        include: { vehicleDocuments: true },
+        include: { vehicleDocuments: true, two_wheeler_detail: true, four_wheeler_detail: true },
       });
 
       logger.info(`Vehicle created successfully: ${vehicle.registration_number} (${vehicle.id})`);
@@ -201,16 +220,19 @@ export class VehicleService {
     });
   }
 
-  private mapVehicleToIVehicle(vehicle: Vehicle & { vehicleDocuments?: VehicleDocument[] }): IVehicle {
-    const { vehicleDocuments, ...v } = vehicle;
+  private mapVehicleToIVehicle(
+    vehicle: Vehicle & {
+      vehicleDocuments?: VehicleDocument[];
+      two_wheeler_detail?: TwoWheelerDetail | null;
+      four_wheeler_detail?: FourWheelerDetail | null;
+    },
+  ): IVehicle {
+    const { vehicleDocuments, two_wheeler_detail, four_wheeler_detail, ...v } = vehicle;
     return {
       ...v,
-      type: vehicle.vehicle_type,
-      fuel_type: vehicle.fuel_type,
-      transmission: vehicle.transmission as TransmissionType,
-      status: vehicle.status as VehicleStatus,
-      ownership: vehicle.ownership as OwnershipType,
       vehicle_documents: (vehicleDocuments ?? []).map(d => this.mapVehicleDocumentToIVehicleDocument(d)),
+      two_wheeler_detail: two_wheeler_detail ? (two_wheeler_detail as ITwoWheelerDetail) : null,
+      four_wheeler_detail: four_wheeler_detail ? (four_wheeler_detail as IFourWheelerDetail) : null,
     } as unknown as IVehicle;
   }
 
@@ -259,21 +281,21 @@ export class VehicleService {
       }
 
       const {
-        price,
         vehicle_documents: _vd,
-        vehicle_doc_urls: _vdu,
         slug: _omitSlug,
         meta_title: _omitMetaTitle,
         meta_description: _omitMetaDesc,
-        ...vehicleDataWithoutPrice
+        two_wheeler_detail,
+        four_wheeler_detail,
+        ...vehicleRest
       } = vehicleData as any;
 
-      if (vehicleDataWithoutPrice.registration_number || vehicleDataWithoutPrice.chassis_number) {
+      if (vehicleRest.registration_number || vehicleRest.chassis_number) {
         const duplicateVehicle = await this.prisma.vehicle.findFirst({
           where: {
             OR: [
-              ...(vehicleDataWithoutPrice.registration_number ? [{ registration_number: vehicleDataWithoutPrice.registration_number }] : []),
-              ...(vehicleData.chassis_number ? [{ chassis_number: vehicleData.chassis_number }] : []),
+              ...(vehicleRest.registration_number ? [{ registration_number: vehicleRest.registration_number }] : []),
+              ...(vehicleRest.chassis_number ? [{ chassis_number: vehicleRest.chassis_number }] : []),
             ],
             AND: [{ id: { not: vehicleId } }, { deleted_at: null }],
           },
@@ -285,26 +307,44 @@ export class VehicleService {
         }
       }
 
-      const { id, ...updateData } = vehicleDataWithoutPrice;
-
       const snapshot = this.mergeVehicleSnapshotForSeo(vehicleData as Partial<IVehicle> & Record<string, unknown>, existingVehicle);
       const seo = await this.resolveVehicleSeoFields(existingVehicle.shop_id, snapshot, { excludeVehicleId: vehicleId });
 
       const updatedVehicle = await this.prisma.vehicle.update({
         where: { id: vehicleId },
         data: {
-          ...updateData,
+          ...vehicleRest,
           slug: seo.slug,
           meta_title: seo.meta_title,
           meta_description: seo.meta_description,
           updated_at: new Date(),
-          selling_date: vehicleDataWithoutPrice.selling_date ? new Date(vehicleDataWithoutPrice.selling_date) : existingVehicle.selling_date,
-          buying_date: vehicleDataWithoutPrice.buying_date ? new Date(vehicleDataWithoutPrice.buying_date) : existingVehicle.buying_date,
-          insurance_valid_till: vehicleDataWithoutPrice.insurance_valid_till
-            ? new Date(vehicleDataWithoutPrice.insurance_valid_till)
-            : existingVehicle.insurance_valid_till,
+          selling_date: vehicleRest.selling_date ? new Date(vehicleRest.selling_date) : existingVehicle.selling_date,
+          buying_date: vehicleRest.buying_date ? new Date(vehicleRest.buying_date) : existingVehicle.buying_date,
+          insurance_valid_till: vehicleRest.insurance_valid_till ? new Date(vehicleRest.insurance_valid_till) : existingVehicle.insurance_valid_till,
+          registration_valid_till: vehicleRest.registration_valid_till
+            ? new Date(vehicleRest.registration_valid_till)
+            : existingVehicle.registration_valid_till,
+          puc_valid_till: vehicleRest.puc_valid_till ? new Date(vehicleRest.puc_valid_till) : existingVehicle.puc_valid_till,
+
+          two_wheeler_detail:
+            two_wheeler_detail && existingVehicle.vehicle_category === VehicleCategory.TWO_WHEELER
+              ? {
+                  upsert: {
+                    create: { id: ulid(), ...two_wheeler_detail },
+                    update: two_wheeler_detail,
+                  },
+                }
+              : undefined,
+          four_wheeler_detail:
+            four_wheeler_detail && existingVehicle.vehicle_category === VehicleCategory.FOUR_WHEELER
+              ? {
+                  upsert: {
+                    create: { id: ulid(), ...four_wheeler_detail },
+                    update: four_wheeler_detail,
+                  },
+                }
+              : undefined,
         } as Prisma.VehicleUncheckedUpdateInput,
-        include: { vehicleDocuments: true },
       });
 
       if (documentRows !== undefined) {
@@ -332,7 +372,7 @@ export class VehicleService {
 
       const withDocs = await this.prisma.vehicle.findFirstOrThrow({
         where: { id: vehicleId },
-        include: { vehicleDocuments: true },
+        include: { vehicleDocuments: true, two_wheeler_detail: true, four_wheeler_detail: true },
       });
 
       logger.info(`Vehicle updated successfully: ${updatedVehicle.registration_number} (${vehicleId})`);
@@ -362,6 +402,8 @@ export class VehicleService {
           buyer_customer: true,
           payments: true,
           vehicleDocuments: true,
+          two_wheeler_detail: true,
+          four_wheeler_detail: true,
         },
       });
 
@@ -430,7 +472,7 @@ export class VehicleService {
   // GET ALL VEHICLES - Retrieve paginated vehicle list
   // -----------------------------
   public async getAllVehicle(query: GetVehicleQueryDto, shop_id: string): Promise<any> {
-    const { page, limit, search, status, type, sortBy, sortOrder } = query;
+    const { page, limit, search, status, vehicle_category, type, sortBy, sortOrder } = query;
 
     try {
       const skip = (page - 1) * limit;
@@ -459,7 +501,9 @@ export class VehicleService {
       }
 
       // Add type filter
-      if (type) {
+      if (vehicle_category) {
+        whereClause.vehicle_category = vehicle_category;
+      } else if (type) {
         whereClause.vehicle_type = type;
       }
 
@@ -470,7 +514,7 @@ export class VehicleService {
           orderBy: { [sortBy]: sortOrder },
           skip,
           take: limit,
-          include: { vehicleDocuments: true },
+          include: { vehicleDocuments: true, two_wheeler_detail: true, four_wheeler_detail: true },
         }),
         this.prisma.vehicle.count({ where: whereClause }),
       ]);
@@ -509,7 +553,7 @@ export class VehicleService {
         }),
       );
 
-      logger.info(`Retrieved ${total} vehicles (page ${page}, limit ${limit}, filters: ${JSON.stringify({ search, status, type })})`);
+      logger.info(`Retrieved ${total} vehicles (page ${page}, limit ${limit}, filters: ${JSON.stringify({ search, status, vehicle_category, type })})`);
 
       return {
         vehicles: vehiclesWithPresignedUrls,
@@ -620,7 +664,7 @@ export class VehicleService {
   // EXPORT VEHICLES - Get all vehicles for CSV export (no pagination)
   // -----------------------------
   public async exportVehicles(query: ExportVehicleQueryDto, shop_id: string): Promise<IVehicle[]> {
-    const { search, status, type, sortBy, sortOrder } = query;
+    const { search, status, vehicle_category, type, sortBy, sortOrder } = query;
 
     try {
       // Build where clause with filters
@@ -647,7 +691,9 @@ export class VehicleService {
       }
 
       // Add type filter
-      if (type) {
+      if (vehicle_category) {
+        whereClause.vehicle_category = vehicle_category;
+      } else if (type) {
         whereClause.vehicle_type = type;
       }
 
@@ -655,18 +701,12 @@ export class VehicleService {
       const vehicles = await this.prisma.vehicle.findMany({
         where: whereClause,
         orderBy: { [sortBy]: sortOrder },
+        include: { two_wheeler_detail: true, four_wheeler_detail: true },
       });
 
-      logger.info(`Exporting ${vehicles.length} vehicles (filters: ${JSON.stringify({ search, status, type })})`);
+      logger.info(`Exporting ${vehicles.length} vehicles (filters: ${JSON.stringify({ search, status, vehicle_category, type })})`);
 
-      return vehicles.map(vehicle => ({
-        ...vehicle,
-        type: vehicle.vehicle_type as VehicleType,
-        fuel_type: vehicle.fuel_type as FuelType,
-        transmission: vehicle.transmission as TransmissionType,
-        status: vehicle.status as VehicleStatus,
-        ownership: vehicle.ownership as OwnershipType,
-      })) as unknown as IVehicle[];
+      return vehicles.map(vehicle => this.mapVehicleToIVehicle(vehicle));
     } catch (error) {
       logger.error(`Export vehicles error: ${error.message}`);
       throw error;

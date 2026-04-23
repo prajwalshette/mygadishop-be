@@ -316,7 +316,6 @@ model Vehicle {
   inspection_report_url String? // Third-party inspection PDF
 
   // ── Public Listing ────────────────────────────────
-  features         String[] // ["ABS", "Dual Airbags", "Sunroof"]
   description      String? // Freeform dealer notes
   is_featured      Boolean   @default(false)
   featured_until   DateTime?

@@ -33,6 +33,23 @@ export class RCExtractService {
   }
 
   /**
+   * Extract RC data from 2-side RC images and merge results.
+   * Merge rule: for each key, prefer the first non-null/non-empty value.
+   */
+  async extractFromTwoBase64(
+    front: { base64Data: string; mimeType: string } | null,
+    back: { base64Data: string; mimeType: string } | null
+  ): Promise<{ merged: RCExtractedData; front: RCExtractedData | null; back: RCExtractedData | null }> {
+    const [frontData, backData] = await Promise.all([
+      front ? this.extractFromBase64(front.base64Data, front.mimeType) : Promise.resolve(null),
+      back ? this.extractFromBase64(back.base64Data, back.mimeType) : Promise.resolve(null),
+    ]);
+
+    const merged = this.mergeExtracted(frontData, backData);
+    return { merged, front: frontData, back: backData };
+  }
+
+  /**
    * Extract RC data from a URL (if RC is hosted somewhere)
    */
   async extractFromUrl(imageUrl: string): Promise<RCExtractedData> {
@@ -49,6 +66,26 @@ export class RCExtractService {
       is_hypothecation: data.is_hypothecation ?? false,
       rc_available: data.rc_available ?? true,
     };
+  }
+
+  private mergeExtracted(a: RCExtractedData | null, b: RCExtractedData | null): RCExtractedData {
+    const base: RCExtractedData = this.applyDefaults((a ?? b) as RCExtractedData);
+    const other = a ? b : a; // whichever wasn't used as base
+    if (!other) return base;
+
+    const out: any = { ...base };
+    for (const key of Object.keys(other) as (keyof RCExtractedData)[]) {
+      const vBase = out[key];
+      const vOther = other[key];
+
+      const isEmptyString = (v: unknown) => typeof v === "string" && v.trim() === "";
+      const isMissing = (v: unknown) => v === null || v === undefined || isEmptyString(v);
+
+      if (isMissing(vBase) && !isMissing(vOther)) {
+        out[key] = vOther as any;
+      }
+    }
+    return this.applyDefaults(out as RCExtractedData);
   }
 
   private getMimeType(ext: string): string {

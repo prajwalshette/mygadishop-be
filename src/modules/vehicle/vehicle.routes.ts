@@ -56,27 +56,31 @@ export class VehicleRoute implements Routes {
       },
     });
 
+    // Multipart body also accepts string fields (not listed below) e.g. seller_customer_id, buyer_customer_id.
     this.router.post(
       `${this.path}/create-vehicle`,
       [
         auth,
         upload.fields(vehicleMultipartFields),
         ParseJsonFieldsMiddleware([
-          'year',
-          'mileage',
+          'manufacture_year',
+          'registration_year',
+          'odometer_reading',
           'buying_price',
           'selling_price',
           'min_selling_price',
-          'engine_capacity',
-          'features',
+          'estimated_rto_charges',
           'vehicle_image_urls',
           'vehicle_documents',
+          'two_wheeler_detail',
+          'four_wheeler_detail',
         ]),
         ValidationMiddleware(createVehicleSchema, 'body'),
       ],
       this.vehicleController.createVehicle as RequestHandler,
     );
 
+    // Multipart body also accepts seller_customer_id, buyer_customer_id as plain form fields.
     // Update Vehicle
     this.router.put(
       `${this.path}/update-vehicle/:id`,
@@ -90,7 +94,6 @@ export class VehicleRoute implements Routes {
           'selling_price',
           'min_selling_price',
           'engine_capacity',
-          'features',
           'vehicle_image_urls',
           'vehicle_documents',
         ]),
@@ -152,7 +155,19 @@ export class VehicleRoute implements Routes {
       },
     });
 
-    this.router.post(`${this.path}/extract-rc`, [auth, rcUpload.single('rc_image')], this.vehicleController.extractRC as RequestHandler);
+    // Accept 2-side RC uploads: rc_front + rc_back (keeps rc_image for backward compatibility)
+    this.router.post(
+      `${this.path}/extract-rc`,
+      [
+        auth,
+        rcUpload.fields([
+          { name: 'rc_front', maxCount: 1 },
+          { name: 'rc_back', maxCount: 1 },
+          { name: 'rc_image', maxCount: 1 },
+        ]),
+      ],
+      this.vehicleController.extractRC as RequestHandler,
+    );
   }
 }
 
