@@ -16,7 +16,7 @@ import multer, { type Field } from 'multer';
 const auth = AuthMiddleware as RequestHandler;
 
 const vehicleMultipartFields: Field[] = [
-  { name: 'vehicleFiles', maxCount: 10 },
+  { name: 'vehicleFiles', maxCount: 5 },
   ...VEHICLE_DOCUMENT_FIELD_NAMES.map(name => ({ name: name as string, maxCount: 1 })),
 ];
 
