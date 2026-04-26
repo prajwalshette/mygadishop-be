@@ -108,8 +108,14 @@ export const createVehicleSchema = z.object({
 
   odometer_reading: z.number().min(0, 'Odometer reading must be positive'),
   condition: z.nativeEnum(VehicleCondition),
-  accident_history: z.boolean().optional().default(false),
-  flood_affected: z.boolean().optional().default(false),
+  accident_history: z
+    .union([z.boolean(), z.string().transform(v => v === 'true')])
+    .optional()
+    .default(false),
+  flood_affected: z
+    .union([z.boolean(), z.string().transform(v => v === 'true')])
+    .optional()
+    .default(false),
   condition_notes: z.string().optional().nullable(),
 
   fuel_type: z.nativeEnum(FuelType),
