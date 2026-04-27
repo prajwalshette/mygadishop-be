@@ -468,6 +468,34 @@ export class VehicleService {
     };
   }
 
+  /**
+   * Stream a vehicle document by docType (proxy from S3 to avoid CORS).
+   */
+  public async getVehicleDocumentStream(
+    vehicleId: string,
+    shop_id: string,
+    docType: DocumentType,
+  ): Promise<{ stream: import('stream').Readable; contentType: string } | null> {
+    const doc = await this.prisma.vehicleDocument.findFirst({
+      where: {
+        vehicle_id: vehicleId,
+        doc_type: docType,
+        vehicle: { shop_id, deleted_at: null },
+      },
+      select: { file_url: true },
+    });
+
+    if (!doc?.file_url) return null;
+
+    const result = await getS3ObjectStream(doc.file_url);
+    if (!result?.Body) return null;
+
+    return {
+      stream: result.Body,
+      contentType: result.ContentType ?? 'application/octet-stream',
+    };
+  }
+
   // -----------------------------
   // GET ALL VEHICLES - Retrieve paginated vehicle list
   // -----------------------------

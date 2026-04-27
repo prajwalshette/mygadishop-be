@@ -151,6 +151,40 @@ export class VehicleController {
     }
   };
 
+  /**
+   * Stream a vehicle document file by `docType` (proxied from S3 so frontend PDF.js can fetch without CORS issues).
+   */
+  public getVehicleDocumentStream = async (
+    request: RequestWithUser,
+    response: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    try {
+      const vehicleId: string = request.params.id as string;
+      const docType = request.params.docType as DocumentType;
+      const shop_id = request.user.shop_id;
+
+      const result = await this.vehicleService.getVehicleDocumentStream(vehicleId, shop_id, docType);
+      if (!result) {
+        throw new NotFoundException(`Vehicle document not found for id: ${vehicleId} (${docType})`);
+      }
+
+      response.setHeader('Content-Type', result.contentType);
+      response.setHeader('Content-Disposition', 'inline');
+      result.stream.pipe(response);
+      result.stream.on('error', err => {
+        logger.error(err, 'Vehicle document stream error');
+        if (!response.headersSent) {
+          response.status(500).end();
+        } else {
+          response.destroy();
+        }
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
   // -----------------------------
   // GET ALL VEHICLES - Retrieve paginated vehicle list
   // -----------------------------

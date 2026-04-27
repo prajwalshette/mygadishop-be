@@ -6,6 +6,7 @@ import {
   createVehicleSchema,
   updateVehicleSchema,
   VehicleIdParamSchema,
+  VehicleDocumentParamSchema,
   getVehicleQuerySchema,
   exportVehicleQuerySchema,
 } from './vehicle.validator';
@@ -107,6 +108,13 @@ export class VehicleRoute implements Routes {
       `${this.path}/get-vehicle/:id/share-image`,
       [auth, ValidateRequest({ params: VehicleIdParamSchema })],
       this.vehicleController.getVehicleShareImage as RequestHandler,
+    );
+
+    // Stream a vehicle document by type (proxy from S3 to avoid CORS; for in-app PDF viewing)
+    this.router.get(
+      `${this.path}/get-vehicle/:id/document/:docType`,
+      [auth, ValidateRequest({ params: VehicleDocumentParamSchema })],
+      this.vehicleController.getVehicleDocumentStream as RequestHandler,
     );
 
     // Get Vehicle by ID

@@ -245,6 +245,11 @@ export const VehicleIdParamSchema = z.object({
   id: z.string().ulid({ message: 'Invalid Vehicle Id' }),
 });
 
+export const VehicleDocumentParamSchema = z.object({
+  id: z.string().ulid({ message: 'Invalid Vehicle Id' }),
+  docType: z.nativeEnum(DocumentType),
+});
+
 // Query Schema for get all vehicles
 export const getVehicleQuerySchema = z.object({
   page: z
