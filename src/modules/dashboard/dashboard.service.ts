@@ -91,11 +91,11 @@ export class DashboardService {
         Promise.all([
           this.prisma.customer.count({ where: { shop_id, deleted_at: null, customer_type: 'BUYER' } }),
           this.prisma.customer.count({ where: { shop_id, deleted_at: null, customer_type: 'SELLER' } }),
-          this.prisma.customer.count({ where: { shop_id, deleted_at: null, customer_type: 'BOTH' } })
+          this.prisma.customer.count({ where: { shop_id, deleted_at: null, customer_type: 'SERVICE_ONLY' } })
         ])
       ]);
 
-      const [buyerCount, sellerCount, bothCount] = customerTypeCounts;
+      const [buyerCount, sellerCount, serviceOnlyCount] = customerTypeCounts;
 
       const customerPercentageChange = lastMonthCustomers > 0
         ? Math.round(((currentMonthCustomers - lastMonthCustomers) / lastMonthCustomers) * 100)
@@ -420,7 +420,7 @@ export class DashboardService {
           percentageChange: customerPercentageChange,
           buyers: buyerCount,
           sellers: sellerCount,
-          both: bothCount,
+          serviceOnly: serviceOnlyCount,
           growthTrend: customerGrowthTrend
         },
         monthlyRevenue: {

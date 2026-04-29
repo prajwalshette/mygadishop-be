@@ -12,7 +12,7 @@ export interface DashboardStats {
     percentageChange: number;
     buyers?: number;
     sellers?: number;
-    both?: number;
+    serviceOnly?: number;
     growthTrend?: number;
   };
   monthlyRevenue: {
