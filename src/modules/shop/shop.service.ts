@@ -1,9 +1,8 @@
-import { Prisma } from '@prisma/client';
 import { Service } from 'typedi';
 import { HttpException, NotFoundException } from '@/exceptions';
 import prisma from '@/lib/prisma';
 import type { IShop, ShopBusinessType } from './shop.interface';
-import type { SubscriptionPlanName, SubscriptionStatus } from '@prisma/client';
+import { ShopBusinessType as PrismaShopBusinessType, type SubscriptionPlanName, type SubscriptionStatus } from '@prisma/client';
 import type { GetAllShopsQueryDto, UpdateShopDto } from './shop.validator';
 import { logger } from '@/utils/logger';
 import { generateUniqueShopSlug } from '@/utils/seo';
@@ -27,11 +26,13 @@ export class ShopService {
       }
 
       const slug = await generateUniqueShopSlug({ shop_name: shopData.shop_name, city: shopData.city }, this.prisma, { excludeShopId: shop_id });
+      const { shop_business_type, ...rest } = shopData;
 
       const updatedShop = await this.prisma.shop.update({
         where: { id: shop_id },
         data: {
-          ...shopData,
+          ...rest,
+          ...(shop_business_type ? { shop_business_type: shop_business_type as unknown as PrismaShopBusinessType } : {}),
           slug,
         },
       });

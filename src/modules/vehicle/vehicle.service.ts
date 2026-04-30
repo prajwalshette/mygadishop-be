@@ -1,11 +1,10 @@
-import { Prisma } from '@prisma/client';
-import type { Vehicle, VehicleDocument, TwoWheelerDetail, FourWheelerDetail } from '@prisma/client';
+import type { Prisma, Vehicle, VehicleDocument, TwoWheelerDetail, FourWheelerDetail } from '@prisma/client';
 import { Service } from 'typedi';
 import { ConflictException, HttpException, NotFoundException } from '@/exceptions';
 import prisma from '@/lib/prisma';
 import { ulid } from 'ulid';
 import type { IVehicle, IVehicleDocument, ITwoWheelerDetail, IFourWheelerDetail } from './vehicle.interface';
-import { DocumentType, FuelType, OwnershipType, TransmissionType, VehicleCategory, VehicleStatus, VehicleType } from '@prisma/client';
+import { DocumentType, VehicleCategory } from '@prisma/client';
 import { buildMetaDescription, buildMetaTitle, generateUniqueSlug } from '@/utils/seo';
 import { generateVehiclePresignedUrls, getS3ObjectStream, presignS3Url } from '@/services/aws/aws.service';
 import { deleteVehiclePresignedCache, getVehiclePresignedCache } from '@/services/redis/cache/vehicle.cache';
@@ -138,6 +137,10 @@ export class VehicleService {
         four_wheeler_detail,
         ...vehicleRest
       } = vehicleData as any;
+      void _vd;
+      void _omitSlug;
+      void _omitMetaTitle;
+      void _omitMetaDesc;
 
       const snapshot = this.mergeVehicleSnapshotForSeo(vehicleData as Partial<IVehicle> & Record<string, unknown>, null);
       const seo = await this.resolveVehicleSeoFields(shop_id, snapshot, {});
@@ -277,6 +280,10 @@ export class VehicleService {
         four_wheeler_detail,
         ...vehicleRest
       } = vehicleData as any;
+      void _vd;
+      void _omitSlug;
+      void _omitMetaTitle;
+      void _omitMetaDesc;
 
       if (vehicleRest.registration_number || vehicleRest.chassis_number) {
         const duplicateVehicle = await this.prisma.vehicle.findFirst({

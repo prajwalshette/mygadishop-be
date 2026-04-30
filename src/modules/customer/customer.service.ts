@@ -1,17 +1,11 @@
 import { Service } from 'typedi';
-import { BadRequestException, ConflictException, HttpException, NotFoundException } from '@/exceptions';
+import { ConflictException, HttpException, NotFoundException } from '@/exceptions';
 import prisma from '@/lib/prisma';
 import { PaymentStatus, CustomerType, Gender } from '@prisma/client';
-import type { ICustomer, ICustomerCsv } from './customer.interface';
+import type { ICustomer } from './customer.interface';
 import { ulid } from 'ulid';
 import { logger } from '@/utils/logger';
-import type {
-  CreateCustomerDto,
-  ExportCustomerQueryDto,
-  GetCustomerQueryDto,
-  SearchCustomerByPhoneNumberDto,
-  UpdateCustomerDto,
-} from './customer.validator';
+import type { CreateCustomerDto, ExportCustomerQueryDto, GetCustomerQueryDto, SearchCustomerByPhoneNumberDto } from './customer.validator';
 import { createCustomerSchema } from './customer.validator';
 import Papa from 'papaparse';
 import { Readable } from 'stream';
@@ -267,7 +261,8 @@ export class CustomerService {
               null as Date | null,
             )
           : null;
-        const { payments, ...rest } = customer;
+        const { payments: _payments, ...rest } = customer;
+        void _payments;
         return {
           ...rest,
           customer_type: customer.customer_type as CustomerType,
@@ -358,7 +353,8 @@ export class CustomerService {
         payment_date: p.payment_date,
         vehicle: p.vehicle,
       }));
-      const { payments, vehicles_sold, vehicles_bought, ...rest } = customer;
+      const { payments: _payments, vehicles_sold, vehicles_bought, ...rest } = customer;
+      void _payments;
       const vehiclesList = [...(vehicles_sold || []), ...(vehicles_bought || [])].sort((a, b) => {
         const ta = a.buying_date ? new Date(a.buying_date).getTime() : 0;
         const tb = b.buying_date ? new Date(b.buying_date).getTime() : 0;

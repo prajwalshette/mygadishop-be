@@ -1,6 +1,6 @@
 import { Prisma, TransactionStatus } from '@prisma/client';
 import { Service } from 'typedi';
-import { ConflictException, HttpException, NotFoundException } from '@/exceptions';
+import { HttpException, NotFoundException } from '@/exceptions';
 import prisma from '@/lib/prisma';
 import { ulid } from 'ulid';
 import { PlanDuration, SubscriptionPlanName, SubscriptionStatus } from '@prisma/client';

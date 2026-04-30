@@ -1,6 +1,7 @@
 import { Service } from 'typedi';
 import { GEMINI_API_KEY_ONE, GEMINI_API_KEY_TWO } from '@/config/env';
 import { geminiCache, GeminiKeyStatus } from '@/services/redis/cache/gemini.cache';
+import { logger } from '@/utils/logger';
 
 // ──────────────────────────────────────────────
 // Main Rate Limiter + Key Rotator
@@ -56,7 +57,7 @@ export class GeminiKeyManager {
    */
   async blockKey(keyIndex: number, ttlSeconds = 60): Promise<void> {
     await geminiCache.blockKey(keyIndex, ttlSeconds);
-    console.warn(`[GeminiKeyManager] Key ${keyIndex} blocked for ${ttlSeconds}s`);
+    logger.warn(`[GeminiKeyManager] Key ${keyIndex} blocked for ${ttlSeconds}s`);
   }
 
   /**

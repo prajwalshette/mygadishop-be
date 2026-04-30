@@ -1,6 +1,5 @@
-import { NextFunction, Request, Response } from 'express';
+import { NextFunction, Response } from 'express';
 import { Container } from 'typedi';
-import type { User } from '@modules/user/user.interface';
 import type { RequestWithUser } from '@modules/auth/auth.interface';
 import type { ExportCustomerQueryDto, GetCustomerQueryDto, SearchCustomerByPhoneNumberDto } from './customer.validator';
 import type { ICustomer } from './customer.interface';
@@ -8,7 +7,6 @@ import { CustomerService } from './customer.service';
 import { stringify } from 'csv-stringify/sync';
 import { logger } from '@/utils/logger';
 import { NotFoundException } from '@/exceptions';
-import axios from 'axios';
 import { RedisService } from '@services/redis/redis.service';
 import { Readable } from 'stream';
 import { ulid } from 'ulid';
@@ -191,7 +189,7 @@ export class CustomerController {
   public deleteCustomer = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
     try {
       const customer_id = request.params.id as string;
-      const customers = await this.customerService.deleteCustomer(customer_id);
+      await this.customerService.deleteCustomer(customer_id);
       response.status(200).json({ data: true, message: 'Successfully delete customer' });
     } catch (error) {
       next(error);

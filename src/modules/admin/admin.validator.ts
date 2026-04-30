@@ -97,7 +97,10 @@ export const createShopSchema = z.object({
   pincode: z.string().min(6, 'Pincode must be at least 6 digits'),
   gstin: z.string().optional(),
   website_url: z.string().url('Invalid URL format').optional(),
-  shop_business_type: z.nativeEnum(ShopBusinessType).optional().default(ShopBusinessType.DEALER),
+  shop_business_type: z
+    .enum(Object.values(ShopBusinessType) as [ShopBusinessType, ...ShopBusinessType[]])
+    .optional()
+    .default(ShopBusinessType.DEALER),
   established_year: z.number().int().min(1900).max(new Date().getFullYear()).optional(),
 });
 

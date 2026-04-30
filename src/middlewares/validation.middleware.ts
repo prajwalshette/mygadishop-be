@@ -28,7 +28,6 @@ export const ValidationMiddleware = (schema: ZodType, source: 'body' | 'query' |
         const message = error.issues.map((err: any) => `${err.path.join('.')}: ${err.message}`).join(', ');
         next(new HttpException(400, message));
       } else {
-        console.error('Validation error:', error);
         next(new HttpException(400, 'Validation failed'));
       }
     }
@@ -68,7 +67,6 @@ export const ValidateRequest = (schemas: { body?: ZodType; query?: ZodType; para
         const message = error.issues.map((err: any) => `${err.path.join('.')}: ${err.message}`).join(', ');
         next(new HttpException(400, message));
       } else {
-        console.error('Validation error:', error);
         next(new HttpException(400, 'Validation failed'));
       }
     }

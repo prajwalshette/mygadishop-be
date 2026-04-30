@@ -275,8 +275,9 @@ const handlePrismaError = (error: any): PrismaErrorResponse => {
 /**
  * Main error middleware with Prisma and custom exception handling
  */
-export const ErrorMiddleware = (error: HttpException | Error, req: Request, res: Response, next: NextFunction) => {
+export const ErrorMiddleware = (error: HttpException | Error, req: Request, res: Response, _next: NextFunction) => {
   try {
+    void _next;
     let status: number;
     let message: string;
     let field: string | undefined;

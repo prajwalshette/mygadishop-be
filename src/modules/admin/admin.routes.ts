@@ -8,7 +8,6 @@ import {
   updateUserStatusSchema,
   ShopIdParamSchema,
   UserIdParamSchema,
-  getShopQuerySchema,
   getUserQuerySchema,
   createShopSchema,
   updateShopStatusEnhancedSchema,

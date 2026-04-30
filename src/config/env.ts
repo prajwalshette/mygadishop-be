@@ -53,9 +53,9 @@ const _parsed = envSchema.safeParse(process.env);
 if (!_parsed.success) {
   const errors = _parsed.error.issues.map(err => `  ✗ ${err.path.join('.')}: ${err.message}`).join('\n');
 
-  console.error('\n❌ Invalid / missing environment variables:\n');
-  console.error(errors);
-  console.error('\nFix the above variables in your .env file and restart the server.\n');
+  process.stderr.write('\n❌ Invalid / missing environment variables:\n\n');
+  process.stderr.write(`${errors}\n`);
+  process.stderr.write('\nFix the above variables in your .env file and restart the server.\n\n');
   process.exit(1);
 }
 

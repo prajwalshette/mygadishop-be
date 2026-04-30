@@ -1,4 +1,4 @@
-import { NextFunction, Request, Response } from 'express';
+import { NextFunction, Response } from 'express';
 import { Container } from 'typedi';
 import type { IVehicle } from './vehicle.interface';
 import type { CreateVehicleDto, ExportVehicleQueryDto, GetVehicleQueryDto, UpdateVehicleDto } from './vehicle.validator';
@@ -40,6 +40,7 @@ export class VehicleController {
       const { vehicle_documents: _omitDocs, ...vehicleRest } = vehicleData as IVehicle & {
         vehicle_documents?: CreateVehicleDto['vehicle_documents'];
       };
+      void _omitDocs;
 
       const vehicleDataWithMedia: IVehicle = {
         ...vehicleRest,
@@ -89,6 +90,7 @@ export class VehicleController {
       const { vehicle_documents: _omitDocs, ...vehicleRest } = vehicleData as Partial<IVehicle> & {
         vehicle_documents?: UpdateVehicleDto['vehicle_documents'];
       };
+      void _omitDocs;
 
       const vehicleDataWithMedia: Partial<IVehicle> = {
         ...vehicleRest,

@@ -58,7 +58,8 @@ export const AuthMiddleware = async (req: RequestWithUser, res: Response, next: 
     // Only cache if session hasn't expired and has reasonable TTL
     if (remainingTTL > 0) {
       // Exclude password from cache for security
-      const { password, ...userWithoutPassword } = findUser;
+      const { password: _password, ...userWithoutPassword } = findUser;
+      void _password;
       const userToCache = { ...userWithoutPassword, role: findUser.role as UserRole };
       await SessionCache.setSession(session_id, userToCache, shop_id, remainingTTL);
     }
@@ -68,7 +69,7 @@ export const AuthMiddleware = async (req: RequestWithUser, res: Response, next: 
     req.session_id = session_id;
     req.shop_id = shop_id;
     next();
-  } catch (error) {
+  } catch {
     next(new HttpException(401, 'Wrong authentication token'));
   }
 };

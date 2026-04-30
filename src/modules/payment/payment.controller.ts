@@ -1,7 +1,6 @@
-import { NextFunction, Request, Response } from 'express';
+import { NextFunction, Response } from 'express';
 import { Container } from 'typedi';
-import type { RequestWithAdmin, RequestWithUser } from '@modules/auth/auth.interface';
-import type { IVehiclePayment } from './payment.interface';
+import type { RequestWithUser } from '@modules/auth/auth.interface';
 import type { CreateVehiclePaymentDto, ExportPaymentsQueryDto, GetAllPaymentsQueryDto, UpdateVehiclePaymentDto } from './payment.validator';
 import { PaymentService } from './payment.service';
 import { ulid } from 'ulid';

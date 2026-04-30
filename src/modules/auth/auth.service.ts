@@ -123,10 +123,6 @@ export class AuthService {
         throw new UnauthorizedException('Invalid token payload');
       }
 
-      const existingSession = await prisma.userSession.findUnique({
-        where: { id: session_id },
-      });
-
       // Delete session from database and clear Redis cache
       await Promise.all([prisma.userSession.delete({ where: { id: session_id } }), SessionCache.deleteSession(session_id)]);
 

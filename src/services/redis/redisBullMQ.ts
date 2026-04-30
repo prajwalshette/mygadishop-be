@@ -2,18 +2,20 @@ import { DispatchException } from '@/exceptions';
 import { Job, Queue, Worker, QueueEvents } from 'bullmq';
 import { logger } from '@utils/logger';
 
+type MessageCallback = (job: Job) => unknown | Promise<unknown>;
+
 export class BullQueue {
   private activeQueue: Queue = null;
   private workers: Worker[] = [];
   private worker: Worker = null;
-  private messageCallback?: Function = null;
+  private messageCallback?: MessageCallback = null;
   private queueEvents: QueueEvents = null;
   private workerCount: number = 1;
 
   constructor(
     queueName: string,
     connectionString: string,
-    callbackFunction?: Function,
+    callbackFunction?: MessageCallback,
     consume: boolean = false,
     workerCount: number = 1,
     concurrency: number = 10,

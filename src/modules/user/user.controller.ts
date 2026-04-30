@@ -1,4 +1,4 @@
-import { NextFunction, Request, Response } from 'express';
+import { NextFunction, Response } from 'express';
 import { Container } from 'typedi';
 import type { RequestWithUser } from '@modules/auth/auth.interface';
 import type { CreateUserDto, GetAllUsersQueryDto, UpdateUserDto, UpdateUserPasswordDto } from './user.validator';

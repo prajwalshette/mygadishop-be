@@ -12,7 +12,6 @@ import { ErrorMiddleware } from '@/middlewares/error.middleware';
 import { logger, stream } from '@/utils/logger';
 import { QueueService } from '@/services/redis/queues/queue.service';
 import { CustomerConsumer } from '@/consumers/customer.consumer';
-import { th } from 'zod/v4/locales';
 
 export class App {
   public app: express.Application;

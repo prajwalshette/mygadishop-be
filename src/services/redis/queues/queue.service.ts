@@ -1,6 +1,9 @@
 import { DispatchException } from '@/exceptions';
 import { logger } from '@utils/logger';
 import { BullQueue } from '../redisBullMQ';
+import type { Job } from 'bullmq';
+
+type QueueMessageCallback = (job: Job) => unknown | Promise<unknown>;
 
 export class QueueService {
   static process1Client: BullQueue; //Customer
@@ -8,7 +11,7 @@ export class QueueService {
   static initializeProcess1Instance(params: {
     queueName: string;
     connectionString: string;
-    messageCallback?: Function;
+    messageCallback?: QueueMessageCallback;
     consume?: boolean;
     workerCount?: number;
     concurrency?: number;

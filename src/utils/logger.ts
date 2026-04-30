@@ -1,4 +1,3 @@
-import { existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import pino from 'pino';
 import { LOG_DIR } from '@/config/env';

@@ -2,6 +2,7 @@ import { Service } from 'typedi';
 import { GoogleGenerativeAI, GenerativeModel, Part } from '@google/generative-ai';
 import { GeminiKeyManager } from './gemini-key-manager';
 import { RCExtractedData, RC_EXTRACTION_PROMPT } from './gemini.interface';
+import { logger } from '@/utils/logger';
 
 // ──────────────────────────────────────────────
 // Retry config
@@ -46,7 +47,7 @@ export class GeminiService {
 
         if (status === 429) {
           // Rate limited by Gemini — block this key for 60s and try next
-          console.warn(`[GeminiService] Key ${keyIndex} got 429. Rotating to next key.`);
+          logger.warn(`[GeminiService] Key ${keyIndex} got 429. Rotating to next key.`);
           await this.keyManager.blockKey(keyIndex, 60);
           continue; // retry loop with next key
         }

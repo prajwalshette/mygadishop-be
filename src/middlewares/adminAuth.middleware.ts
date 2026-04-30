@@ -79,7 +79,7 @@ export const AdminAuthMiddleware = async (req: RequestWithAdmin, res: Response, 
     };
     req.session_id = session_id;
     next();
-  } catch (error) {
+  } catch {
     next(new HttpException(401, 'Wrong authentication token'));
   }
 };

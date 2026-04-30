@@ -16,11 +16,9 @@ import {
   GetAnalyticsQueryDto,
   GetShopUsersQueryDto,
   CreateSubscriptionPlanDto,
-  CreateSubscriptionPricingDto,
 } from './admin.validator';
 import type { ISubscriptionPlan, ISubscriptionPricing } from '@modules/subscription/subscription.interface';
 import type { PlanDuration, SubscriptionPlanName } from '@prisma/client';
-import bcrypt from 'bcryptjs';
 import { ulid } from 'ulid';
 import { generateUniqueShopSlug } from '@/utils/seo';
 
@@ -865,7 +863,7 @@ export class AdminService {
   // -----------------------------
   public async getAnalytics(query: GetAnalyticsQueryDto) {
     try {
-      const { months = 6, topShopsLimit = 5, startDate, endDate } = query;
+      const { months = 6, topShopsLimit = 5 } = query;
 
       // Calculate date ranges
       const now = new Date();

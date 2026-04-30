@@ -31,7 +31,7 @@ export const OnboardAuthMiddleware = async (req: RequestWithOnboardTempUser, res
     } else {
       next(new HttpException(401, 'Authentication token missing'));
     }
-  } catch (error) {
+  } catch {
     next(new HttpException(401, 'Wrong authentication token'));
   }
 };
