@@ -8,6 +8,7 @@ import type { DataStoredInOnboardTempToken, DataStoredInToken, DataStoredInUserT
 import type { AdminRole, AdminUser, ShopUserResponseDTO, User, UserRole } from '@modules/user/user.interface';
 import prisma from '@/lib/prisma';
 import { ulid } from 'ulid';
+import { generateUniqueShopSlug } from '@/utils/seo';
 import { onboardTempTokenCache } from '@/services/redis/cache/ token.cache';
 import { SessionCache } from '@/services/redis/cache/session.cache';
 import type { IShop } from '@modules/shop/shop.interface';
@@ -263,6 +264,11 @@ export class AuthService {
       let tokenData: { token: string; expiresIn: number };
 
       await this.prisma.$transaction(async tx => {
+        const slug = await generateUniqueShopSlug(
+          { shop_name: onboardDetails.shop_name, city: onboardDetails.city },
+          this.prisma,
+        );
+
         // Create shop
         const createdShop = await tx.shop.create({
           data: {
@@ -277,6 +283,7 @@ export class AuthService {
             pincode: onboardDetails.pincode,
             owner_name: onboardDetails.owner_name,
             shop_business_type: onboardDetails.shop_business_type,
+            slug,
             subscription_status: SubscriptionStatus.TRIAL,
             is_verified: false,
             is_active: true,

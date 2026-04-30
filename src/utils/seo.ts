@@ -63,6 +63,48 @@ export async function generateUniqueSlug(
     candidate = `${base}-${n}`;
   }
 }
+
+// ============================================================
+//   1b. Shop Slug
+// ============================================================
+// {shop-name}-{city}
+export function buildShopSlug(s: { shop_name: string; city: string }): string {
+  const toSlug = (val: any) =>
+    String(val ?? '')
+      .toLowerCase()
+      .trim()
+      .replace(/\s+/g, '-')
+      .replace(/[^a-z0-9-]/g, '')
+      .replace(/-+/g, '-');
+
+  return [toSlug(s.shop_name), toSlug(s.city)].filter(Boolean).join('-');
+}
+
+/**
+ * Build a shop URL slug and ensure it is unique among non-deleted shops (appends -1, -2, … if needed).
+ */
+export async function generateUniqueShopSlug(
+  s: { shop_name: string; city: string },
+  prisma: PrismaClient,
+  options?: { excludeShopId?: string },
+): Promise<string> {
+  const base = buildShopSlug(s);
+  let candidate = base;
+  let n = 0;
+  for (;;) {
+    const found = await prisma.shop.findFirst({
+      where: {
+        slug: candidate,
+        deleted_at: null,
+        ...(options?.excludeShopId ? { id: { not: options.excludeShopId } } : {}),
+      },
+      select: { id: true },
+    });
+    if (!found) return candidate;
+    n += 1;
+    candidate = `${base}-${n}`;
+  }
+}
   
   // Result: second-hand-honda-activa-nashik-2020-mh12  (43 chars ✅)
   // Result: second-hand-maruti-swift-dzire-amravati-2019-mh28 (50 chars ✅)

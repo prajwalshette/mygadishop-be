@@ -4,6 +4,7 @@ import { ShopBusinessType } from '@prisma/client';
 export interface IShop {
   id?: string;
   shop_name: string;
+  slug?: string | null;
   owner_name: string;
   email: string;
   phone: string;

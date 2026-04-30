@@ -22,6 +22,7 @@ import type { ISubscriptionPlan, ISubscriptionPricing } from '@modules/subscript
 import type { PlanDuration, SubscriptionPlanName } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import { ulid } from 'ulid';
+import { generateUniqueShopSlug } from '@/utils/seo';
 
 @Service()
 export class AdminService {
@@ -342,10 +343,16 @@ export class AdminService {
         throw new ConflictException('Shop with this email or phone already exists');
       }
 
+      const slug = await generateUniqueShopSlug(
+        { shop_name: shopData.shop_name, city: shopData.city },
+        prisma,
+      );
+
       const shop = await prisma.shop.create({
         data: {
           id: ulid(),
           ...shopData,
+          slug,
           subscription_status: 'TRIAL',
           is_verified: false,
           is_active: true,

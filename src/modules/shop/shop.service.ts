@@ -6,6 +6,7 @@ import type { IShop, ShopBusinessType } from './shop.interface';
 import type { SubscriptionPlanName, SubscriptionStatus } from '@prisma/client';
 import type { GetAllShopsQueryDto, UpdateShopDto } from './shop.validator';
 import { logger } from '@/utils/logger';
+import { generateUniqueShopSlug } from '@/utils/seo';
 
 @Service()
 export class ShopService {
@@ -25,9 +26,18 @@ export class ShopService {
         throw new NotFoundException('Shop not found');
       }
       
+      const slug = await generateUniqueShopSlug(
+        { shop_name: shopData.shop_name, city: shopData.city },
+        this.prisma,
+        { excludeShopId: shop_id },
+      );
+
       const updatedShop = await this.prisma.shop.update({
         where: { id: shop_id },
-        data: shopData,
+        data: {
+          ...shopData,
+          slug,
+        },
       });
 
       logger.info(`Shop details updated successfully: ${updatedShop.shop_name} (${shop_id})`);
