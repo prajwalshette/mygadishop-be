@@ -1,8 +1,8 @@
-import { Service } from "typedi";
-import * as fs from "fs";
-import * as path from "path";
-import { GeminiService } from "./gemini.service";
-import { RCExtractedData } from "./gemini.interface";
+import { Service } from 'typedi';
+import * as fs from 'fs';
+import * as path from 'path';
+import { GeminiService } from './gemini.service';
+import { RCExtractedData } from './gemini.interface';
 
 @Service()
 export class RCExtractService {
@@ -16,7 +16,7 @@ export class RCExtractService {
     const mimeType = this.getMimeType(ext);
 
     const fileBuffer = fs.readFileSync(filePath);
-    const base64Data = fileBuffer.toString("base64");
+    const base64Data = fileBuffer.toString('base64');
 
     return this.extractFromBase64(base64Data, mimeType);
   }
@@ -24,10 +24,7 @@ export class RCExtractService {
   /**
    * Extract RC data from a base64 string (multipart upload)
    */
-  async extractFromBase64(
-    base64Data: string,
-    mimeType: string
-  ): Promise<RCExtractedData> {
+  async extractFromBase64(base64Data: string, mimeType: string): Promise<RCExtractedData> {
     const result = await this.geminiService.extractRC(base64Data, mimeType);
     return this.applyDefaults(result);
   }
@@ -38,7 +35,7 @@ export class RCExtractService {
    */
   async extractFromTwoBase64(
     front: { base64Data: string; mimeType: string } | null,
-    back: { base64Data: string; mimeType: string } | null
+    back: { base64Data: string; mimeType: string } | null,
   ): Promise<{ merged: RCExtractedData; front: RCExtractedData | null; back: RCExtractedData | null }> {
     const [frontData, backData] = await Promise.all([
       front ? this.extractFromBase64(front.base64Data, front.mimeType) : Promise.resolve(null),
@@ -78,7 +75,7 @@ export class RCExtractService {
       const vBase = out[key];
       const vOther = other[key];
 
-      const isEmptyString = (v: unknown) => typeof v === "string" && v.trim() === "";
+      const isEmptyString = (v: unknown) => typeof v === 'string' && v.trim() === '';
       const isMissing = (v: unknown) => v === null || v === undefined || isEmptyString(v);
 
       if (isMissing(vBase) && !isMissing(vOther)) {
@@ -90,13 +87,13 @@ export class RCExtractService {
 
   private getMimeType(ext: string): string {
     const map: Record<string, string> = {
-      ".jpg": "image/jpeg",
-      ".jpeg": "image/jpeg",
-      ".png": "image/png",
-      ".webp": "image/webp",
-      ".pdf": "application/pdf",
-      ".heic": "image/heic",
+      '.jpg': 'image/jpeg',
+      '.jpeg': 'image/jpeg',
+      '.png': 'image/png',
+      '.webp': 'image/webp',
+      '.pdf': 'application/pdf',
+      '.heic': 'image/heic',
     };
-    return map[ext] ?? "image/jpeg";
+    return map[ext] ?? 'image/jpeg';
   }
 }

@@ -1,6 +1,6 @@
-import { Service } from "typedi";
-import { GEMINI_API_KEY_ONE, GEMINI_API_KEY_TWO } from "@/config/env";
-import { geminiCache, GeminiKeyStatus } from "@/services/redis/cache/gemini.cache";
+import { Service } from 'typedi';
+import { GEMINI_API_KEY_ONE, GEMINI_API_KEY_TWO } from '@/config/env';
+import { geminiCache, GeminiKeyStatus } from '@/services/redis/cache/gemini.cache';
 
 // ──────────────────────────────────────────────
 // Main Rate Limiter + Key Rotator
@@ -12,7 +12,7 @@ export class GeminiKeyManager {
   constructor() {
     // Load both keys from env
     if (!GEMINI_API_KEY_ONE || !GEMINI_API_KEY_TWO) {
-      throw new Error("GEMINI_API_KEY_ONE and GEMINI_API_KEY_TWO must be set");
+      throw new Error('GEMINI_API_KEY_ONE and GEMINI_API_KEY_TWO must be set');
     }
 
     this.apiKeys = [GEMINI_API_KEY_ONE, GEMINI_API_KEY_TWO];
@@ -56,9 +56,7 @@ export class GeminiKeyManager {
    */
   async blockKey(keyIndex: number, ttlSeconds = 60): Promise<void> {
     await geminiCache.blockKey(keyIndex, ttlSeconds);
-    console.warn(
-      `[GeminiKeyManager] Key ${keyIndex} blocked for ${ttlSeconds}s`
-    );
+    console.warn(`[GeminiKeyManager] Key ${keyIndex} blocked for ${ttlSeconds}s`);
   }
 
   /**

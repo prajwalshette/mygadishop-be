@@ -25,7 +25,6 @@ export interface ICustomer {
   updated_at?: Date;
 }
 
-
 export interface ICustomerCsv {
   Name: string;
   Phone: string;

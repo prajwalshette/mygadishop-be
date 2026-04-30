@@ -2,10 +2,10 @@ import { NextFunction, Response } from 'express';
 import { Container } from 'typedi';
 import type { RequestWithAdmin } from '@modules/auth/auth.interface';
 import { AdminService } from './admin.service';
-import { 
-  UpdateShopStatusDto, 
-  UpdateUserStatusDto, 
-  GetShopQueryDto, 
+import {
+  UpdateShopStatusDto,
+  UpdateUserStatusDto,
+  GetShopQueryDto,
   GetUserQueryDto,
   CreateShopDto,
   UpdateShopStatusEnhancedDto,
@@ -336,9 +336,9 @@ export class AdminController {
   // -----------------------------
   public createSubscriptionPricing = async (req: RequestWithAdmin, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const plan_id = req.params.plan_id  as string;
+      const plan_id = req.params.plan_id as string;
       const pricingData: CreateSubscriptionPricingDto = req.body;
-      const pricing = await this.adminService.createSubscriptionPricing({...pricingData, plan_id, is_active: true});
+      const pricing = await this.adminService.createSubscriptionPricing({ ...pricingData, plan_id, is_active: true });
       res.status(200).json({ data: pricing, message: 'Successfully Create Pricing' });
     } catch (error) {
       next(error);
@@ -353,7 +353,10 @@ export class AdminController {
       const plan_id = req.params.plan_id as string;
       const subscription_pricing_id = req.params.subscription_pricing_id as string;
       const pricingData: CreateSubscriptionPricingDto = req.body;
-      const pricing = await this.adminService.updateSubscriptionPricing({...pricingData, plan_id, id: '', is_active: true}, subscription_pricing_id);
+      const pricing = await this.adminService.updateSubscriptionPricing(
+        { ...pricingData, plan_id, id: '', is_active: true },
+        subscription_pricing_id,
+      );
       res.status(200).json({ data: pricing, message: 'Successfully Update Pricing' });
     } catch (error) {
       next(error);

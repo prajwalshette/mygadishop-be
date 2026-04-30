@@ -48,5 +48,4 @@ export class ShopController {
       next(error);
     }
   };
-
 }

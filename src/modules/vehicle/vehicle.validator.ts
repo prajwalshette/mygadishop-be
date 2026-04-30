@@ -99,7 +99,13 @@ export const createVehicleSchema = z.object({
     .int()
     .min(1900)
     .max(new Date().getFullYear() + 1),
-  registration_year: z.number().int().min(1900).max(new Date().getFullYear() + 1).optional().nullable(),
+  registration_year: z
+    .number()
+    .int()
+    .min(1900)
+    .max(new Date().getFullYear() + 1)
+    .optional()
+    .nullable(),
 
   registration_number: z.string().min(1, 'Registration number is required'),
   chassis_number: z.string().min(1, 'Chassis number is required'),
@@ -286,4 +292,3 @@ export type CreateVehicleDto = z.infer<typeof createVehicleSchema>;
 export type UpdateVehicleDto = z.infer<typeof updateVehicleSchema>;
 export type GetVehicleQueryDto = z.infer<typeof getVehicleQuerySchema>;
 export type ExportVehicleQueryDto = z.infer<typeof exportVehicleQuerySchema>;
- 

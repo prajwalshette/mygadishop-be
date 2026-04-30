@@ -12,7 +12,6 @@ import { SubscriptionRoute } from '@modules/subscription/subscription.routes';
 import { UserRoute } from '@modules/user/user.routes';
 import { AdminRoute } from '@modules/admin/admin.routes';
 
-
 const app = new App([
   new AuthRoute(),
   new AdminRoute(),

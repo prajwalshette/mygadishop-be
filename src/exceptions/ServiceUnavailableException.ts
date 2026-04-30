@@ -1,4 +1,4 @@
-import { HttpException } from "./HttpException";
+import { HttpException } from './HttpException';
 
 // 503 Service Unavailable
 export class ServiceUnavailableException extends HttpException {

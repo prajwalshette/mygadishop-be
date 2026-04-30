@@ -4,11 +4,11 @@ import { ShopBusinessType } from '@prisma/client';
 // Login Schema
 export const loginSchema = z.object({
   email: z.email('Invalid email address'),
-    
+
   password: z.string().min(2, 'Password is required'),
 
   device_info: z.record(z.string(), z.any()).optional(),
-  
+
   ip_address: z.string().optional(),
 });
 
@@ -20,9 +20,7 @@ export const onboardShopSchema = z.object({
 
   owner_name: z.string().min(1, 'Owner name is required'),
 
-  phone: z
-    .string()
-    .regex(/^[6-9]\d{9}$/, 'Enter a valid 10-digit Indian mobile number'),
+  phone: z.string().regex(/^[6-9]\d{9}$/, 'Enter a valid 10-digit Indian mobile number'),
 
   website_url: z.string().optional(),
 

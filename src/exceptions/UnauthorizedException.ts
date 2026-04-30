@@ -1,4 +1,4 @@
-import { HttpException } from "./HttpException";
+import { HttpException } from './HttpException';
 
 // 401 Unauthorized
 export class UnauthorizedException extends HttpException {

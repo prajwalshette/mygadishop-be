@@ -1,4 +1,4 @@
-import redis from "@/config/redis";
+import redis from '@/config/redis';
 
 // ──────────────────────────────────────────────
 // Config
@@ -42,8 +42,8 @@ export class GeminiCache {
       redis.get(redisKeys.blocked(keyIndex)),
     ]);
 
-    const rpm = parseInt(rpm_used ?? "0");
-    const rpd = parseInt(rpd_used ?? "0");
+    const rpm = parseInt(rpm_used ?? '0');
+    const rpd = parseInt(rpd_used ?? '0');
 
     return {
       key_index: keyIndex,
@@ -51,10 +51,7 @@ export class GeminiCache {
       rpd_used: rpd,
       rpm_remaining: Math.max(0, GEMINI_RATE_LIMIT.RPM - rpm),
       rpd_remaining: Math.max(0, GEMINI_RATE_LIMIT.RPD - rpd),
-      is_available:
-        !blocked &&
-        rpm < GEMINI_RATE_LIMIT.RPM &&
-        rpd < GEMINI_RATE_LIMIT.RPD,
+      is_available: !blocked && rpm < GEMINI_RATE_LIMIT.RPM && rpd < GEMINI_RATE_LIMIT.RPD,
     };
   }
 
@@ -82,7 +79,7 @@ export class GeminiCache {
    * Temporarily block a key (e.g. got 429 from Gemini)
    */
   async blockKey(keyIndex: number, ttlSeconds = 60): Promise<void> {
-    await redis.set(redisKeys.blocked(keyIndex), "1", "EX", ttlSeconds);
+    await redis.set(redisKeys.blocked(keyIndex), '1', 'EX', ttlSeconds);
   }
 
   /**

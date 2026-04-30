@@ -1,4 +1,4 @@
-import { VehicleCategory, VehicleType, FuelType, TransmissionType, OwnershipType, InsuranceType } from "@prisma/client";
+import { VehicleCategory, VehicleType, FuelType, TransmissionType, OwnershipType, InsuranceType } from '@prisma/client';
 
 // ──────────────────────────────────────────────
 // The shape Gemini fills back to us

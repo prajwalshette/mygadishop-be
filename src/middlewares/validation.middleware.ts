@@ -8,10 +8,7 @@ import { HttpException } from '@/exceptions/HttpException';
  * @param schema Zod schema object
  * @param source Source of data to validate: 'body' | 'query' | 'params'
  */
-export const ValidationMiddleware = (
-  schema: ZodType,
-  source: 'body' | 'query' | 'params' = 'body'
-) => {
+export const ValidationMiddleware = (schema: ZodType, source: 'body' | 'query' | 'params' = 'body') => {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
       const validated = await schema.parseAsync(req[source]);
@@ -22,15 +19,13 @@ export const ValidationMiddleware = (
           value: validated,
           writable: true,
           configurable: true,
-          enumerable: true
+          enumerable: true,
         });
       }
       next();
     } catch (error: any) {
       if (error instanceof ZodError || error.name === 'ZodError') {
-        const message = error.issues
-          .map((err: any) => `${err.path.join('.')}: ${err.message}`)
-          .join(', ');
+        const message = error.issues.map((err: any) => `${err.path.join('.')}: ${err.message}`).join(', ');
         next(new HttpException(400, message));
       } else {
         console.error('Validation error:', error);
@@ -45,11 +40,7 @@ export const ValidationMiddleware = (
  * @description Validates multiple parts of the request (body, query, params)
  * @param schemas Object containing schemas for different parts of the request
  */
-export const ValidateRequest = (schemas: {
-  body?: ZodType;
-  query?: ZodType;
-  params?: ZodType;
-}) => {
+export const ValidateRequest = (schemas: { body?: ZodType; query?: ZodType; params?: ZodType }) => {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
       if (schemas.body) {
@@ -60,7 +51,7 @@ export const ValidateRequest = (schemas: {
           value: await schemas.query.parseAsync(req.query),
           writable: true,
           configurable: true,
-          enumerable: true
+          enumerable: true,
         });
       }
       if (schemas.params) {
@@ -68,15 +59,13 @@ export const ValidateRequest = (schemas: {
           value: await schemas.params.parseAsync(req.params),
           writable: true,
           configurable: true,
-          enumerable: true
+          enumerable: true,
         });
       }
       next();
     } catch (error: any) {
       if (error instanceof ZodError || error.name === 'ZodError') {
-        const message = error.issues
-          .map((err: any) => `${err.path.join('.')}: ${err.message}`)
-          .join(', ');
+        const message = error.issues.map((err: any) => `${err.path.join('.')}: ${err.message}`).join(', ');
         next(new HttpException(400, message));
       } else {
         console.error('Validation error:', error);

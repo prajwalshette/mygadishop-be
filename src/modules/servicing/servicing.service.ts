@@ -178,7 +178,7 @@ export class ServicingService {
         this.prisma.servicing.count({ where: whereClause }),
       ]);
 
-      const servicings = rows.map((row) => mapServicingWithCustomer(row));
+      const servicings = rows.map(row => mapServicingWithCustomer(row));
 
       const totalPages = Math.ceil(total / limit);
 
@@ -328,11 +328,7 @@ export class ServicingService {
       });
 
       const growthRate =
-        lastMonthServicings > 0
-          ? Math.round(((newThisMonth - lastMonthServicings) / lastMonthServicings) * 100)
-          : newThisMonth > 0
-            ? 100
-            : 0;
+        lastMonthServicings > 0 ? Math.round(((newThisMonth - lastMonthServicings) / lastMonthServicings) * 100) : newThisMonth > 0 ? 100 : 0;
 
       logger.info(
         `Retrieved servicing stats for shop ${shop_id}: total=${totalServicings}, completed=${completedServicings}, inProgress=${inProgressServicings}, scheduled=${scheduledServicings}, newThisMonth=${newThisMonth}, growthRate=${growthRate}%`,
@@ -391,7 +387,7 @@ export class ServicingService {
         },
       });
 
-      const servicings = rows.map((row) => mapServicingWithCustomer(row));
+      const servicings = rows.map(row => mapServicingWithCustomer(row));
 
       logger.info(
         `Exporting ${servicings.length} servicings (filters: ${JSON.stringify({

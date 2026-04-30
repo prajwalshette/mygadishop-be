@@ -1,4 +1,4 @@
-import { HttpException } from "./HttpException";
+import { HttpException } from './HttpException';
 
 // 422 Unprocessable Entity
 export class UnprocessableEntityException extends HttpException {

@@ -1,4 +1,4 @@
-import { SubscriptionPlanName, PlanDuration, SubscriptionStatus } from "@prisma/client";
+import { SubscriptionPlanName, PlanDuration, SubscriptionStatus } from '@prisma/client';
 
 export interface ISubscriptionPlan {
   id?: string;

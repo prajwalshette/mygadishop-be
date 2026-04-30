@@ -1,4 +1,4 @@
-import { HttpException } from "./HttpException";
+import { HttpException } from './HttpException';
 
 // Database exception
 export class DatabaseException extends HttpException {

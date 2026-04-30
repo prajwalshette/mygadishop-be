@@ -2,11 +2,7 @@ import { NextFunction, Request, Response } from 'express';
 import { Container } from 'typedi';
 import type { RequestWithUser } from '@modules/auth/auth.interface';
 import { SubscriptionService } from './subscription.service';
-import {
-  GetSubscriptionHistoryQueryDto,
-  GetPaymentHistoryQueryDto,
-  CreateSubscriptionOrderDto,
-} from './subscription.validator';
+import { GetSubscriptionHistoryQueryDto, GetPaymentHistoryQueryDto, CreateSubscriptionOrderDto } from './subscription.validator';
 import crypto from 'crypto';
 import { UnauthorizedException } from '@/exceptions';
 import { logger } from '@/utils/logger';

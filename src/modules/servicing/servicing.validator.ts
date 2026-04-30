@@ -15,44 +15,52 @@ export const createServicingSchema = z
     ),
     customer_phone: z.preprocess(
       val => (val === '' || val === null || val === undefined ? undefined : String(val).trim()),
-      z.string().regex(/^[6-9]\d{9}$/, 'Enter a valid 10-digit Indian mobile number').optional(),
+      z
+        .string()
+        .regex(/^[6-9]\d{9}$/, 'Enter a valid 10-digit Indian mobile number')
+        .optional(),
     ),
 
-  vehicle_brand: z.string().min(1, 'Vehicle brand is required'),
-  vehicle_model: z.string().min(1, 'Vehicle model is required'),
-  vehicle_variant: z.string().optional(),
-  vehicle_year: z.number().int().min(1900).max(new Date().getFullYear() + 1).optional(),
-  vehicle_type: z.enum(VehicleType),
-  vehicle_reg_number: z.string().optional(),
+    vehicle_brand: z.string().min(1, 'Vehicle brand is required'),
+    vehicle_model: z.string().min(1, 'Vehicle model is required'),
+    vehicle_variant: z.string().optional(),
+    vehicle_year: z
+      .number()
+      .int()
+      .min(1900)
+      .max(new Date().getFullYear() + 1)
+      .optional(),
+    vehicle_type: z.enum(VehicleType),
+    vehicle_reg_number: z.string().optional(),
 
-  service_date: z.coerce.date(),
-  service_type: z.string().min(1, 'Service type is required'),
+    service_date: z.coerce.date(),
+    service_type: z.string().min(1, 'Service type is required'),
 
-  description: z.string().optional(),
+    description: z.string().optional(),
 
-  labor_cost: z.number().min(0, 'Labor cost must be non-negative').default(0),
-  parts_cost: z.number().min(0, 'Parts cost must be non-negative').default(0),
-  other_charges: z.number().min(0).optional().default(0),
-  total_cost: z.number().min(0, 'Total cost must be non-negative'),
+    labor_cost: z.number().min(0, 'Labor cost must be non-negative').default(0),
+    parts_cost: z.number().min(0, 'Parts cost must be non-negative').default(0),
+    other_charges: z.number().min(0).optional().default(0),
+    total_cost: z.number().min(0, 'Total cost must be non-negative'),
 
-  status: z.enum(ServicingStatus),
+    status: z.enum(ServicingStatus),
 
-  next_service_date: z.coerce.date().optional(),
-  next_service_km: z.number().int().min(0).optional(),
+    next_service_date: z.coerce.date().optional(),
+    next_service_km: z.number().int().min(0).optional(),
 
-  technician_name: z.string().optional(),
-  odometer_reading: z.number().int().min(0).optional(),
+    technician_name: z.string().optional(),
+    odometer_reading: z.number().int().min(0).optional(),
 
-  rating: z.number().int().min(1).max(5).optional(),
-  customer_feedback: z.string().optional(),
+    rating: z.number().int().min(1).max(5).optional(),
+    customer_feedback: z.string().optional(),
 
-  payment_status: z.enum(PaymentStatus).optional().default(PaymentStatus.PENDING),
-  paid_amount: z.number().min(0).optional().default(0),
-  payment_method: z.enum(PaymentMethod).optional(),
-  payment_date: z.coerce.date().optional(),
+    payment_status: z.enum(PaymentStatus).optional().default(PaymentStatus.PENDING),
+    paid_amount: z.number().min(0).optional().default(0),
+    payment_method: z.enum(PaymentMethod).optional(),
+    payment_date: z.coerce.date().optional(),
 
-  service_images: z.array(z.string()).optional().default([]),
-  parts_replaced: z.array(z.string()).optional().default([]),
+    service_images: z.array(z.string()).optional().default([]),
+    parts_replaced: z.array(z.string()).optional().default([]),
   })
   .superRefine((data, ctx) => {
     const hasCustomerId = !!data.customer_id;
@@ -81,7 +89,13 @@ export const updateServicingSchema = z.object({
   vehicle_brand: z.string().min(1).optional(),
   vehicle_model: z.string().min(1).optional(),
   vehicle_variant: z.string().optional().nullable(),
-  vehicle_year: z.number().int().min(1900).max(new Date().getFullYear() + 1).optional().nullable(),
+  vehicle_year: z
+    .number()
+    .int()
+    .min(1900)
+    .max(new Date().getFullYear() + 1)
+    .optional()
+    .nullable(),
   vehicle_type: z.enum(VehicleType).optional(),
   vehicle_reg_number: z.string().optional().nullable(),
 
@@ -154,7 +168,6 @@ export const exportServicingQuerySchema = z.object({
   search: z.string().trim().optional(),
 
   status: z.enum(ServicingStatus).optional(),
-
   vehicle_reg_number: z.string().trim().optional(),
 
   customer_id: z.string().optional(),

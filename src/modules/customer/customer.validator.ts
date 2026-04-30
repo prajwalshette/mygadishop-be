@@ -5,19 +5,11 @@ import { CustomerType, Gender } from '@prisma/client';
 export const createCustomerSchema = z.object({
   name: z.string().min(1, 'Name is required'),
 
-  email: z.preprocess(
-    val => (val === '' || val === null || val === undefined ? undefined : val),
-    z.email('Invalid email address').optional(),
-  ),
+  email: z.preprocess(val => (val === '' || val === null || val === undefined ? undefined : val), z.email('Invalid email address').optional()),
 
-  phone: z
-    .string()
-    .regex(/^[6-9]\d{9}$/, 'Enter a valid 10-digit Indian mobile number'),
+  phone: z.string().regex(/^[6-9]\d{9}$/, 'Enter a valid 10-digit Indian mobile number'),
 
-  address: z.preprocess(
-    val => (val === '' || val === null || val === undefined ? undefined : val),
-    z.string().optional(),
-  ),
+  address: z.preprocess(val => (val === '' || val === null || val === undefined ? undefined : val), z.string().optional()),
 
   city: z.string().optional(),
 
@@ -40,20 +32,14 @@ export const createCustomerSchema = z.object({
 export const updateCustomerSchema = z.object({
   name: z.string().min(1).optional(),
 
-  email: z.preprocess(
-    val => (val === '' || val === null || val === undefined ? undefined : val),
-    z.email('Invalid email address').optional(),
-  ),
+  email: z.preprocess(val => (val === '' || val === null || val === undefined ? undefined : val), z.email('Invalid email address').optional()),
 
   phone: z
     .string()
     .regex(/^[6-9]\d{9}$/, 'Enter a valid 10-digit Indian mobile number')
     .optional(),
 
-  address: z.preprocess(
-    val => (val === '' || val === null || val === undefined ? undefined : val),
-    z.string().optional(),
-  ),
+  address: z.preprocess(val => (val === '' || val === null || val === undefined ? undefined : val), z.string().optional()),
 
   city: z.string().optional(),
 

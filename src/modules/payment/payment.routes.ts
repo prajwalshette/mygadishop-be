@@ -3,13 +3,13 @@ import { Routes } from '@/interfaces/routes.interface';
 import { AuthMiddleware } from '@/middlewares/auth.middleware';
 import { ValidationMiddleware } from '@/middlewares/validation.middleware';
 import multer from 'multer';
-import { 
-  createVehiclePaymentSchema, 
-  updateVehiclePaymentSchema, 
+import {
+  createVehiclePaymentSchema,
+  updateVehiclePaymentSchema,
   getAllPaymentsQuerySchema,
   exportPaymentsQuerySchema,
   paymentIdParamSchema,
-  vehicleIdParamSchema
+  vehicleIdParamSchema,
 } from './payment.validator';
 import { PaymentController } from './payment.controller';
 
@@ -46,11 +46,7 @@ export class PaymentRoute implements Routes {
     // 👉 Create Vehicle Payment
     this.router.post(
       `${this.path}/create-vehicle-payment`,
-      [
-        AuthMiddleware,
-        upload.fields([{ name: 'paymentReceiptFiles', maxCount: 10 }]),
-        ValidationMiddleware(createVehiclePaymentSchema, 'body'),
-      ],
+      [AuthMiddleware, upload.fields([{ name: 'paymentReceiptFiles', maxCount: 10 }]), ValidationMiddleware(createVehiclePaymentSchema, 'body')],
       this.paymentController.createVehiclePayment,
     );
 
@@ -80,7 +76,7 @@ export class PaymentRoute implements Routes {
       this.paymentController.exportPaymentsToCSV,
     );
 
-     this.router.get(
+    this.router.get(
       `${this.path}/get-vehicle-payments/:vehicle_id`,
       [AuthMiddleware, ValidationMiddleware(vehicleIdParamSchema, 'params')],
       this.paymentController.getAllPaymentsByVehicleId,

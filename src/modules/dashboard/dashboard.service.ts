@@ -21,18 +21,13 @@ export class DashboardService {
       const endOfLastYear = new Date(now.getFullYear() - 1, 11, 31, 23, 59, 59);
 
       // Total Vehicles Stats - Optimized with parallel queries
-      const [
-        currentMonthVehicles,
-        lastMonthVehicles,
-        totalVehicles,
-        vehicleStatusCounts
-      ] = await Promise.all([
+      const [currentMonthVehicles, lastMonthVehicles, totalVehicles, vehicleStatusCounts] = await Promise.all([
         this.prisma.vehicle.count({
           where: {
             shop_id,
             deleted_at: null,
-            created_at: { gte: startOfCurrentMonth }
-          }
+            created_at: { gte: startOfCurrentMonth },
+          },
         }),
         this.prisma.vehicle.count({
           where: {
@@ -40,41 +35,35 @@ export class DashboardService {
             deleted_at: null,
             created_at: {
               gte: startOfLastMonth,
-              lt: startOfCurrentMonth
-            }
-          }
+              lt: startOfCurrentMonth,
+            },
+          },
         }),
         this.prisma.vehicle.count({
-          where: { shop_id, deleted_at: null }
+          where: { shop_id, deleted_at: null },
         }),
         // Get vehicle status breakdowns in parallel
         Promise.all([
           this.prisma.vehicle.count({ where: { shop_id, deleted_at: null, status: 'AVAILABLE' } }),
           this.prisma.vehicle.count({ where: { shop_id, deleted_at: null, status: 'SOLD' } }),
           this.prisma.vehicle.count({ where: { shop_id, deleted_at: null, status: 'MAINTENANCE' } }),
-          this.prisma.vehicle.count({ where: { shop_id, deleted_at: null, status: { in: ['BOOKED', 'ON_HOLD'] } } })
-        ])
+          this.prisma.vehicle.count({ where: { shop_id, deleted_at: null, status: { in: ['BOOKED', 'ON_HOLD'] } } }),
+        ]),
       ]);
 
       const [availableVehicles, soldVehicles, maintenanceVehicles, reservedVehicles] = vehicleStatusCounts;
 
-      const vehiclePercentageChange = lastMonthVehicles > 0 
-        ? Math.round(((currentMonthVehicles - lastMonthVehicles) / lastMonthVehicles) * 100)
-        : 100;
+      const vehiclePercentageChange =
+        lastMonthVehicles > 0 ? Math.round(((currentMonthVehicles - lastMonthVehicles) / lastMonthVehicles) * 100) : 100;
 
       // Total Customers Stats - Optimized with parallel queries
-      const [
-        currentMonthCustomers,
-        lastMonthCustomers,
-        totalCustomers,
-        customerTypeCounts
-      ] = await Promise.all([
+      const [currentMonthCustomers, lastMonthCustomers, totalCustomers, customerTypeCounts] = await Promise.all([
         this.prisma.customer.count({
           where: {
             shop_id,
             deleted_at: null,
-            created_at: { gte: startOfCurrentMonth }
-          }
+            created_at: { gte: startOfCurrentMonth },
+          },
         }),
         this.prisma.customer.count({
           where: {
@@ -82,26 +71,25 @@ export class DashboardService {
             deleted_at: null,
             created_at: {
               gte: startOfLastMonth,
-              lt: startOfCurrentMonth
-            }
-          }
+              lt: startOfCurrentMonth,
+            },
+          },
         }),
         this.prisma.customer.count({
-          where: { shop_id, deleted_at: null }
+          where: { shop_id, deleted_at: null },
         }),
         // Get customer type breakdowns in parallel
         Promise.all([
           this.prisma.customer.count({ where: { shop_id, deleted_at: null, customer_type: 'BUYER' } }),
           this.prisma.customer.count({ where: { shop_id, deleted_at: null, customer_type: 'SELLER' } }),
-          this.prisma.customer.count({ where: { shop_id, deleted_at: null, customer_type: 'SERVICE_ONLY' } })
-        ])
+          this.prisma.customer.count({ where: { shop_id, deleted_at: null, customer_type: 'SERVICE_ONLY' } }),
+        ]),
       ]);
 
       const [buyerCount, sellerCount, serviceOnlyCount] = customerTypeCounts;
 
-      const customerPercentageChange = lastMonthCustomers > 0
-        ? Math.round(((currentMonthCustomers - lastMonthCustomers) / lastMonthCustomers) * 100)
-        : 100;
+      const customerPercentageChange =
+        lastMonthCustomers > 0 ? Math.round(((currentMonthCustomers - lastMonthCustomers) / lastMonthCustomers) * 100) : 100;
 
       // Service Status & Upcoming Services - Optimized with parallel queries
       const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -109,32 +97,27 @@ export class DashboardService {
       const weekEnd = new Date(todayStart);
       weekEnd.setDate(weekEnd.getDate() + 7);
 
-      const [
-        completedServices,
-        inProgressServices,
-        pendingServices,
-        upcomingServicesData
-      ] = await Promise.all([
+      const [completedServices, inProgressServices, pendingServices, upcomingServicesData] = await Promise.all([
         this.prisma.servicing.count({
           where: {
             shop_id,
             deleted_at: null,
-            status: 'COMPLETED'
-          }
+            status: 'COMPLETED',
+          },
         }),
         this.prisma.servicing.count({
           where: {
             shop_id,
             deleted_at: null,
-            status: 'IN_PROGRESS'
-          }
+            status: 'IN_PROGRESS',
+          },
         }),
         this.prisma.servicing.count({
           where: {
             shop_id,
             deleted_at: null,
-            status: 'PENDING'
-          }
+            status: 'PENDING',
+          },
         }),
         // Get upcoming services breakdowns
         Promise.all([
@@ -143,33 +126,33 @@ export class DashboardService {
               shop_id,
               deleted_at: null,
               status: { in: ['SCHEDULED', 'PENDING', 'IN_PROGRESS'] },
-              service_date: { gte: todayStart, lte: todayEnd }
-            }
+              service_date: { gte: todayStart, lte: todayEnd },
+            },
           }),
           this.prisma.servicing.count({
             where: {
               shop_id,
               deleted_at: null,
               status: { in: ['SCHEDULED', 'PENDING', 'IN_PROGRESS'] },
-              service_date: { gte: todayStart, lte: weekEnd }
-            }
+              service_date: { gte: todayStart, lte: weekEnd },
+            },
           }),
           this.prisma.servicing.count({
             where: {
               shop_id,
               deleted_at: null,
               status: { in: ['SCHEDULED', 'PENDING', 'IN_PROGRESS'] },
-              service_date: { lt: todayStart }
-            }
+              service_date: { lt: todayStart },
+            },
           }),
           this.prisma.servicing.count({
             where: {
               shop_id,
               deleted_at: null,
-              status: { in: ['SCHEDULED', 'PENDING', 'IN_PROGRESS'] }
-            }
-          })
-        ])
+              status: { in: ['SCHEDULED', 'PENDING', 'IN_PROGRESS'] },
+            },
+          }),
+        ]),
       ]);
 
       const [scheduledToday, scheduledThisWeek, overdueServices, totalUpcoming] = upcomingServicesData;
@@ -181,9 +164,9 @@ export class DashboardService {
             shop_id,
             deleted_at: null,
             status: 'COMPLETED',
-            created_at: { gte: startOfCurrentMonth }
+            created_at: { gte: startOfCurrentMonth },
           },
-          _sum: { amount: true }
+          _sum: { amount: true },
         }),
         this.prisma.vehiclePayment.aggregate({
           where: {
@@ -192,25 +175,20 @@ export class DashboardService {
             status: 'COMPLETED',
             created_at: {
               gte: startOfLastMonth,
-              lt: startOfCurrentMonth
-            }
+              lt: startOfCurrentMonth,
+            },
           },
-          _sum: { amount: true }
-        })
+          _sum: { amount: true },
+        }),
       ]);
 
       const currentMonthRevenue = currentMonthPayments._sum.amount || 0;
       const lastMonthRevenue = lastMonthPayments._sum.amount || 0;
 
-      const revenuePercentageChange = lastMonthRevenue > 0
-        ? Math.round(((currentMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100)
-        : 100;
+      const revenuePercentageChange = lastMonthRevenue > 0 ? Math.round(((currentMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100) : 100;
 
       // Determine revenue trend
-      const revenueTrend: 'up' | 'down' | 'stable' = 
-        revenuePercentageChange > 5 ? 'up' : 
-        revenuePercentageChange < -5 ? 'down' : 
-        'stable';
+      const revenueTrend: 'up' | 'down' | 'stable' = revenuePercentageChange > 5 ? 'up' : revenuePercentageChange < -5 ? 'down' : 'stable';
 
       // Total Revenue (All Time) - Optimized with parallel queries
       const [totalRevenueData, currentYearRevenue, lastYearRevenue] = await Promise.all([
@@ -218,18 +196,18 @@ export class DashboardService {
           where: {
             shop_id,
             deleted_at: null,
-            status: 'COMPLETED'
+            status: 'COMPLETED',
           },
-          _sum: { amount: true }
+          _sum: { amount: true },
         }),
         this.prisma.vehiclePayment.aggregate({
           where: {
             shop_id,
             deleted_at: null,
             status: 'COMPLETED',
-            created_at: { gte: startOfYear }
+            created_at: { gte: startOfYear },
           },
-          _sum: { amount: true }
+          _sum: { amount: true },
         }),
         this.prisma.vehiclePayment.aggregate({
           where: {
@@ -238,20 +216,18 @@ export class DashboardService {
             status: 'COMPLETED',
             created_at: {
               gte: startOfLastYear,
-              lte: endOfLastYear
-            }
+              lte: endOfLastYear,
+            },
           },
-          _sum: { amount: true }
-        })
+          _sum: { amount: true },
+        }),
       ]);
 
       const totalRevenue = totalRevenueData._sum.amount || 0;
       const currentYearTotal = currentYearRevenue._sum.amount || 0;
       const lastYearTotal = lastYearRevenue._sum.amount || 0;
 
-      const yearlyRevenueChange = lastYearTotal > 0
-        ? Math.round(((currentYearTotal - lastYearTotal) / lastYearTotal) * 100)
-        : 100;
+      const yearlyRevenueChange = lastYearTotal > 0 ? Math.round(((currentYearTotal - lastYearTotal) / lastYearTotal) * 100) : 100;
 
       // Pending Inquiries - Optimized
       const [inquiryStats, recentServices, recentVehicles, recentCustomers] = await Promise.all([
@@ -260,60 +236,60 @@ export class DashboardService {
             where: {
               shop_id,
               deleted_at: null,
-              status: 'NEW'
-            }
+              status: 'NEW',
+            },
           }),
           this.prisma.inquiry.count({
             where: {
               shop_id,
               deleted_at: null,
               status: 'FOLLOW_UP',
-              follow_up_date: { lte: now }
-            }
+              follow_up_date: { lte: now },
+            },
           }),
           this.prisma.inquiry.count({
             where: {
               shop_id,
               deleted_at: null,
               status: { in: ['NEW', 'CONTACTED', 'FOLLOW_UP'] },
-              priority: { in: ['HIGH', 'URGENT'] }
-            }
+              priority: { in: ['HIGH', 'URGENT'] },
+            },
           }),
           this.prisma.inquiry.count({
             where: {
               shop_id,
               deleted_at: null,
               status: { in: ['NEW', 'CONTACTED', 'FOLLOW_UP'] },
-              priority: 'LOW'
-            }
+              priority: 'LOW',
+            },
           }),
           this.prisma.inquiry.count({
             where: {
               shop_id,
               deleted_at: null,
-              status: { in: ['NEW', 'CONTACTED', 'FOLLOW_UP'] }
-            }
-          })
+              status: { in: ['NEW', 'CONTACTED', 'FOLLOW_UP'] },
+            },
+          }),
         ]),
         // Recent Activities - Optimized with parallel queries
         this.prisma.servicing.findMany({
           where: { shop_id, deleted_at: null },
           include: {
-            customer: true
+            customer: true,
           },
           orderBy: { service_date: 'desc' },
-          take: 10
+          take: 10,
         }),
         this.prisma.vehicle.findMany({
           where: { shop_id, deleted_at: null },
           orderBy: { created_at: 'desc' },
-          take: 5
+          take: 5,
         }),
         this.prisma.customer.findMany({
           where: { shop_id, deleted_at: null },
           orderBy: { created_at: 'desc' },
-          take: 5
-        })
+          take: 5,
+        }),
       ]);
 
       const [newLeads, followUpsDue, hotLeads, coldLeads, totalInquiries] = inquiryStats;
@@ -325,7 +301,7 @@ export class DashboardService {
         const timeDiff = now.getTime() - service.service_date.getTime();
         const hoursAgo = Math.floor(timeDiff / (1000 * 60 * 60));
         const daysAgo = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
-        
+
         let timeString = '';
         if (hoursAgo < 1) {
           timeString = 'Just now';
@@ -352,14 +328,14 @@ export class DashboardService {
           message: `${service.status === 'COMPLETED' ? 'Bike service completed' : service.status === 'PENDING' ? 'Service pending' : 'Service in progress'} for ${service.vehicle_brand} ${service.vehicle_model}`,
           timestamp: service.service_date,
           timeString,
-          status
+          status,
         });
       });
 
       recentVehicles.forEach(vehicle => {
         const timeDiff = now.getTime() - vehicle.created_at.getTime();
         const hoursAgo = Math.floor(timeDiff / (1000 * 60 * 60));
-        
+
         if (hoursAgo < 48) {
           activities.push({
             id: vehicle.id,
@@ -367,7 +343,7 @@ export class DashboardService {
             message: `New bike registered - ${vehicle.brand} ${vehicle.model}`,
             timestamp: vehicle.created_at,
             timeString: `${hoursAgo} hour${hoursAgo > 1 ? 's' : ''} ago`,
-            status: 'completed'
+            status: 'completed',
           });
         }
       });
@@ -375,7 +351,7 @@ export class DashboardService {
       recentCustomers.forEach(customer => {
         const timeDiff = now.getTime() - customer.created_at.getTime();
         const hoursAgo = Math.floor(timeDiff / (1000 * 60 * 60));
-        
+
         if (hoursAgo < 48) {
           activities.push({
             id: customer.id,
@@ -383,7 +359,7 @@ export class DashboardService {
             message: `New customer registered - ${customer.name}`,
             timestamp: customer.created_at,
             timeString: `${hoursAgo} hour${hoursAgo > 1 ? 's' : ''} ago`,
-            status: 'completed'
+            status: 'completed',
           });
         }
       });
@@ -394,19 +370,13 @@ export class DashboardService {
       // Get unique cities from customer addresses (simplified) - Optimized
       const customers = await this.prisma.customer.findMany({
         where: { shop_id, deleted_at: null },
-        select: { city: true }
+        select: { city: true },
       });
 
-      const cities = Array.from(new Set(
-        customers
-          .map(c => c.city)
-          .filter(city => city && city.length > 0)
-      )).slice(0, 5);
+      const cities = Array.from(new Set(customers.map(c => c.city).filter(city => city && city.length > 0))).slice(0, 5);
 
       // Calculate customer growth trend
-      const customerGrowthTrend = lastMonthCustomers > 0
-        ? Math.round(((currentMonthCustomers - lastMonthCustomers) / lastMonthCustomers) * 100)
-        : 0;
+      const customerGrowthTrend = lastMonthCustomers > 0 ? Math.round(((currentMonthCustomers - lastMonthCustomers) / lastMonthCustomers) * 100) : 0;
 
       return {
         totalVehicles: {
@@ -415,7 +385,7 @@ export class DashboardService {
           available: availableVehicles,
           sold: soldVehicles,
           inMaintenance: maintenanceVehicles,
-          reserved: reservedVehicles
+          reserved: reservedVehicles,
         },
         totalCustomers: {
           count: totalCustomers,
@@ -423,13 +393,13 @@ export class DashboardService {
           buyers: buyerCount,
           sellers: sellerCount,
           serviceOnly: serviceOnlyCount,
-          growthTrend: customerGrowthTrend
+          growthTrend: customerGrowthTrend,
         },
         monthlyRevenue: {
           amount: Math.round(currentMonthRevenue),
           percentageChange: revenuePercentageChange,
           lastMonthAmount: Math.round(lastMonthRevenue),
-          trend: revenueTrend
+          trend: revenueTrend,
           // monthlyTarget and targetProgress can be added from shop settings
         },
         pendingInquiries: {
@@ -437,33 +407,33 @@ export class DashboardService {
           newLeads: newLeads,
           followUpsDue: followUpsDue,
           hotLeads: hotLeads,
-          coldLeads: coldLeads
+          coldLeads: coldLeads,
         },
         upcomingServices: {
           total: totalUpcoming,
           scheduledToday: scheduledToday,
           thisWeek: scheduledThisWeek,
           overdue: overdueServices,
-          remindersSent: 0 // Can be implemented with notification tracking
+          remindersSent: 0, // Can be implemented with notification tracking
         },
         activeServices: {
           count: inProgressServices,
-          status: 'In progress'
+          status: 'In progress',
         },
         serviceStatus: {
           completed: completedServices,
           inProgress: inProgressServices,
-          pending: pendingServices
+          pending: pendingServices,
         },
         totalRevenue: {
           amount: Math.round(totalRevenue),
           yearlyPercentageChange: yearlyRevenueChange,
-          description: 'All time earnings'
+          description: 'All time earnings',
         },
         activeLocations: {
           count: cities.length || 1,
           description: 'Service centers',
-          cities
+          cities,
         },
         recentActivities: activities.slice(0, 10).map(activity => ({
           id: activity.id,
@@ -471,8 +441,8 @@ export class DashboardService {
           message: activity.message,
           timestamp: activity.timestamp,
           timeString: activity.timeString,
-          status: activity.status
-        }))
+          status: activity.status,
+        })),
       };
     } catch (error) {
       if (error instanceof HttpException) {

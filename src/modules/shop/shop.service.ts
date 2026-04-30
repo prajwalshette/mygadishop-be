@@ -25,12 +25,8 @@ export class ShopService {
         logger.warn(`Edit shop failed: Shop not found - ${shop_id}`);
         throw new NotFoundException('Shop not found');
       }
-      
-      const slug = await generateUniqueShopSlug(
-        { shop_name: shopData.shop_name, city: shopData.city },
-        this.prisma,
-        { excludeShopId: shop_id },
-      );
+
+      const slug = await generateUniqueShopSlug({ shop_name: shopData.shop_name, city: shopData.city }, this.prisma, { excludeShopId: shop_id });
 
       const updatedShop = await this.prisma.shop.update({
         where: { id: shop_id },
@@ -91,7 +87,7 @@ export class ShopService {
     try {
       const { page, limit } = query;
       const skip = (page - 1) * limit;
-      
+
       const shops = await this.prisma.shop.findMany({
         orderBy: { created_at: 'desc' },
         skip,

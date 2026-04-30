@@ -16,11 +16,18 @@ export class ShopRoute implements Routes {
   }
 
   private initializeRoutes() {
-    this.router.put(`${this.path}/update-details`, [AuthMiddleware, ValidationMiddleware(updateShopSchema, 'body')], this.shopController.editShopDetails);
+    this.router.put(
+      `${this.path}/update-details`,
+      [AuthMiddleware, ValidationMiddleware(updateShopSchema, 'body')],
+      this.shopController.editShopDetails,
+    );
     this.router.get(`${this.path}/details`, [AuthMiddleware], this.shopController.getShopDetails);
 
-
     //Admin Routes can be added here in future
-    this.router.get(`${this.path}/get-all`, [AdminAuthMiddleware, ValidationMiddleware(getAllShopsQuerySchema, 'query')], this.shopController.getAllShop);
-}
+    this.router.get(
+      `${this.path}/get-all`,
+      [AdminAuthMiddleware, ValidationMiddleware(getAllShopsQuerySchema, 'query')],
+      this.shopController.getAllShop,
+    );
+  }
 }

@@ -5,15 +5,7 @@ import { ConflictException, HttpException, NotFoundException } from '@/exception
 import prisma from '@/lib/prisma';
 import { ulid } from 'ulid';
 import type { IVehicle, IVehicleDocument, ITwoWheelerDetail, IFourWheelerDetail } from './vehicle.interface';
-import {
-  DocumentType,
-  FuelType,
-  OwnershipType,
-  TransmissionType,
-  VehicleCategory,
-  VehicleStatus,
-  VehicleType,
-} from '@prisma/client';
+import { DocumentType, FuelType, OwnershipType, TransmissionType, VehicleCategory, VehicleStatus, VehicleType } from '@prisma/client';
 import { buildMetaDescription, buildMetaTitle, generateUniqueSlug } from '@/utils/seo';
 import { generateVehiclePresignedUrls, getS3ObjectStream, presignS3Url } from '@/services/aws/aws.service';
 import { deleteVehiclePresignedCache, getVehiclePresignedCache } from '@/services/redis/cache/vehicle.cache';
@@ -25,10 +17,7 @@ export class VehicleService {
   private prisma = prisma;
 
   /** Merges API/partial payload with an existing DB row for SEO. */
-  private mergeVehicleSnapshotForSeo(
-    partial: Partial<IVehicle> & Record<string, unknown>,
-    existing: Vehicle | null | undefined,
-  ) {
+  private mergeVehicleSnapshotForSeo(partial: Partial<IVehicle> & Record<string, unknown>, existing: Vehicle | null | undefined) {
     const p = partial;
     const e = existing ?? undefined;
     const num = (a: unknown, b: unknown, fallback: number) => {
@@ -58,7 +47,7 @@ export class VehicleService {
           ? p.insurance_valid_till
             ? new Date(p.insurance_valid_till as string | Date)
             : null
-          : e?.insurance_valid_till ?? null,
+          : (e?.insurance_valid_till ?? null),
     };
   }
 
@@ -159,8 +148,7 @@ export class VehicleService {
           shop_id: shop_id,
           ...vehicleRest,
           // If client omits it, persist as 0 by default.
-          estimated_rto_charges:
-            vehicleRest.estimated_rto_charges ?? 0,
+          estimated_rto_charges: vehicleRest.estimated_rto_charges ?? 0,
           slug: seo.slug,
           meta_title: seo.meta_title,
           meta_description: seo.meta_description,
@@ -254,7 +242,7 @@ export class VehicleService {
     return Promise.all(
       docs.map(async d => ({
         ...this.mapVehicleDocumentToIVehicleDocument(d),
-        file_url: d.file_url ? (await presignS3Url(d.file_url)) ?? d.file_url : d.file_url,
+        file_url: d.file_url ? ((await presignS3Url(d.file_url)) ?? d.file_url) : d.file_url,
       })),
     );
   }
@@ -581,7 +569,9 @@ export class VehicleService {
         }),
       );
 
-      logger.info(`Retrieved ${total} vehicles (page ${page}, limit ${limit}, filters: ${JSON.stringify({ search, status, vehicle_category, type })})`);
+      logger.info(
+        `Retrieved ${total} vehicles (page ${page}, limit ${limit}, filters: ${JSON.stringify({ search, status, vehicle_category, type })})`,
+      );
 
       return {
         vehicles: vehiclesWithPresignedUrls,

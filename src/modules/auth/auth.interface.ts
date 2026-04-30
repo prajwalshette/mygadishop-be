@@ -39,19 +39,16 @@ export interface RequestWithUser extends Request {
   vehicleFiles?: {
     vehicleFiles?: Express.Multer.File[];
   };
-  
+
   vehicleDocFiles?: {
     vehicleDocFiles?: Express.Multer.File[];
   };
 
-   paymentReceiptFiles?: {
+  paymentReceiptFiles?: {
     paymentReceiptFiles?: Express.Multer.File[];
   };
 }
 
-
-
 export interface RequestWithOnboardTempUser extends Request {
   email?: string;
 }
-

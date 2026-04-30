@@ -15,11 +15,15 @@
     "test": "jest --forceExit --detectOpenHandles",
     "lint": "eslint --ext .ts src/",
     "lint:fix": "npm run lint -- --fix",
+    "format": "prettier . --write --ignore-path .gitignore",
+    "format:check": "prettier . --check --ignore-path .gitignore",
+    "format:staged": "lint-staged",
     "prisma:init": "prisma init",
     "prisma:migrate": "prisma migrate dev --preview-feature",
     "prisma:generate": "prisma generate",
     "deploy:prod": "npm run build && pm2 start ecosystem.config.js --only prod",
-    "deploy:dev": "pm2 start ecosystem.config.js --only dev"
+    "deploy:dev": "pm2 start ecosystem.config.js --only dev",
+    "prepare": "husky"
   },
   "prisma": {
     "schema": "prisma/schema.prisma"
@@ -96,5 +100,8 @@
     "tsc-alias": "^1.8.16",
     "tslib": "^2.8.1",
     "typescript": "^6.0.2"
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx,cjs,mjs,json,md,yaml,yml,css,scss,graphql,prisma}": "prettier --write"
   }
 }

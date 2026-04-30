@@ -35,12 +35,11 @@ export class VehicleController {
       }
 
       const documentUploads = await this.collectTypedDocumentUploads(request, response, shop_id, vehicle_id);
-      const documentRows = this.mergeVehicleDocumentsForCreate(
-        (vehicleData as unknown as CreateVehicleDto).vehicle_documents,
-        documentUploads,
-      );
+      const documentRows = this.mergeVehicleDocumentsForCreate((vehicleData as unknown as CreateVehicleDto).vehicle_documents, documentUploads);
 
-      const { vehicle_documents: _omitDocs, ...vehicleRest } = vehicleData as IVehicle & { vehicle_documents?: CreateVehicleDto['vehicle_documents'] };
+      const { vehicle_documents: _omitDocs, ...vehicleRest } = vehicleData as IVehicle & {
+        vehicle_documents?: CreateVehicleDto['vehicle_documents'];
+      };
 
       const vehicleDataWithMedia: IVehicle = {
         ...vehicleRest,
@@ -85,9 +84,7 @@ export class VehicleController {
       const bodyDocs = (vehicleData as { vehicle_documents?: UpdateVehicleDto['vehicle_documents'] }).vehicle_documents;
       const hasBodyDocs = !!(bodyDocs && bodyDocs.length > 0);
       const documentRows =
-        hasUploadedDocs || hasBodyDocs
-          ? this.mergeVehicleDocumentsForUpdate(existingRow.vehicleDocuments, bodyDocs, documentUploads)
-          : undefined;
+        hasUploadedDocs || hasBodyDocs ? this.mergeVehicleDocumentsForUpdate(existingRow.vehicleDocuments, bodyDocs, documentUploads) : undefined;
 
       const { vehicle_documents: _omitDocs, ...vehicleRest } = vehicleData as Partial<IVehicle> & {
         vehicle_documents?: UpdateVehicleDto['vehicle_documents'];
@@ -157,11 +154,7 @@ export class VehicleController {
   // -----------------------------
   // VEHICLE DOCUMENT STREAM - Stream a vehicle document by document type
   // -----------------------------
-  public getVehicleDocumentStream = async (
-    request: RequestWithUser,
-    response: Response,
-    next: NextFunction,
-  ): Promise<void> => {
+  public getVehicleDocumentStream = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
     try {
       const vehicleId: string = request.params.id as string;
       const docType = request.params.docType as DocumentType;
@@ -284,7 +277,9 @@ export class VehicleController {
         vehicle.odometer_reading?.toString() || '',
         vehicle.fuel_type || '',
         vehicle.transmission || '',
-        vehicle.vehicle_category === 'TWO_WHEELER' ? vehicle.two_wheeler_detail?.engine_capacity_cc?.toString() || '' : vehicle.four_wheeler_detail?.engine_capacity_cc?.toString() || '',
+        vehicle.vehicle_category === 'TWO_WHEELER'
+          ? vehicle.two_wheeler_detail?.engine_capacity_cc?.toString() || ''
+          : vehicle.four_wheeler_detail?.engine_capacity_cc?.toString() || '',
         vehicle.ownership || '',
         formatDate(vehicle.insurance_valid_till),
         vehicle.buying_price?.toString() || '',

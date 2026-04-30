@@ -1,5 +1,4 @@
-
-import { PlatformAdminRole, ShopUserRole } from "@prisma/client";
+import { PlatformAdminRole, ShopUserRole } from '@prisma/client';
 export interface User {
   id?: string;
   email: string;
@@ -19,7 +18,7 @@ export interface AdminUser {
   password?: string; // Optional - not included in cache for security
   name?: string;
   phone?: string;
-  is_active?: boolean
+  is_active?: boolean;
   deleted_at?: Date | null;
 }
 

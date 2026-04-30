@@ -1,4 +1,4 @@
-import { HttpException } from "./HttpException";
+import { HttpException } from './HttpException';
 
 // 429 Too Many Requests
 export class TooManyRequestsException extends HttpException {

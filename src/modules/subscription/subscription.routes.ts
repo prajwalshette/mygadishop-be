@@ -2,11 +2,7 @@ import { Router } from 'express';
 import { Routes } from '@/interfaces/routes.interface';
 import { AuthMiddleware } from '@/middlewares/auth.middleware';
 import { ValidationMiddleware } from '@/middlewares/validation.middleware';
-import {
-  getSubscriptionHistoryQuerySchema,
-  getPaymentHistoryQuerySchema,
-  createSubscriptionOrderSchema,
-} from './subscription.validator';
+import { getSubscriptionHistoryQuerySchema, getPaymentHistoryQuerySchema, createSubscriptionOrderSchema } from './subscription.validator';
 import { SubscriptionController } from './subscription.controller';
 
 export class SubscriptionRoute implements Routes {
@@ -24,8 +20,16 @@ export class SubscriptionRoute implements Routes {
 
     // Shop subscription routes (for shop users)
     this.router.get(`${this.path}/shop/current`, [AuthMiddleware], this.subscriptionController.getShopCurrentSubscription);
-    this.router.get(`${this.path}/shop/history`, [AuthMiddleware, ValidationMiddleware(getSubscriptionHistoryQuerySchema, 'query')], this.subscriptionController.getShopSubscriptionHistory);
-    this.router.get(`${this.path}/shop/payment-history`, [AuthMiddleware, ValidationMiddleware(getPaymentHistoryQuerySchema, 'query')], this.subscriptionController.getShopPaymentHistory);
+    this.router.get(
+      `${this.path}/shop/history`,
+      [AuthMiddleware, ValidationMiddleware(getSubscriptionHistoryQuerySchema, 'query')],
+      this.subscriptionController.getShopSubscriptionHistory,
+    );
+    this.router.get(
+      `${this.path}/shop/payment-history`,
+      [AuthMiddleware, ValidationMiddleware(getPaymentHistoryQuerySchema, 'query')],
+      this.subscriptionController.getShopPaymentHistory,
+    );
 
     // Razorpay payment routes
     this.router.post(

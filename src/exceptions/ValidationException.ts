@@ -1,4 +1,4 @@
-import { HttpException } from "./HttpException";
+import { HttpException } from './HttpException';
 
 // Custom validation exception with field details
 export class ValidationException extends HttpException {

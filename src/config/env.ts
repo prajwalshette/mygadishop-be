@@ -46,15 +46,12 @@ const envSchema = z.object({
   // Gemini API
   GEMINI_API_KEY_ONE: z.string().min(1, 'GEMINI_API_KEY is required'),
   GEMINI_API_KEY_TWO: z.string().min(1, 'GEMINI_API_KEY is required'),
-
 });
 
 const _parsed = envSchema.safeParse(process.env);
 
 if (!_parsed.success) {
-  const errors = _parsed.error.issues
-    .map(err => `  ✗ ${err.path.join('.')}: ${err.message}`)
-    .join('\n');
+  const errors = _parsed.error.issues.map(err => `  ✗ ${err.path.join('.')}: ${err.message}`).join('\n');
 
   console.error('\n❌ Invalid / missing environment variables:\n');
   console.error(errors);

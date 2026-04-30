@@ -1,11 +1,7 @@
-import { Service } from "typedi";
-import {
-  GoogleGenerativeAI,
-  GenerativeModel,
-  Part,
-} from "@google/generative-ai";
-import { GeminiKeyManager } from "./gemini-key-manager";
-import { RCExtractedData, RC_EXTRACTION_PROMPT } from "./gemini.interface";
+import { Service } from 'typedi';
+import { GoogleGenerativeAI, GenerativeModel, Part } from '@google/generative-ai';
+import { GeminiKeyManager } from './gemini-key-manager';
+import { RCExtractedData, RC_EXTRACTION_PROMPT } from './gemini.interface';
 
 // ──────────────────────────────────────────────
 // Retry config
@@ -19,19 +15,14 @@ export class GeminiService {
   /**
    * Core method: call Gemini with auto key rotation + retry
    */
-  public async callWithRotation(
-    parts: Part[],
-    prompt: string
-  ): Promise<string> {
+  public async callWithRotation(parts: Part[], prompt: string): Promise<string> {
     let lastError: Error | null = null;
 
     for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
       const selected = await this.keyManager.getAvailableKey();
 
       if (!selected) {
-        throw new Error(
-          "All Gemini API keys are rate limited. Please try again later."
-        );
+        throw new Error('All Gemini API keys are rate limited. Please try again later.');
       }
 
       const { apiKey, keyIndex } = selected;
@@ -39,7 +30,7 @@ export class GeminiService {
       try {
         const genAI = new GoogleGenerativeAI(apiKey);
         const model: GenerativeModel = genAI.getGenerativeModel({
-          model: "gemini-2.5-flash",
+          model: 'gemini-2.5-flash',
         });
 
         const result = await model.generateContent([prompt, ...parts]);
@@ -55,9 +46,7 @@ export class GeminiService {
 
         if (status === 429) {
           // Rate limited by Gemini — block this key for 60s and try next
-          console.warn(
-            `[GeminiService] Key ${keyIndex} got 429. Rotating to next key.`
-          );
+          console.warn(`[GeminiService] Key ${keyIndex} got 429. Rotating to next key.`);
           await this.keyManager.blockKey(keyIndex, 60);
           continue; // retry loop with next key
         }
@@ -73,7 +62,7 @@ export class GeminiService {
       }
     }
 
-    throw lastError ?? new Error("Gemini call failed after retries");
+    throw lastError ?? new Error('Gemini call failed after retries');
   }
 
   /**
@@ -93,7 +82,7 @@ export class GeminiService {
    */
   async extractRCFromUrl(imageUrl: string): Promise<RCExtractedData> {
     const urlPart: Part = {
-      fileData: { fileUri: imageUrl, mimeType: "image/jpeg" },
+      fileData: { fileUri: imageUrl, mimeType: 'image/jpeg' },
     };
 
     const rawText = await this.callWithRotation([urlPart], RC_EXTRACTION_PROMPT);
@@ -112,17 +101,15 @@ export class GeminiService {
    */
   private parseJSON<T>(rawText: string): T {
     const cleaned = rawText
-      .replace(/^```json\s*/i, "")
-      .replace(/^```\s*/i, "")
-      .replace(/```$/i, "")
+      .replace(/^```json\s*/i, '')
+      .replace(/^```\s*/i, '')
+      .replace(/```$/i, '')
       .trim();
 
     try {
       return JSON.parse(cleaned) as T;
     } catch {
-      throw new Error(
-        `Failed to parse Gemini JSON response.\nRaw: ${rawText}`
-      );
+      throw new Error(`Failed to parse Gemini JSON response.\nRaw: ${rawText}`);
     }
   }
 }

@@ -1,5 +1,5 @@
 import redis from '@/config/redis';
-import { User, AdminUser, } from '@/modules/user/user.interface';
+import { User, AdminUser } from '@/modules/user/user.interface';
 import { logger } from '@utils/logger';
 
 export interface CachedSessionData {

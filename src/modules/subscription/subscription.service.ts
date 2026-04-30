@@ -19,7 +19,7 @@ export class SubscriptionService {
     try {
       // Fetch shop and subscription in parallel for better performance
       const [shop, subscription] = await Promise.all([
-        this.prisma.shop.findUnique({ 
+        this.prisma.shop.findUnique({
           where: { id: shop_id },
           select: {
             id: true,
@@ -28,14 +28,14 @@ export class SubscriptionService {
             subscription_plan: true,
             plan_start_date: true,
             plan_end_date: true,
-          }
+          },
         }),
         this.prisma.shopSubscription.findFirst({
-          where: { 
+          where: {
             shop_id: shop_id,
             status: {
-              in: [SubscriptionStatus.ACTIVE, SubscriptionStatus.TRIAL, SubscriptionStatus.PAYMENT_PENDING]
-            }
+              in: [SubscriptionStatus.ACTIVE, SubscriptionStatus.TRIAL, SubscriptionStatus.PAYMENT_PENDING],
+            },
           },
           orderBy: { created_at: 'desc' },
           include: {
@@ -46,7 +46,7 @@ export class SubscriptionService {
                 description: true,
                 max_vehicles: true,
                 max_staff_users: true,
-              }
+              },
             },
             pricing: {
               select: {
@@ -54,10 +54,10 @@ export class SubscriptionService {
                 duration: true,
                 price: true,
                 discount: true,
-              }
-            }
-          }
-        })
+              },
+            },
+          },
+        }),
       ]);
 
       if (!shop) {
@@ -123,7 +123,7 @@ export class SubscriptionService {
                 id: true,
                 plan_name: true,
                 description: true,
-              }
+              },
             },
             pricing: {
               select: {
@@ -131,9 +131,9 @@ export class SubscriptionService {
                 duration: true,
                 price: true,
                 discount: true,
-              }
-            }
-          }
+              },
+            },
+          },
         }),
         this.prisma.shopSubscription.count({ where: { shop_id: shop_id } }),
       ]);
@@ -190,11 +190,11 @@ export class SubscriptionService {
                 plan: {
                   select: {
                     plan_name: true,
-                  }
-                }
-              }
-            }
-          }
+                  },
+                },
+              },
+            },
+          },
         }),
         this.prisma.transaction.count({ where: whereClause }),
       ]);
@@ -332,8 +332,10 @@ export class SubscriptionService {
           notes: order.notes,
         };
       } catch (razorpayError: any) {
-        logger.error(`Razorpay API error: ${razorpayError.message}. Status: ${razorpayError.response?.status}, Amount: ${amountInPaise} paise, Receipt: ${receipt}, Response: ${JSON.stringify(razorpayError.response?.data)}`);
-        
+        logger.error(
+          `Razorpay API error: ${razorpayError.message}. Status: ${razorpayError.response?.status}, Amount: ${amountInPaise} paise, Receipt: ${receipt}, Response: ${JSON.stringify(razorpayError.response?.data)}`,
+        );
+
         if (razorpayError.response?.data) {
           const errorMessage = razorpayError.response.data.error?.description || razorpayError.response.data.error?.message || 'Razorpay API error';
           throw new HttpException(razorpayError.response.status || 400, errorMessage);
@@ -499,7 +501,7 @@ export class SubscriptionService {
         },
         orderBy: { created_at: 'asc' },
       });
-      
+
       logger.info(`Retrieved ${plans.length} subscription plans`);
       return plans;
     } catch (error: any) {

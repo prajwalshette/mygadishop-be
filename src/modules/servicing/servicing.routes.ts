@@ -2,7 +2,13 @@ import { Router } from 'express';
 import { Routes } from '@/interfaces/routes.interface';
 import { AuthMiddleware } from '@/middlewares/auth.middleware';
 import { ValidateRequest } from '@/middlewares/validation.middleware';
-import { createServicingSchema, exportServicingQuerySchema, getServicingQuerySchema, servicingIdParamSchema, updateServicingSchema } from './servicing.validator';
+import {
+  createServicingSchema,
+  exportServicingQuerySchema,
+  getServicingQuerySchema,
+  servicingIdParamSchema,
+  updateServicingSchema,
+} from './servicing.validator';
 import { ServicingController } from './servicing.controller';
 
 export class ServicingRoute implements Routes {
@@ -37,11 +43,7 @@ export class ServicingRoute implements Routes {
     );
 
     // Get Servicing Statistics
-    this.router.get(
-      `${this.path}/stats`,
-      [AuthMiddleware],
-      this.servicingController.getServicingStats,
-    );
+    this.router.get(`${this.path}/stats`, [AuthMiddleware], this.servicingController.getServicingStats);
 
     // Export Servicings to CSV
     this.router.get(

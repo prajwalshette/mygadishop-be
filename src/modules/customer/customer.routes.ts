@@ -38,7 +38,11 @@ export class CustomerRoute implements Routes {
       this.customerController.getAllCustomer,
     );
     this.router.get(`${this.path}/get-customer/:id`, [AuthMiddleware], this.customerController.getCustomer);
-    this.router.get(`${this.path}/search-customer-by-phone-number`, [AuthMiddleware, ValidateRequest({ query: searchCustomerByPhoneNumberSchema })], this.customerController.searchCustomerByPhoneNumber);
+    this.router.get(
+      `${this.path}/search-customer-by-phone-number`,
+      [AuthMiddleware, ValidateRequest({ query: searchCustomerByPhoneNumberSchema })],
+      this.customerController.searchCustomerByPhoneNumber,
+    );
     this.router.get(`${this.path}/stats`, [AuthMiddleware], this.customerController.getCustomerStats);
     this.router.get(
       `${this.path}/export-customers`,

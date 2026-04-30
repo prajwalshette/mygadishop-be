@@ -1,4 +1,4 @@
-import { HttpException } from "./HttpException";
+import { HttpException } from './HttpException';
 
 // 500 Internal Server Error
 export class InternalServerErrorException extends HttpException {

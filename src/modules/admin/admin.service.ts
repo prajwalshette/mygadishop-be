@@ -3,8 +3,8 @@ import prisma from '@/lib/prisma';
 import { Prisma, Shop, User } from '@prisma/client';
 import { ConflictException, HttpException, NotFoundException } from '@/exceptions';
 import { logger } from '@/utils/logger';
-import { 
-  GetShopQueryDto, 
+import {
+  GetShopQueryDto,
   GetUserQueryDto,
   CreateShopDto,
   UpdateShopStatusEnhancedDto,
@@ -46,11 +46,11 @@ export class AdminService {
           updated_at: true,
         },
       });
-      
+
       if (!admin) throw new NotFoundException('Admin not found');
       if (admin.deleted_at) throw new NotFoundException('Admin not found');
       if (!admin.is_active) throw new HttpException(403, 'Admin account is inactive');
-      
+
       return admin;
     } catch (error) {
       if (error instanceof HttpException) throw error;
@@ -332,10 +332,7 @@ export class AdminService {
     try {
       const existingShop = await prisma.shop.findFirst({
         where: {
-          OR: [
-            { email: shopData.email },
-            { phone: shopData.phone },
-          ],
+          OR: [{ email: shopData.email }, { phone: shopData.phone }],
         },
       });
 
@@ -343,10 +340,7 @@ export class AdminService {
         throw new ConflictException('Shop with this email or phone already exists');
       }
 
-      const slug = await generateUniqueShopSlug(
-        { shop_name: shopData.shop_name, city: shopData.city },
-        prisma,
-      );
+      const slug = await generateUniqueShopSlug({ shop_name: shopData.shop_name, city: shopData.city }, prisma);
 
       const shop = await prisma.shop.create({
         data: {
@@ -682,10 +676,7 @@ export class AdminService {
       };
 
       if (search) {
-        whereClause.OR = [
-          { notes: { contains: search, mode: 'insensitive' } },
-          { transaction_id: { contains: search, mode: 'insensitive' } },
-        ];
+        whereClause.OR = [{ notes: { contains: search, mode: 'insensitive' } }, { transaction_id: { contains: search, mode: 'insensitive' } }];
       }
 
       if (status) {
@@ -875,7 +866,7 @@ export class AdminService {
   public async getAnalytics(query: GetAnalyticsQueryDto) {
     try {
       const { months = 6, topShopsLimit = 5, startDate, endDate } = query;
-      
+
       // Calculate date ranges
       const now = new Date();
       const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -891,7 +882,7 @@ export class AdminService {
         const change = ((current - previous) / previous) * 100;
         return {
           value: `${change >= 0 ? '+' : ''}${change.toFixed(1)}%`,
-          trend: change >= 0 ? 'up' : 'down'
+          trend: change >= 0 ? 'up' : 'down',
         };
       };
 
@@ -901,16 +892,16 @@ export class AdminService {
           _sum: { amount: true },
           where: {
             status: 'SUCCESS',
-            created_at: { gte: currentMonthStart, lte: currentMonthEnd }
-          }
+            created_at: { gte: currentMonthStart, lte: currentMonthEnd },
+          },
         }),
         prisma.transaction.aggregate({
           _sum: { amount: true },
           where: {
             status: 'SUCCESS',
-            created_at: { gte: previousMonthStart, lte: previousMonthEnd }
-          }
-        })
+            created_at: { gte: previousMonthStart, lte: previousMonthEnd },
+          },
+        }),
       ]);
 
       const currentRevenue = currentMonthRevenue._sum.amount || 0;
@@ -921,14 +912,14 @@ export class AdminService {
       const [currentMonthUsers, previousMonthUsers] = await Promise.all([
         prisma.user.count({
           where: {
-            created_at: { gte: currentMonthStart, lte: currentMonthEnd }
-          }
+            created_at: { gte: currentMonthStart, lte: currentMonthEnd },
+          },
         }),
         prisma.user.count({
           where: {
-            created_at: { gte: previousMonthStart, lte: previousMonthEnd }
-          }
-        })
+            created_at: { gte: previousMonthStart, lte: previousMonthEnd },
+          },
+        }),
       ]);
 
       const totalUsers = await prisma.user.count();
@@ -938,14 +929,14 @@ export class AdminService {
       const [currentMonthShops, previousMonthShops] = await Promise.all([
         prisma.shop.count({
           where: {
-            created_at: { gte: currentMonthStart, lte: currentMonthEnd }
-          }
+            created_at: { gte: currentMonthStart, lte: currentMonthEnd },
+          },
         }),
         prisma.shop.count({
           where: {
-            created_at: { gte: previousMonthStart, lte: previousMonthEnd }
-          }
-        })
+            created_at: { gte: previousMonthStart, lte: previousMonthEnd },
+          },
+        }),
       ]);
 
       const totalShops = await prisma.shop.count({ where: { deleted_at: null } });
@@ -956,15 +947,15 @@ export class AdminService {
         prisma.shopSubscription.count({
           where: {
             status: 'ACTIVE',
-            created_at: { gte: currentMonthStart, lte: currentMonthEnd }
-          }
+            created_at: { gte: currentMonthStart, lte: currentMonthEnd },
+          },
         }),
         prisma.shopSubscription.count({
           where: {
             status: 'ACTIVE',
-            created_at: { gte: previousMonthStart, lte: previousMonthEnd }
-          }
-        })
+            created_at: { gte: previousMonthStart, lte: previousMonthEnd },
+          },
+        }),
       ]);
 
       const totalSubscriptions = await prisma.shopSubscription.count({ where: { status: 'ACTIVE' } });
@@ -975,19 +966,19 @@ export class AdminService {
       for (let i = months - 1; i >= 0; i--) {
         const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
         const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0, 23, 59, 59, 999);
-        
+
         const monthRevenue = await prisma.transaction.aggregate({
           _sum: { amount: true },
           where: {
             status: 'SUCCESS',
-            created_at: { gte: monthStart, lte: monthEnd }
-          }
+            created_at: { gte: monthStart, lte: monthEnd },
+          },
         });
 
         const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
         monthlyRevenueData.push({
           month: monthNames[monthStart.getMonth()],
-          revenue: monthRevenue._sum.amount || 0
+          revenue: monthRevenue._sum.amount || 0,
         });
       }
 
@@ -999,60 +990,60 @@ export class AdminService {
           transactions: {
             some: {
               status: 'SUCCESS',
-              created_at: { gte: currentMonthStart, lte: currentMonthEnd }
-            }
-          }
+              created_at: { gte: currentMonthStart, lte: currentMonthEnd },
+            },
+          },
         },
         include: {
           transactions: {
             where: {
               status: 'SUCCESS',
-              created_at: { gte: currentMonthStart, lte: currentMonthEnd }
+              created_at: { gte: currentMonthStart, lte: currentMonthEnd },
             },
-            select: { amount: true, created_at: true }
-          }
-        }
+            select: { amount: true, created_at: true },
+          },
+        },
       });
 
       // Calculate revenue for each shop and sort
-      const shopsWithRevenue = shopsWithTransactions.map(shop => {
-        const shopRevenue = shop.transactions.reduce((sum, t) => sum + t.amount, 0);
-        return {
-          id: shop.id,
-          name: shop.shop_name,
-          revenue: shopRevenue,
-          shopId: shop.id
-        };
-      }).sort((a, b) => b.revenue - a.revenue);
+      const shopsWithRevenue = shopsWithTransactions
+        .map(shop => {
+          const shopRevenue = shop.transactions.reduce((sum, t) => sum + t.amount, 0);
+          return {
+            id: shop.id,
+            name: shop.shop_name,
+            revenue: shopRevenue,
+            shopId: shop.id,
+          };
+        })
+        .sort((a, b) => b.revenue - a.revenue);
 
       // Get top N shops and calculate growth
       const topShopsIds = shopsWithRevenue.slice(0, topShopsLimit).map(s => s.shopId);
-      
+
       // Get previous month revenue for top shops
       const previousMonthTransactions = await prisma.transaction.groupBy({
         by: ['shop_id'],
         where: {
           shop_id: { in: topShopsIds },
           status: 'SUCCESS',
-          created_at: { gte: previousMonthStart, lte: previousMonthEnd }
+          created_at: { gte: previousMonthStart, lte: previousMonthEnd },
         },
-        _sum: { amount: true }
+        _sum: { amount: true },
       });
 
-      const previousMonthRevenueMap = new Map(
-        previousMonthTransactions.map(t => [t.shop_id, t._sum.amount || 0])
-      );
+      const previousMonthRevenueMap = new Map(previousMonthTransactions.map(t => [t.shop_id, t._sum.amount || 0]));
 
       const topShopsWithRevenue = shopsWithRevenue.slice(0, topShopsLimit).map(item => {
         const previousRevenue = previousMonthRevenueMap.get(item.shopId) || 0;
         const growth = calculateChange(item.revenue, previousRevenue);
-        
+
         return {
           id: item.id,
           name: item.name,
           revenue: item.revenue,
           revenueFormatted: `₹${item.revenue.toLocaleString()}`,
-          growth: growth.value
+          growth: growth.value,
         };
       });
 
@@ -1060,59 +1051,59 @@ export class AdminService {
       const subscriptionDistribution = await prisma.shopSubscription.groupBy({
         by: ['plan_id'],
         where: { status: 'ACTIVE' },
-        _count: { plan_id: true }
+        _count: { plan_id: true },
       });
 
       const plans = await prisma.subscriptionPlan.findMany({
-        where: { id: { in: subscriptionDistribution.map(s => s.plan_id) } }
+        where: { id: { in: subscriptionDistribution.map(s => s.plan_id) } },
       });
 
       const totalActiveSubscriptions = subscriptionDistribution.reduce((sum, s) => sum + s._count.plan_id, 0);
-      
+
       const distribution = subscriptionDistribution.map(sub => {
         const plan = plans.find(p => p.id === sub.plan_id);
         const count = sub._count.plan_id;
         const percentage = totalActiveSubscriptions > 0 ? Math.round((count / totalActiveSubscriptions) * 100) : 0;
-        
+
         return {
           plan: plan?.plan_name || 'Unknown',
           count,
-          percentage
+          percentage,
         };
       });
 
       logger.info(`Analytics data retrieved successfully for ${months} months`);
-      
+
       return {
         metrics: {
           revenue: {
             current: `₹${currentRevenue.toLocaleString()}`,
             previous: `₹${previousRevenue.toLocaleString()}`,
             change: revenueChange.value,
-            trend: revenueChange.trend
+            trend: revenueChange.trend,
           },
           users: {
             current: totalUsers.toLocaleString(),
             previous: previousMonthUsers.toLocaleString(),
             change: usersChange.value,
-            trend: usersChange.trend
+            trend: usersChange.trend,
           },
           shops: {
             current: totalShops.toLocaleString(),
             previous: previousMonthShops.toLocaleString(),
             change: shopsChange.value,
-            trend: shopsChange.trend
+            trend: shopsChange.trend,
           },
           subscriptions: {
             current: totalSubscriptions.toLocaleString(),
             previous: previousMonthSubscriptions.toLocaleString(),
             change: subscriptionsChange.value,
-            trend: subscriptionsChange.trend
-          }
+            trend: subscriptionsChange.trend,
+          },
         },
         monthlyRevenue: monthlyRevenueData,
         topShops: topShopsWithRevenue,
-        subscriptionDistribution: distribution
+        subscriptionDistribution: distribution,
       };
     } catch (error) {
       if (error instanceof HttpException) throw error;
@@ -1138,14 +1129,14 @@ export class AdminService {
         logger.warn(`Create plan failed: Plan already exists - ${planData.plan_name}`);
         throw new ConflictException(`${planData.plan_name} Plan already exists`);
       }
-      
+
       const newPlan = await prisma.subscriptionPlan.create({
         data: {
           id: ulid(),
           ...planData,
         },
       });
-      
+
       logger.info(`Subscription plan created successfully: ${newPlan.plan_name} (${newPlan.id})`);
       return { ...newPlan, plan_name: newPlan.plan_name as SubscriptionPlanName };
     } catch (error: any) {
@@ -1168,7 +1159,7 @@ export class AdminService {
         logger.warn(`Update plan failed: Plan not found - ${plan_id}`);
         throw new NotFoundException('Plan not found');
       }
-      
+
       const plan = await prisma.subscriptionPlan.update({
         where: { id: plan_id },
         data: {
@@ -1178,7 +1169,7 @@ export class AdminService {
           max_staff_users: planData.max_staff_users,
         },
       });
-      
+
       logger.info(`Subscription plan updated successfully: ${plan.plan_name} (${plan_id})`);
       return { ...plan, plan_name: plan.plan_name as SubscriptionPlanName };
     } catch (error: any) {
@@ -1199,7 +1190,7 @@ export class AdminService {
           pricing: true,
         },
       });
-      
+
       logger.info(`Retrieved ${plans.length} subscription plans`);
       return plans;
     } catch (error: any) {
@@ -1222,14 +1213,14 @@ export class AdminService {
         logger.warn(`Create pricing failed: Pricing already exists for plan ${pricingData.plan_id} with duration ${pricingData.duration}`);
         throw new ConflictException(`Pricing already exists in this plan for duration ${pricingData.duration}`);
       }
-      
+
       const newPricing = await prisma.subscriptionPricing.create({
         data: {
           id: ulid(),
           ...pricingData,
         },
       });
-      
+
       logger.info(`Subscription pricing created successfully: ${newPricing.duration} (${newPricing.id})`);
       return { ...newPricing, duration: newPricing.duration as PlanDuration };
     } catch (error: any) {
@@ -1261,7 +1252,7 @@ export class AdminService {
           discount: pricingData.discount,
         },
       });
-      
+
       logger.info(`Subscription pricing updated successfully: ${pricing.duration} (${subscription_pricing_id})`);
       return { ...pricing, duration: pricing.duration as PlanDuration };
     } catch (error: any) {
@@ -1284,7 +1275,7 @@ export class AdminService {
         logger.warn(`Toggle plan status failed: Plan not found - ${plan_id}`);
         throw new NotFoundException('Plan not found');
       }
-      
+
       const plan = await prisma.subscriptionPlan.update({
         where: { id: plan_id },
         data: {

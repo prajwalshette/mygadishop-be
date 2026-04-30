@@ -216,9 +216,7 @@ const generateMultiplePresignedUrls = async (s3Urls: string[], expiresIn: number
 /**
  * Get S3 object as stream (for proxying vehicle image to frontend without CORS)
  */
-export const getS3ObjectStream = async (
-  s3Url: string,
-): Promise<{ Body: import('stream').Readable; ContentType?: string } | null> => {
+export const getS3ObjectStream = async (s3Url: string): Promise<{ Body: import('stream').Readable; ContentType?: string } | null> => {
   try {
     const key = extractS3Key(s3Url);
     if (!key) {

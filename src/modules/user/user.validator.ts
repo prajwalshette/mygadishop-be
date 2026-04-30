@@ -47,7 +47,7 @@ export const getAllUsersQuerySchema = z.object({
   is_active: z
     .string()
     .optional()
-    .transform(val => val === 'true' ? true : val === 'false' ? false : undefined),
+    .transform(val => (val === 'true' ? true : val === 'false' ? false : undefined)),
   search: z.string().optional(),
 });
 

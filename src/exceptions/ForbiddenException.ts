@@ -1,4 +1,4 @@
-import { HttpException } from "./HttpException";
+import { HttpException } from './HttpException';
 
 // 403 Forbidden
 export class ForbiddenException extends HttpException {

@@ -264,10 +264,7 @@ export class AuthService {
       let tokenData: { token: string; expiresIn: number };
 
       await this.prisma.$transaction(async tx => {
-        const slug = await generateUniqueShopSlug(
-          { shop_name: onboardDetails.shop_name, city: onboardDetails.city },
-          this.prisma,
-        );
+        const slug = await generateUniqueShopSlug({ shop_name: onboardDetails.shop_name, city: onboardDetails.city }, this.prisma);
 
         // Create shop
         const createdShop = await tx.shop.create({

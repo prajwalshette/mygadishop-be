@@ -1,11 +1,17 @@
 import { Service } from 'typedi';
 import { BadRequestException, ConflictException, HttpException, NotFoundException } from '@/exceptions';
 import prisma from '@/lib/prisma';
-import { PaymentStatus , CustomerType, Gender} from '@prisma/client';
-import type {ICustomer, ICustomerCsv } from './customer.interface';
+import { PaymentStatus, CustomerType, Gender } from '@prisma/client';
+import type { ICustomer, ICustomerCsv } from './customer.interface';
 import { ulid } from 'ulid';
 import { logger } from '@/utils/logger';
-import type { CreateCustomerDto, ExportCustomerQueryDto, GetCustomerQueryDto, SearchCustomerByPhoneNumberDto, UpdateCustomerDto } from './customer.validator';
+import type {
+  CreateCustomerDto,
+  ExportCustomerQueryDto,
+  GetCustomerQueryDto,
+  SearchCustomerByPhoneNumberDto,
+  UpdateCustomerDto,
+} from './customer.validator';
 import { createCustomerSchema } from './customer.validator';
 import Papa from 'papaparse';
 import { Readable } from 'stream';
@@ -27,21 +33,14 @@ export class CustomerService {
         where: {
           shop_id,
           deleted_at: null,
-          OR: [
-            { phone: customerData.phone },
-            ...(customerData.email ? [{ email: customerData.email }] : []),
-          ],
+          OR: [{ phone: customerData.phone }, ...(customerData.email ? [{ email: customerData.email }] : [])],
         },
       });
 
       if (isExistCustomer) {
-        logger.warn(
-          `Add customer failed: Customer already exists - Email: ${customerData.email ?? '—'}, Phone: ${customerData.phone}`,
-        );
+        logger.warn(`Add customer failed: Customer already exists - Email: ${customerData.email ?? '—'}, Phone: ${customerData.phone}`);
         throw new ConflictException(
-          customerData.email
-            ? `Customer already exists with this email or phone`
-            : `Customer already exists with this phone number`,
+          customerData.email ? `Customer already exists with this email or phone` : `Customer already exists with this phone number`,
         );
       }
 
@@ -260,10 +259,13 @@ export class CustomerService {
         const completedPayments = customer.payments || [];
         const totalSpent = completedPayments.reduce((sum, p) => sum + Number(p.amount), 0);
         const lastPurchaseDate = completedPayments.length
-          ? completedPayments.reduce((latest, p) => {
-              const d = p.payment_date ? new Date(p.payment_date) : null;
-              return d && (!latest || d > latest) ? d : latest;
-            }, null as Date | null)
+          ? completedPayments.reduce(
+              (latest, p) => {
+                const d = p.payment_date ? new Date(p.payment_date) : null;
+                return d && (!latest || d > latest) ? d : latest;
+              },
+              null as Date | null,
+            )
           : null;
         const { payments, ...rest } = customer;
         return {
@@ -365,10 +367,13 @@ export class CustomerService {
       const completedPayments = (customer.payments || []).filter((p: any) => p.status === 'COMPLETED');
       const totalSpent = completedPayments.reduce((sum: number, p: any) => sum + Number(p.amount), 0);
       const lastPurchaseDate = completedPayments.length
-        ? completedPayments.reduce((latest: Date | null, p: any) => {
-            const d = p.payment_date ? new Date(p.payment_date) : null;
-            return d && (!latest || d > latest) ? d : latest;
-          }, null as Date | null)
+        ? completedPayments.reduce(
+            (latest: Date | null, p: any) => {
+              const d = p.payment_date ? new Date(p.payment_date) : null;
+              return d && (!latest || d > latest) ? d : latest;
+            },
+            null as Date | null,
+          )
         : null;
 
       logger.info(`Customer retrieved successfully: ${customer_id}`);

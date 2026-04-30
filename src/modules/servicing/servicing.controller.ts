@@ -1,12 +1,7 @@
 import { NextFunction, Request, Response } from 'express';
 import { Container } from 'typedi';
 import type { RequestWithUser } from '@modules/auth/auth.interface';
-import type {
-  CreateServicingDto,
-  ExportServicingQueryDto,
-  GetServicingQueryDto,
-  UpdateServicingDto,
-} from './servicing.validator';
+import type { CreateServicingDto, ExportServicingQueryDto, GetServicingQueryDto, UpdateServicingDto } from './servicing.validator';
 import { ServicingService } from './servicing.service';
 import { stringify } from 'csv-stringify/sync';
 import { logger } from '@/utils/logger';

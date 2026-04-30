@@ -135,7 +135,7 @@ export interface IVehicle {
 
   // Relations (mapped for responses)
   vehicle_documents?: IVehicleDocument[];
-  
+
   deleted_at?: Date | null;
   created_at?: Date;
   updated_at?: Date;

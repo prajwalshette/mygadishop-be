@@ -39,5 +39,4 @@ export class onboardTempTokenCache {
     const key = this.getKey(email, type);
     await redis.del(key);
   }
-  
 }

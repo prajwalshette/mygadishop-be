@@ -87,4 +87,3 @@ export const deleteVehiclePresignedCache = async (vehicle_id: string): Promise<b
     return false;
   }
 };
-

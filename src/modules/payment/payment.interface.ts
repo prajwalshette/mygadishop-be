@@ -1,5 +1,4 @@
-
-import { PaymentStatus, PaymentMethod, PaymentType } from "@prisma/client";
+import { PaymentStatus, PaymentMethod, PaymentType } from '@prisma/client';
 
 export interface IVehiclePayment {
   id: string;
