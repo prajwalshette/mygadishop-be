@@ -1,0 +1,44 @@
+const { FlatCompat } = require("@eslint/eslintrc");
+
+const compat = new FlatCompat({
+  baseDirectory: __dirname,
+});
+
+module.exports = [
+  {
+    ignores: ["dist/**"],
+  },
+  ...compat.config({
+    parser: "@typescript-eslint/parser",
+    extends: ["prettier", "plugin:@typescript-eslint/recommended", "plugin:prettier/recommended"],
+    parserOptions: {
+      ecmaVersion: 2018,
+      sourceType: "module",
+    },
+    rules: {
+      "no-console": "error",
+      "@typescript-eslint/explicit-member-accessibility": 0,
+      "@typescript-eslint/explicit-function-return-type": 0,
+      "@typescript-eslint/no-parameter-properties": 0,
+      "@typescript-eslint/interface-name-prefix": 0,
+      "@typescript-eslint/explicit-module-boundary-types": 0,
+      "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/ban-types": "off",
+      "@typescript-eslint/no-var-requires": "off",
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector:
+            "CallExpression[callee.type='MemberExpression'][callee.property.name='nativeEnum']",
+          message: "`nativeEnum` is deprecated. Use `enum` (or another non-deprecated alternative).",
+        },
+        {
+          selector:
+            "ChainExpression > CallExpression[callee.type='MemberExpression'][callee.property.name='nativeEnum']",
+          message: "`nativeEnum` is deprecated. Use `enum` (or another non-deprecated alternative).",
+        },
+      ],
+    },
+  }),
+];
+
