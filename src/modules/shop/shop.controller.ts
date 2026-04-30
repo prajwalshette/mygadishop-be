@@ -7,6 +7,9 @@ import { ShopService } from './shop.service';
 export class ShopController {
   public shopService = Container.get(ShopService);
 
+  // -----------------------------
+  // UPDATE SHOP - Edit shop details
+  // -----------------------------
   public editShopDetails = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
     try {
       const shop_id = request.user.shop_id;
@@ -19,6 +22,9 @@ export class ShopController {
     }
   };
 
+  // -----------------------------
+  // GET SHOP - Retrieve shop details
+  // -----------------------------
   public getShopDetails = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
     try {
       const shop_id = request.user.shop_id;
@@ -29,6 +35,9 @@ export class ShopController {
     }
   };
 
+  // -----------------------------
+  // GET ALL SHOPS - Retrieve shops list
+  // -----------------------------
   public getAllShop = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
     try {
       const query: GetAllShopsQueryDto = request.query as any;

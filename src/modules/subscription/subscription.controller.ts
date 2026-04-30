@@ -15,7 +15,9 @@ import { RAZORPAY_WEBHOOK_SECRET } from '@/config/env';
 export class SubscriptionController {
   public subscriptionService = Container.get(SubscriptionService);
 
-  // Get shop current subscription (for shop users)
+  // -----------------------------
+  // GET CURRENT SUBSCRIPTION - Retrieve shop current subscription
+  // -----------------------------
   public getShopCurrentSubscription = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
     try {
       const shop_id = request.shop_id || request.user.shop_id;
@@ -30,7 +32,9 @@ export class SubscriptionController {
     }
   };
 
-  // Get shop subscription history (for shop users)
+  // -----------------------------
+  // GET SUBSCRIPTION HISTORY - Retrieve shop subscription history
+  // -----------------------------
   public getShopSubscriptionHistory = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
     try {
       const shop_id = request.shop_id || request.user.shop_id;
@@ -46,7 +50,9 @@ export class SubscriptionController {
     }
   };
 
-  // Get shop payment history (for shop users)
+  // -----------------------------
+  // GET PAYMENT HISTORY - Retrieve shop subscription payment history
+  // -----------------------------
   public getShopPaymentHistory = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
     try {
       const shop_id = request.shop_id || request.user.shop_id;
@@ -62,7 +68,9 @@ export class SubscriptionController {
     }
   };
 
-  // Create Razorpay order for subscription (for shop users)
+  // -----------------------------
+  // CREATE SUBSCRIPTION ORDER - Create Razorpay order for subscription
+  // -----------------------------
   public createSubscriptionOrder = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
     try {
       const shop_id = request.shop_id || request.user.shop_id;
@@ -79,7 +87,9 @@ export class SubscriptionController {
     }
   };
 
-  // Get all subscription plans (for shop users)
+  // -----------------------------
+  // GET SUBSCRIPTION PLANS - Retrieve all subscription plans
+  // -----------------------------
   public getSubscriptionPlans = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
     try {
       const plans = await this.subscriptionService.getSubscriptionPlans();
@@ -89,7 +99,9 @@ export class SubscriptionController {
     }
   };
 
-  // Razorpay webhook handler
+  // -----------------------------
+  // RAZORPAY WEBHOOK - Handle subscription webhook events
+  // -----------------------------
   public handleRazorpayWebhook = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
     try {
       if (!RAZORPAY_WEBHOOK_SECRET) {

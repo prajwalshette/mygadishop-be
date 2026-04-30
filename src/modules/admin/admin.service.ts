@@ -25,6 +25,9 @@ import { ulid } from 'ulid';
 
 @Service()
 export class AdminService {
+  // -----------------------------
+  // CURRENT ADMIN - Retrieve current admin profile
+  // -----------------------------
   public async getCurrentAdmin(adminId: string) {
     try {
       const admin = await prisma.admin.findUnique({
@@ -55,6 +58,9 @@ export class AdminService {
     }
   }
 
+  // -----------------------------
+  // ADMIN DASHBOARD STATS - Retrieve admin dashboard KPIs
+  // -----------------------------
   public async getDashboardStats() {
     try {
       const totalShops = await prisma.shop.count();
@@ -95,6 +101,9 @@ export class AdminService {
     }
   }
 
+  // -----------------------------
+  // GET SHOPS - Retrieve shops list
+  // -----------------------------
   public async getShops(query: GetShopQueryDto): Promise<{ shops: Shop[]; pagination: any }> {
     const { page, limit, search, status, sortBy, sortOrder } = query;
     try {
@@ -143,6 +152,9 @@ export class AdminService {
     }
   }
 
+  // -----------------------------
+  // GET SHOP - Retrieve shop by ID
+  // -----------------------------
   public async getShop(shopId: string): Promise<Shop> {
     try {
       const shop = await prisma.shop.findUnique({
@@ -161,6 +173,9 @@ export class AdminService {
     }
   }
 
+  // -----------------------------
+  // UPDATE SHOP STATUS - Update shop active/status
+  // -----------------------------
   public async updateShopStatus(shopId: string, isActive: boolean): Promise<Shop> {
     try {
       const shop = await prisma.shop.findUnique({ where: { id: shopId } });
@@ -179,6 +194,9 @@ export class AdminService {
     }
   }
 
+  // -----------------------------
+  // DELETE SHOP - Delete shop
+  // -----------------------------
   public async deleteShop(shopId: string): Promise<Shop> {
     try {
       const shop = await prisma.shop.findUnique({ where: { id: shopId } });
@@ -194,6 +212,9 @@ export class AdminService {
     }
   }
 
+  // -----------------------------
+  // GET USERS - Retrieve users list
+  // -----------------------------
   public async getUsers(query: GetUserQueryDto): Promise<{ users: User[]; pagination: any }> {
     const { page, limit, search, status, sortBy, sortOrder } = query;
     try {
@@ -244,6 +265,9 @@ export class AdminService {
     }
   }
 
+  // -----------------------------
+  // GET USER - Retrieve user by ID
+  // -----------------------------
   public async getUser(userId: string): Promise<User> {
     try {
       const user = await prisma.user.findUnique({
@@ -261,6 +285,9 @@ export class AdminService {
     }
   }
 
+  // -----------------------------
+  // UPDATE USER STATUS - Update user active/status
+  // -----------------------------
   public async updateUserStatus(userId: string, isActive: boolean): Promise<User> {
     try {
       const user = await prisma.user.findUnique({ where: { id: userId } });
@@ -279,6 +306,9 @@ export class AdminService {
     }
   }
 
+  // -----------------------------
+  // DELETE USER - Delete user
+  // -----------------------------
   public async deleteUser(userId: string): Promise<User> {
     try {
       const user = await prisma.user.findUnique({ where: { id: userId } });
@@ -294,7 +324,9 @@ export class AdminService {
     }
   }
 
-  // Create Shop (Admin)
+  // -----------------------------
+  // CREATE SHOP - Create a shop (admin)
+  // -----------------------------
   public async createShop(shopData: CreateShopDto): Promise<Shop> {
     try {
       const existingShop = await prisma.shop.findFirst({
@@ -329,7 +361,9 @@ export class AdminService {
     }
   }
 
-  // Update Shop Status (Enhanced)
+  // -----------------------------
+  // UPDATE SHOP STATUS (ENHANCED) - Update shop status with extra metadata
+  // -----------------------------
   public async updateShopStatusEnhanced(shopId: string, statusData: UpdateShopStatusEnhancedDto): Promise<Shop> {
     try {
       const shop = await prisma.shop.findUnique({ where: { id: shopId } });
@@ -349,7 +383,9 @@ export class AdminService {
     }
   }
 
-  // Get Shop Statistics
+  // -----------------------------
+  // SHOP STATISTICS - Retrieve shop statistics by shop ID
+  // -----------------------------
   public async getShopStatistics(shopId: string) {
     try {
       const shop = await prisma.shop.findUnique({ where: { id: shopId } });
@@ -389,7 +425,9 @@ export class AdminService {
     }
   }
 
-  // Get Shop Vehicles
+  // -----------------------------
+  // SHOP VEHICLES - Retrieve shop vehicles list
+  // -----------------------------
   public async getShopVehicles(shopId: string, query: GetShopVehiclesQueryDto) {
     try {
       const shop = await prisma.shop.findUnique({ where: { id: shopId } });
@@ -426,7 +464,14 @@ export class AdminService {
           skip,
           take: limit,
           include: {
-            customer: {
+            seller_customer: {
+              select: {
+                id: true,
+                name: true,
+                phone: true,
+              },
+            },
+            buyer_customer: {
               select: {
                 id: true,
                 name: true,
@@ -442,7 +487,11 @@ export class AdminService {
 
       logger.info(`Retrieved ${vehicles.length} vehicles for shop ${shopId}`);
       return {
-        vehicles,
+        vehicles: vehicles.map(v => ({
+          ...v,
+          // Keep backwards-compatible shape for clients that expect a single "customer"
+          customer: v.buyer_customer ?? v.seller_customer ?? null,
+        })),
         pagination: {
           page,
           limit,
@@ -457,7 +506,9 @@ export class AdminService {
     }
   }
 
-  // Get Shop Customers
+  // -----------------------------
+  // SHOP CUSTOMERS - Retrieve shop customers list
+  // -----------------------------
   public async getShopCustomers(shopId: string, query: GetShopCustomersQueryDto) {
     try {
       const shop = await prisma.shop.findUnique({ where: { id: shopId } });
@@ -490,7 +541,17 @@ export class AdminService {
           skip,
           take: limit,
           include: {
-            vehicles: {
+            vehicles_bought: {
+              select: {
+                id: true,
+                registration_number: true,
+                brand: true,
+                model: true,
+                status: true,
+              },
+              take: 5,
+            },
+            vehicles_sold: {
               select: {
                 id: true,
                 registration_number: true,
@@ -509,7 +570,14 @@ export class AdminService {
 
       logger.info(`Retrieved ${customers.length} customers for shop ${shopId}`);
       return {
-        customers,
+        customers: customers.map(c => {
+          const vehicles = [...(c.vehicles_bought ?? []), ...(c.vehicles_sold ?? [])].slice(0, 5);
+          return {
+            ...c,
+            // Keep backwards-compatible shape for clients that expect a single "vehicles" array
+            vehicles,
+          };
+        }),
         pagination: {
           page,
           limit,
@@ -524,7 +592,9 @@ export class AdminService {
     }
   }
 
-  // Get Shop Users
+  // -----------------------------
+  // SHOP USERS - Retrieve shop users list
+  // -----------------------------
   public async getShopUsers(shopId: string, query: GetShopUsersQueryDto) {
     try {
       const shop = await prisma.shop.findUnique({ where: { id: shopId } });
@@ -588,7 +658,9 @@ export class AdminService {
     }
   }
 
-  // Get Shop Vehicle Payments (VehiclePayment model)
+  // -----------------------------
+  // SHOP VEHICLE PAYMENTS - Retrieve shop vehicle payments list
+  // -----------------------------
   public async getShopVehiclePayments(shopId: string, query: GetShopVehiclePaymentsQueryDto) {
     try {
       const shop = await prisma.shop.findUnique({ where: { id: shopId } });
@@ -663,7 +735,9 @@ export class AdminService {
     }
   }
 
-  // Get Shop Payment History (Transaction model - Subscription payments)
+  // -----------------------------
+  // SHOP PAYMENT HISTORY - Retrieve subscription transactions for a shop
+  // -----------------------------
   public async getShopPaymentHistory(shopId: string, query: GetShopPaymentHistoryQueryDto) {
     try {
       const shop = await prisma.shop.findUnique({ where: { id: shopId } });
@@ -721,7 +795,9 @@ export class AdminService {
     }
   }
 
-  // Get Shops with Enhanced Filters
+  // -----------------------------
+  // GET SHOPS (ENHANCED) - Retrieve shops list with enhanced filters
+  // -----------------------------
   public async getShopsEnhanced(query: GetShopQueryEnhancedDto): Promise<{ shops: Shop[]; pagination: any }> {
     const { page, limit, search, status, subscription_status, subscription_plan, state, city, sortBy, sortOrder } = query;
     try {
@@ -786,6 +862,9 @@ export class AdminService {
     }
   }
 
+  // -----------------------------
+  // ADMIN ANALYTICS - Retrieve analytics data
+  // -----------------------------
   public async getAnalytics(query: GetAnalyticsQueryDto) {
     try {
       const { months = 6, topShopsLimit = 5, startDate, endDate } = query;
@@ -1039,7 +1118,9 @@ export class AdminService {
   // SUBSCRIPTION PLAN MANAGEMENT (Admin only)
   // -----------------------------
 
+  // -----------------------------
   // CREATE SUBSCRIPTION PLAN - Add new subscription plan
+  // -----------------------------
   public async createSubscriptionPlan(planData: CreateSubscriptionPlanDto): Promise<ISubscriptionPlan> {
     try {
       const isExistPlan = await prisma.subscriptionPlan.findFirst({
@@ -1067,7 +1148,9 @@ export class AdminService {
     }
   }
 
+  // -----------------------------
   // UPDATE SUBSCRIPTION PLAN - Modify existing plan
+  // -----------------------------
   public async updateSubscriptionPlan(planData: CreateSubscriptionPlanDto, plan_id: string): Promise<ISubscriptionPlan> {
     try {
       const isExistPlan = await prisma.subscriptionPlan.findFirst({
@@ -1098,7 +1181,9 @@ export class AdminService {
     }
   }
 
+  // -----------------------------
   // GET SUBSCRIPTION PLANS - Retrieve all active plans
+  // -----------------------------
   public async getSubscriptionPlan(): Promise<any> {
     try {
       const plans = await prisma.subscriptionPlan.findMany({
@@ -1117,7 +1202,9 @@ export class AdminService {
     }
   }
 
+  // -----------------------------
   // CREATE SUBSCRIPTION PRICING - Add pricing for a plan
+  // -----------------------------
   public async createSubscriptionPricing(pricingData: ISubscriptionPricing): Promise<ISubscriptionPricing> {
     try {
       const isExistPricing = await prisma.subscriptionPricing.findFirst({
@@ -1145,7 +1232,9 @@ export class AdminService {
     }
   }
 
+  // -----------------------------
   // UPDATE SUBSCRIPTION PRICING - Modify existing pricing
+  // -----------------------------
   public async updateSubscriptionPricing(pricingData: ISubscriptionPricing, subscription_pricing_id: string): Promise<ISubscriptionPricing> {
     try {
       const isExistPricing = await prisma.subscriptionPricing.findFirst({
@@ -1175,7 +1264,9 @@ export class AdminService {
     }
   }
 
-  // ACTIVE/DEACTIVE SUBSCRIPTION PLAN - Toggle plan status
+  // -----------------------------
+  // ACTIVATE/DEACTIVATE SUBSCRIPTION PLAN - Toggle plan active flag
+  // -----------------------------
   public async activeDeactiveSubscriptionPlan(plan_id: string, is_active: boolean): Promise<ISubscriptionPlan> {
     try {
       const isExistPlan = await prisma.subscriptionPlan.findFirst({

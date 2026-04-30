@@ -15,7 +15,9 @@ export class PaymentController {
   public paymentService = Container.get(PaymentService);
   private prisma = prisma;
 
-  // Create
+  // -----------------------------
+  // CREATE VEHICLE PAYMENT - Create new vehicle payment
+  // -----------------------------
   public createVehiclePayment = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
     try {
       const vehiclePaymentData: CreateVehiclePaymentDto = request.body;
@@ -41,7 +43,9 @@ export class PaymentController {
     }
   };
 
-  // Get all
+  // -----------------------------
+  // GET ALL VEHICLE PAYMENTS - Retrieve paginated payments list
+  // -----------------------------
   public getAllVehiclePayments = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
     try {
       const query: GetAllPaymentsQueryDto = request.query as any;
@@ -54,7 +58,9 @@ export class PaymentController {
     }
   };
 
-  // Export payments to CSV
+  // -----------------------------
+  // EXPORT PAYMENTS TO CSV - Export payments data as CSV
+  // -----------------------------
   public exportPaymentsToCSV = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
     try {
       const query = request.query as unknown as ExportPaymentsQueryDto;
@@ -120,10 +126,12 @@ export class PaymentController {
     }
   };
 
-  // Get by ID
+  // -----------------------------
+  // GET VEHICLE PAYMENT BY ID - Retrieve single payment record
+  // -----------------------------
   public getVehiclePaymentById = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
     try {
-      const { id } = request.params;
+      const { id } = request.params as { id: string };
       const shop_id = request.shop_id || request.user.shop_id;
       const payment = await this.paymentService.getVehiclePaymentById(id, shop_id);
       response.status(200).json({ data: payment, message: 'Payment fetched successfully' });
@@ -132,9 +140,12 @@ export class PaymentController {
     }
   };
 
+  // -----------------------------
+  // GET PAYMENTS BY VEHICLE - Retrieve payment list for a vehicle
+  // -----------------------------
   public getAllPaymentsByVehicleId = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
     try {
-      const { vehicle_id } = request.params;
+      const { vehicle_id } = request.params as { vehicle_id: string };
       const shop_id = request.shop_id || request.user.shop_id;
       const payment = await this.paymentService.getAllPaymentsByVehicleId(vehicle_id, shop_id);
       response.status(200).json({ data: payment, message: 'Payment fetched successfully' });
@@ -143,10 +154,12 @@ export class PaymentController {
     }
   };
 
-  // Update
+  // -----------------------------
+  // UPDATE VEHICLE PAYMENT - Modify existing vehicle payment
+  // -----------------------------
   public updateVehiclePayment = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
     try {
-      const { id } = request.params;
+      const { id } = request.params as { id: string };
       const vehiclePaymentData: UpdateVehiclePaymentDto = request.body;
       const shop_id = request.shop_id || request.user.shop_id;
 
@@ -184,10 +197,12 @@ export class PaymentController {
     }
   };
 
-  // Delete
+  // -----------------------------
+  // DELETE VEHICLE PAYMENT - Soft delete vehicle payment
+  // -----------------------------
   public deleteVehiclePayment = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
     try {
-      const { id } = request.params;
+      const { id } = request.params as { id: string };
       const shop_id = request.shop_id || request.user.shop_id;
       const deletedPayment = await this.paymentService.deleteVehiclePayment(id, shop_id);
       response.status(200).json({ data: deletedPayment, message: 'Payment deleted successfully' });

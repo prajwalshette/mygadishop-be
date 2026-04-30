@@ -9,7 +9,9 @@ import { UserRole } from '@modules/user/user.interface';
 export class UserController {
   public userService = Container.get(UserService);
 
-  // Create user (only OWNER can create)
+  // -----------------------------
+  // CREATE USER - Create user (OWNER only)
+  // -----------------------------
   public createUser = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
     try {
       // Check if user is OWNER
@@ -29,7 +31,9 @@ export class UserController {
     }
   };
 
-  // Get all users
+  // -----------------------------
+  // GET ALL USERS - Retrieve users list
+  // -----------------------------
   public getAllUsers = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
     try {
       const shop_id = request.shop_id;
@@ -42,7 +46,9 @@ export class UserController {
     }
   };
 
-  // Get user by ID
+  // -----------------------------
+  // GET USER BY ID - Retrieve single user by ID
+  // -----------------------------
   public getUserById = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
     try {
       const shop_id = request.shop_id;
@@ -55,7 +61,9 @@ export class UserController {
     }
   };
 
-  // Update user (only OWNER can update)
+  // -----------------------------
+  // UPDATE USER - Modify existing user (OWNER only)
+  // -----------------------------
   public updateUser = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
     try {
       // Check if user is OWNER
@@ -75,7 +83,9 @@ export class UserController {
     }
   };
 
-  // Update user password (only OWNER can update)
+  // -----------------------------
+  // UPDATE USER PASSWORD - Update user password (OWNER only)
+  // -----------------------------
   public updateUserPassword = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
     try {
       // Check if user is OWNER
@@ -95,7 +105,9 @@ export class UserController {
     }
   };
 
-  // Delete user (only OWNER can delete)
+  // -----------------------------
+  // DELETE USER - Delete user (OWNER only)
+  // -----------------------------
   public deleteUser = async (request: RequestWithUser, response: Response, next: NextFunction): Promise<void> => {
     try {
       // Check if user is OWNER

@@ -123,6 +123,9 @@ export class VehicleController {
     }
   };
 
+  // -----------------------------
+  // VEHICLE SHARE IMAGE - Stream first vehicle image for sharing
+  // -----------------------------
   /**
    * Stream first vehicle image for share (proxied from S3 so frontend can fetch without CORS and attach to WhatsApp share).
    */
@@ -151,9 +154,9 @@ export class VehicleController {
     }
   };
 
-  /**
-   * Stream a vehicle document file by `docType` (proxied from S3 so frontend PDF.js can fetch without CORS issues).
-   */
+  // -----------------------------
+  // VEHICLE DOCUMENT STREAM - Stream a vehicle document by document type
+  // -----------------------------
   public getVehicleDocumentStream = async (
     request: RequestWithUser,
     response: Response,
@@ -326,6 +329,9 @@ export class VehicleController {
     }
   };
 
+  // -----------------------------
+  // EXTRACT RC - Extract vehicle details from RC images
+  // -----------------------------
   /**
    * Extract vehicle details from RC image using Gemini.
    */

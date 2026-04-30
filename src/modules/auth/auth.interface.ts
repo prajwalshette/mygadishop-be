@@ -22,18 +22,18 @@ export interface TokenData {
 }
 
 export interface RequestWithAdminUser extends Request {
-  user: AdminUser;
+  user?: AdminUser;
 }
 
 export interface RequestWithAdmin extends Request {
-  admin: AdminUser;
-  session_id: string;
+  admin?: AdminUser;
+  session_id?: string;
 }
 
 export interface RequestWithUser extends Request {
-  user: User;
-  session_id: string;
-  shop_id: string;
+  user?: User;
+  session_id?: string;
+  shop_id?: string;
 
   // Extended properties for file uploads
   vehicleFiles?: {
@@ -52,6 +52,6 @@ export interface RequestWithUser extends Request {
 
 
 export interface RequestWithOnboardTempUser extends Request {
-  email: string;
+  email?: string;
 }
 

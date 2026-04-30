@@ -6,6 +6,9 @@ import { DashboardService } from './dashboard.service';
 export class DashboardController {
   private dashboardService = Container.get(DashboardService);
 
+  // -----------------------------
+  // SHOP DASHBOARD STATS - Get dashboard KPIs for shop
+  // -----------------------------
   public getShopDashboardStats = async (request: RequestWithUser, response: Response, next: NextFunction) => {
     try {
       const shop_id = request.user.shop_id;
@@ -13,13 +16,16 @@ export class DashboardController {
       response.status(200).json({
         success: true,
         data: stats,
-        message: 'Dashboard stats retrieved successfully'
+        message: 'Dashboard stats retrieved successfully',
       });
     } catch (error) {
       next(error);
     }
   };
 
+  // -----------------------------
+  // SALES TREND - Get sales trend for shop
+  // -----------------------------
   public getSalesTrend = async (request: RequestWithUser, response: Response, next: NextFunction) => {
     try {
       const shop_id = request.user.shop_id;
@@ -31,6 +37,9 @@ export class DashboardController {
     }
   };
 
+  // -----------------------------
+  // REVENUE BY VEHICLE TYPE - Get revenue by vehicle type for shop
+  // -----------------------------
   public getRevenueByVehicleType = async (request: RequestWithUser, response: Response, next: NextFunction) => {
     try {
       const shop_id = request.user.shop_id;
@@ -41,6 +50,9 @@ export class DashboardController {
     }
   };
 
+  // -----------------------------
+  // TOP SELLING BRANDS - Get top selling brands for shop
+  // -----------------------------
   public getTopSellingBrands = async (request: RequestWithUser, response: Response, next: NextFunction) => {
     try {
       const shop_id = request.user.shop_id;
@@ -52,6 +64,9 @@ export class DashboardController {
     }
   };
 
+  // -----------------------------
+  // PAYMENT METHOD DISTRIBUTION - Get payment method distribution for shop
+  // -----------------------------
   public getPaymentMethodDistribution = async (request: RequestWithUser, response: Response, next: NextFunction) => {
     try {
       const shop_id = request.user.shop_id;

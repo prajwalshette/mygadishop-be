@@ -2,13 +2,15 @@ import { Prisma, PrismaClient } from '@prisma/client';
 import { Service } from 'typedi';
 import { HttpException } from '@/exceptions';
 import prisma from '@/lib/prisma';
-import { formatPrismaError } from '@/exceptions/prismaException';
 import type { DashboardStats } from './dashboard.interface';
 
 @Service()
 export class DashboardService {
   private prisma = prisma;
 
+  // -----------------------------
+  // SHOP DASHBOARD STATS - Get dashboard KPIs for shop
+  // -----------------------------
   public async getShopDashboardStats(shop_id: string): Promise<DashboardStats> {
     try {
       const now = new Date();
@@ -476,13 +478,13 @@ export class DashboardService {
       if (error instanceof HttpException) {
         throw error;
       }
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        throw formatPrismaError(error);
-      }
       throw new HttpException(500, `Get Shop stats service: ${error.message}`);
     }
   }
 
+  // -----------------------------
+  // SALES TREND - Get sales trend for shop
+  // -----------------------------
   /**
    * Sales trend for last N days (SOLD vehicles)
    */
@@ -568,6 +570,9 @@ export class DashboardService {
     }
   }
 
+  // -----------------------------
+  // REVENUE BY VEHICLE TYPE - Get revenue distribution by vehicle type
+  // -----------------------------
   /**
    * Revenue by vehicle type (from COMPLETED payments)
    */
@@ -575,14 +580,14 @@ export class DashboardService {
     try {
       const payments = await this.prisma.vehiclePayment.findMany({
         where: { shop_id, deleted_at: null, status: 'COMPLETED' },
-        include: { vehicle: { select: { type: true } } },
+        include: { vehicle: { select: { vehicle_type: true } } },
       });
 
       const byType: Record<string, { revenue: number; count: number }> = {};
       let total = 0;
 
       for (const p of payments) {
-        const type = p.vehicle.type;
+        const type = p.vehicle.vehicle_type;
         byType[type] ||= { revenue: 0, count: 0 };
         byType[type].revenue += p.amount;
         byType[type].count += 1;
@@ -601,6 +606,9 @@ export class DashboardService {
     }
   }
 
+  // -----------------------------
+  // TOP SELLING BRANDS - Get top selling vehicle brands
+  // -----------------------------
   /**
    * Top selling brands (by SOLD vehicles)
    */
@@ -628,6 +636,9 @@ export class DashboardService {
     }
   }
 
+  // -----------------------------
+  // PAYMENT METHOD DISTRIBUTION - Get payment method distribution
+  // -----------------------------
   /**
    * Payment method distribution (from COMPLETED payments)
    */
