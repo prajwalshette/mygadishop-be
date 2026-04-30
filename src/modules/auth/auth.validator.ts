@@ -34,7 +34,7 @@ export const onboardShopSchema = z.object({
 
   pincode: z.string().min(1, 'Pincode is required'),
 
-  shop_business_type: z.nativeEnum(ShopBusinessType, {
+  shop_business_type: z.enum(ShopBusinessType, {
     message: 'Select a valid shop business type',
   }),
 

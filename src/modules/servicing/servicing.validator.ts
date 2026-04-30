@@ -22,7 +22,7 @@ export const createServicingSchema = z
   vehicle_model: z.string().min(1, 'Vehicle model is required'),
   vehicle_variant: z.string().optional(),
   vehicle_year: z.number().int().min(1900).max(new Date().getFullYear() + 1).optional(),
-  vehicle_type: z.nativeEnum(VehicleType),
+  vehicle_type: z.enum(VehicleType),
   vehicle_reg_number: z.string().optional(),
 
   service_date: z.coerce.date(),
@@ -35,7 +35,7 @@ export const createServicingSchema = z
   other_charges: z.number().min(0).optional().default(0),
   total_cost: z.number().min(0, 'Total cost must be non-negative'),
 
-  status: z.nativeEnum(ServicingStatus),
+  status: z.enum(ServicingStatus),
 
   next_service_date: z.coerce.date().optional(),
   next_service_km: z.number().int().min(0).optional(),
@@ -46,9 +46,9 @@ export const createServicingSchema = z
   rating: z.number().int().min(1).max(5).optional(),
   customer_feedback: z.string().optional(),
 
-  payment_status: z.nativeEnum(PaymentStatus).optional().default(PaymentStatus.PENDING),
+  payment_status: z.enum(PaymentStatus).optional().default(PaymentStatus.PENDING),
   paid_amount: z.number().min(0).optional().default(0),
-  payment_method: z.nativeEnum(PaymentMethod).optional(),
+  payment_method: z.enum(PaymentMethod).optional(),
   payment_date: z.coerce.date().optional(),
 
   service_images: z.array(z.string()).optional().default([]),
@@ -82,7 +82,7 @@ export const updateServicingSchema = z.object({
   vehicle_model: z.string().min(1).optional(),
   vehicle_variant: z.string().optional().nullable(),
   vehicle_year: z.number().int().min(1900).max(new Date().getFullYear() + 1).optional().nullable(),
-  vehicle_type: z.nativeEnum(VehicleType).optional(),
+  vehicle_type: z.enum(VehicleType).optional(),
   vehicle_reg_number: z.string().optional().nullable(),
 
   service_date: z.coerce.date().optional(),
@@ -95,7 +95,7 @@ export const updateServicingSchema = z.object({
   other_charges: z.number().min(0).optional(),
   total_cost: z.number().min(0).optional(),
 
-  status: z.nativeEnum(ServicingStatus).optional(),
+  status: z.enum(ServicingStatus).optional(),
 
   next_service_date: z.coerce.date().optional().nullable(),
   next_service_km: z.number().int().min(0).optional().nullable(),
@@ -106,9 +106,9 @@ export const updateServicingSchema = z.object({
   rating: z.number().int().min(1).max(5).optional().nullable(),
   customer_feedback: z.string().optional().nullable(),
 
-  payment_status: z.nativeEnum(PaymentStatus).optional(),
+  payment_status: z.enum(PaymentStatus).optional(),
   paid_amount: z.number().min(0).optional(),
-  payment_method: z.nativeEnum(PaymentMethod).optional().nullable(),
+  payment_method: z.enum(PaymentMethod).optional().nullable(),
   payment_date: z.coerce.date().optional().nullable(),
 
   service_images: z.array(z.string()).optional(),
@@ -138,7 +138,7 @@ export const getServicingQuerySchema = z.object({
 
   search: z.string().trim().optional(),
 
-  status: z.nativeEnum(ServicingStatus).optional(),
+  status: z.enum(ServicingStatus).optional(),
 
   vehicle_reg_number: z.string().trim().optional(),
 
@@ -153,7 +153,7 @@ export const getServicingQuerySchema = z.object({
 export const exportServicingQuerySchema = z.object({
   search: z.string().trim().optional(),
 
-  status: z.nativeEnum(ServicingStatus).optional(),
+  status: z.enum(ServicingStatus).optional(),
 
   vehicle_reg_number: z.string().trim().optional(),
 

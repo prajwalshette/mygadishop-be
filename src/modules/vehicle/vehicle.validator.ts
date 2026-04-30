@@ -17,7 +17,7 @@ import {
 } from '@prisma/client';
 
 const vehicleDocumentBodySchema = z.object({
-  doc_type: z.nativeEnum(DocumentType),
+  doc_type: z.enum(DocumentType),
   file_url: z.string().url().optional(),
   expiry_date: z
     .union([
@@ -42,16 +42,16 @@ const twoWheelerDetailSchema = z.object({
   range_km: z.number().positive().nullable().optional(),
   battery_capacity_kwh: z.number().positive().nullable().optional(),
   charging_time_hrs: z.number().positive().nullable().optional(),
-  two_wheeler_type: z.nativeEnum(TwoWheelerType),
-  start_type: z.nativeEnum(StartType).nullable().optional(),
-  abs_type: z.nativeEnum(AbsType).nullable().optional(),
+  two_wheeler_type: z.enum(TwoWheelerType),
+  start_type: z.enum(StartType).nullable().optional(),
+  abs_type: z.enum(AbsType).nullable().optional(),
   has_disc_brake: z.boolean().optional().default(false),
   has_alloy_wheels: z.boolean().optional().default(false),
   has_bluetooth: z.boolean().optional().default(false),
 });
 
 const fourWheelerDetailSchema = z.object({
-  body_type: z.nativeEnum(CarBodyType),
+  body_type: z.enum(CarBodyType),
   engine_capacity_cc: z.number().int().positive().nullable().optional(),
   max_power_bhp: z.number().positive().nullable().optional(),
   max_torque_nm: z.number().positive().nullable().optional(),
@@ -59,7 +59,7 @@ const fourWheelerDetailSchema = z.object({
   range_km: z.number().positive().nullable().optional(),
   battery_capacity_kwh: z.number().positive().nullable().optional(),
   no_of_cylinders: z.number().int().positive().nullable().optional(),
-  drive_type: z.nativeEnum(DriveType).nullable().optional(),
+  drive_type: z.enum(DriveType).nullable().optional(),
   no_of_doors: z.number().int().positive().nullable().optional(),
   seating_capacity: z.number().int().positive().nullable().optional(),
   boot_space_litres: z.number().int().positive().nullable().optional(),
@@ -87,8 +87,8 @@ export const createVehicleSchema = z.object({
     .optional()
     .transform(val => (val === undefined || val === '' ? null : val)),
 
-  vehicle_category: z.nativeEnum(VehicleCategory),
-  vehicle_type: z.nativeEnum(VehicleType),
+  vehicle_category: z.enum(VehicleCategory),
+  vehicle_type: z.enum(VehicleType),
 
   brand: z.string().min(1, 'Brand is required'),
   model: z.string().min(1, 'Model is required'),
@@ -107,7 +107,7 @@ export const createVehicleSchema = z.object({
   color: z.string().min(1, 'Color is required'),
 
   odometer_reading: z.number().min(0, 'Odometer reading must be positive'),
-  condition: z.nativeEnum(VehicleCondition),
+  condition: z.enum(VehicleCondition),
   accident_history: z
     .union([z.boolean(), z.string().transform(v => v === 'true')])
     .optional()
@@ -118,8 +118,8 @@ export const createVehicleSchema = z.object({
     .default(false),
   condition_notes: z.string().optional().nullable(),
 
-  fuel_type: z.nativeEnum(FuelType),
-  transmission: z.nativeEnum(TransmissionType),
+  fuel_type: z.enum(FuelType),
+  transmission: z.enum(TransmissionType),
 
   insurance_valid_till: z
     .union([
@@ -157,7 +157,7 @@ export const createVehicleSchema = z.object({
     ])
     .optional(),
 
-  insurance_type: z.nativeEnum(InsuranceType).optional().nullable(),
+  insurance_type: z.enum(InsuranceType).optional().nullable(),
 
   is_hypothecation: z
     .union([z.boolean(), z.string().transform(v => v === 'true')])
@@ -169,7 +169,7 @@ export const createVehicleSchema = z.object({
     .optional()
     .default(true),
 
-  ownership: z.nativeEnum(OwnershipType),
+  ownership: z.enum(OwnershipType),
   ownership_city: z.string().optional().nullable(),
   ownership_state: z.string().optional().nullable(),
 
@@ -188,7 +188,7 @@ export const createVehicleSchema = z.object({
   /** Existing document URLs / metadata when not uploading a new file for that type. */
   vehicle_documents: z.array(vehicleDocumentBodySchema).optional(),
 
-  status: z.nativeEnum(VehicleStatus),
+  status: z.enum(VehicleStatus),
 
   buying_date: z
     .union([
@@ -247,7 +247,7 @@ export const VehicleIdParamSchema = z.object({
 
 export const VehicleDocumentParamSchema = z.object({
   id: z.string().ulid({ message: 'Invalid Vehicle Id' }),
-  docType: z.nativeEnum(DocumentType),
+  docType: z.enum(DocumentType),
 });
 
 // Query Schema for get all vehicles
@@ -268,10 +268,10 @@ export const getVehicleQuerySchema = z.object({
 
   search: z.string().trim().optional(), // Searches: brand, model, variant, registration_number, chassis_number, engine_number
 
-  status: z.nativeEnum(VehicleStatus).optional(),
+  status: z.enum(VehicleStatus).optional(),
 
-  vehicle_category: z.nativeEnum(VehicleCategory).optional(),
-  type: z.nativeEnum(VehicleType).optional(), // Keep 'type' for compat in query if needed, or use vehicle_type
+  vehicle_category: z.enum(VehicleCategory).optional(),
+  type: z.enum(VehicleType).optional(), // Keep 'type' for compat in query if needed, or use vehicle_type
 
   sortBy: z.enum(['created_at', 'updated_at', 'selling_price', 'manufacture_year', 'odometer_reading']).optional().default('created_at'),
 

@@ -201,37 +201,33 @@ const OWNERSHIP_MAP: Record<string, string> = {
     rc_available: boolean
     insurance_valid_till?: Date | null
   }): string {
-  
-    const name  = [v.manufacture_year, v.brand, v.model, v.variant]
-      .filter(Boolean).join(' ')
-    const city  = v.ownership_city ?? 'India'
-    const price = v.selling_price ? formatDescPrice(v.selling_price) : 'Best price'
-    const km    = `${v.odometer_reading.toLocaleString('en-IN')} km`
-    const owner = OWNERSHIP_MAP[v.ownership] ?? v.ownership
-    const fuel  = v.fuel_type.charAt(0) + v.fuel_type.slice(1).toLowerCase()
-    const cond  = CONDITION_MAP[v.condition] ?? v.condition
-  
+    const name = [v.manufacture_year, v.brand, v.model, v.variant].filter(Boolean).join(' ');
+    const city = v.ownership_city ?? 'India';
+    const price = v.selling_price ? formatDescPrice(v.selling_price) : 'Best price';
+    const km = `${v.odometer_reading.toLocaleString('en-IN')} km`;
+    const owner = OWNERSHIP_MAP[v.ownership] ?? v.ownership;
+    const fuel = v.fuel_type.charAt(0) + v.fuel_type.slice(1).toLowerCase();
+    const cond = CONDITION_MAP[v.condition] ?? v.condition;
+
     // Trust signals — only add if TRUE (don't mention bad things)
-    const noAccident = !v.accident_history ? 'No accident history. ' : ''
-    const rc         = v.rc_available ? 'RC available. ' : ''
-    const insured    = v.insurance_valid_till && v.insurance_valid_till > new Date()
-      ? 'Valid insurance. ' : ''
-  
+    const noAccident = !v.accident_history ? 'No accident history. ' : '';
+    const rc = v.rc_available ? 'RC available. ' : '';
+    const insured =
+      v.insurance_valid_till && v.insurance_valid_till > new Date() ? 'Valid insurance. ' : '';
+
     // Pipe format (|) is how CarDekho shows key specs — scannable in 2 seconds
     const desc =
       `${name} for sale in ${city}. ` +
       `${price} | ${km} | ${owner} | ${fuel}. ` +
       `${cond}. ${noAccident}${rc}${insured}` +
-      `Contact MyGadiShop today!`
-  
-    return desc.length > 155
-      ? desc.slice(0, 152).trimEnd() + '...'
-      : desc
+      `Contact MyGadiShop today!`;
+
+    return desc.length > 155 ? desc.slice(0, 152).trimEnd() + '...' : desc;
   }
 
 export const generateMetaDescription = buildMetaDescription;
-  
-  // Result (141 chars ✅):
-  // "2020 Honda Activa 5G for sale in Nashik. ₹52,000 | 34,000 km | 
-  //  1st owner | Petrol. Good condition. No accident history. RC available. 
-  //  Contact MyGadiShop today!"
+
+// Result (141 chars ✅):
+// 2020 Honda Activa 5G for sale in Nashik. ₹52,000 | 34,000 km |
+// 1st owner | Petrol. Good condition. No accident history. RC available.
+// Contact MyGadiShop today!
