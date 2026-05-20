@@ -1,3 +1,4 @@
 {
-  "*.{js,jsx,ts,tsx,cjs,mjs,json,md,yaml,yml,css,scss,graphql,prisma}": ["prettier --write"]
+  "*.{js,jsx,ts,tsx,cjs,mjs,json,md,yaml,yml,css,scss,graphql}": ["prettier --write"],
+  "*.prisma": "prisma format"
 }

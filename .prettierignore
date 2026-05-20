@@ -12,5 +12,8 @@ logs
 # Prisma generated/compiled artifacts
 prisma/migrations
 
+# Prettier has no Prisma parser without a plugin; use `pnpm prisma format`
+**/*.prisma
+
 # Misc
 .DS_Store
