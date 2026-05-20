@@ -10,6 +10,19 @@ generator client {
   output   = "../generated/prisma"
 }
 
+// =============== PUBLIC USER ===========
+model PublicUser {
+  id                String    @id
+  phone             String?   @unique
+  email             String?   @unique
+  password          String?
+  is_phone_verified Boolean   @default(false)
+  is_email_verified Boolean   @default(false)
+  deleted_at        DateTime?
+  created_at        DateTime  @default(now())
+  updated_at        DateTime  @updatedAt
+}
+
 // ============= PLATFORM ADMIN (Your Team) ===========
 model Admin {
   id          String            @id
@@ -87,9 +100,9 @@ model Shop {
   gstin      String? @unique
 
   // Shop Details
-  website_url      String?
-  shop_logo_url    String?
-  established_year Int?
+  website_url        String?
+  shop_logo_url      String?
+  established_year   Int?
   shop_business_type ShopBusinessType @default(DEALER)
 
   description    String?
@@ -671,11 +684,11 @@ enum ShopUserRole {
 }
 
 enum ShopBusinessType {
-  DEALER        // Buy/Sell vehicles (new/used)
-  SERVICE       // Only servicing
+  DEALER // Buy/Sell vehicles (new/used)
+  SERVICE // Only servicing
   DEALER_SERVICE // Both sell + service
-  RENTAL        // Vehicle rental
-  MULTI         // Combination of multiple services
+  RENTAL // Vehicle rental
+  MULTI // Combination of multiple services
 }
 
 enum ChequeStatus {

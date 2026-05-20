@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
 import { Container } from 'typedi';
-import type { RequestWithAdmin, RequestWithOnboardTempUser } from './auth.interface';
+import type { RequestWithAdmin, RequestWithOnboardTempUser, RequestWithUser } from './auth.interface';
 import { AuthService } from './auth.service';
 import type { LoginDto } from './auth.validator';
 import type { OnboardShopDto } from './auth.validator';
@@ -40,16 +40,19 @@ export class AuthController {
   // -----------------------------
   // LOGOUT - Invalidate user session
   // -----------------------------
-  public logOut = async (request: RequestWithAdmin, response: Response, next: NextFunction) => {
+  public logOut = async (request: RequestWithUser, response: Response, next: NextFunction) => {
     try {
       const session_id = request.session_id;
 
       let token: string | undefined;
-
-      // Fallback to header
-      const headerToken = request.header('Authorization');
-      if (!token && headerToken?.startsWith('Bearer ')) {
-        token = headerToken.split('Bearer ')[1];
+      const cookieToken = request.cookies?.['Authorization'];
+      if (cookieToken) {
+        token = cookieToken;
+      } else {
+        const headerToken = request.header('Authorization');
+        if (headerToken?.startsWith('Bearer ')) {
+          token = headerToken.split('Bearer ')[1];
+        }
       }
 
       await this.auth.logout(token, session_id);
