@@ -41,6 +41,24 @@ export const onboardShopSchema = z.object({
   ip_address: z.string().optional(),
 });
 
+// Public user (marketplace customer) — register requires phone
+export const publicUserRegisterSchema = z.object({
+  email: z.email('Invalid email address'),
+  password: z.string().min(2, 'Password is required'),
+  phone: z.string().regex(/^[6-9]\d{9}$/, 'Enter a valid 10-digit Indian mobile number'),
+  device_info: z.record(z.string(), z.any()).optional(),
+  ip_address: z.string().optional(),
+});
+
+export const publicUserLoginSchema = z.object({
+  email: z.email('Invalid email address'),
+  password: z.string().min(2, 'Password is required'),
+  device_info: z.record(z.string(), z.any()).optional(),
+  ip_address: z.string().optional(),
+});
+
 // Export types
 export type LoginDto = z.infer<typeof loginSchema>;
 export type OnboardShopDto = z.infer<typeof onboardShopSchema>;
+export type PublicUserRegisterDto = z.infer<typeof publicUserRegisterSchema>;
+export type PublicUserLoginDto = z.infer<typeof publicUserLoginSchema>;

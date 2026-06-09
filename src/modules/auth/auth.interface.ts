@@ -16,6 +16,25 @@ export interface DataStoredInOnboardTempToken {
   email: string;
 }
 
+/** Public customer JWT; session validity is enforced via Redis (see PublicUserSessionCache). */
+export interface DataStoredInPublicUserToken {
+  public_user_id: string;
+  session_id: string;
+}
+
+export interface PublicUserAuth {
+  id: string;
+  email: string | null;
+  phone: string | null;
+  is_phone_verified: boolean;
+  is_email_verified: boolean;
+}
+
+export interface RequestWithPublicUser extends Request {
+  publicUser?: PublicUserAuth;
+  session_id?: string;
+}
+
 export interface TokenData {
   token: string;
   expiresIn: number;

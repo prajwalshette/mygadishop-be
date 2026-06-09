@@ -1,9 +1,10 @@
 import { NextFunction, Request, Response } from 'express';
 import { Container } from 'typedi';
-import type { RequestWithAdmin, RequestWithOnboardTempUser, RequestWithUser } from './auth.interface';
+import type { RequestWithAdmin, RequestWithOnboardTempUser, RequestWithPublicUser, RequestWithUser } from './auth.interface';
 import { AuthService } from './auth.service';
 import type { LoginDto } from './auth.validator';
 import type { OnboardShopDto } from './auth.validator';
+import type { PublicUserLoginDto, PublicUserRegisterDto } from './auth.validator';
 
 export class AuthController {
   public auth = Container.get(AuthService);
@@ -169,6 +170,78 @@ export class AuthController {
             role: result.user.role,
           },
         },
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // -----------------------------
+  // PUBLIC USER — Register (phone required)
+  // -----------------------------
+  public publicUserRegister = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
+    try {
+      const body = request.body as PublicUserRegisterDto;
+      const { cookie, user, token } = await this.auth.publicUserRegister(body);
+
+      response.setHeader('Set-Cookie', [cookie]);
+      response.status(201).json({
+        success: true,
+        message: 'Registered successfully',
+        data: { user, token },
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // -----------------------------
+  // PUBLIC USER — Email + password login
+  // -----------------------------
+  public publicUserLogin = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
+    try {
+      const body = request.body as PublicUserLoginDto;
+      const { cookie, user, token } = await this.auth.publicUserLogin(body);
+
+      response.setHeader('Set-Cookie', [cookie]);
+      response.status(200).json({
+        success: true,
+        message: 'Login successful',
+        data: { user, token },
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // -----------------------------
+  // PUBLIC USER — Logout (Redis session removed)
+  // -----------------------------
+  public publicUserLogOut = async (request: RequestWithPublicUser, response: Response, next: NextFunction): Promise<void> => {
+    try {
+      const session_id = request.session_id;
+
+      let token: string | undefined;
+      const cookieToken = request.cookies?.['PublicAuthorization'];
+      if (cookieToken) {
+        token = cookieToken;
+      } else {
+        const headerToken = request.header('Authorization');
+        if (headerToken?.startsWith('Bearer ')) {
+          token = headerToken.split('Bearer ')[1];
+        }
+      }
+
+      await this.auth.publicUserLogout(token, session_id);
+
+      const isProduction = process.env.NODE_ENV === 'production';
+      response.setHeader('Set-Cookie', [
+        `PublicAuthorization=; HttpOnly; Max-Age=0; Path=/; SameSite=${isProduction ? 'None' : 'Lax'}${isProduction ? '; Secure' : ''}`,
+      ]);
+
+      response.status(200).json({
+        success: true,
+        message: 'Logout successfully',
       });
     } catch (error) {
       next(error);

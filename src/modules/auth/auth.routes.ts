@@ -3,10 +3,10 @@ import { Routes } from '@/interfaces/routes.interface';
 import { AdminAuthMiddleware } from '@/middlewares/adminAuth.middleware';
 import { AuthMiddleware } from '@/middlewares/auth.middleware';
 import { OnboardAuthMiddleware } from '@/middlewares/onboard.middleware';
+import { PublicUserAuthMiddleware } from '@/middlewares/publicUserAuth.middleware';
 import { ValidationMiddleware } from '@/middlewares/validation.middleware';
-import { onboardShopSchema } from './auth.validator';
-import { addAdminUserSchema } from '@modules/admin/admin.validator';
-import { loginSchema } from './auth.validator';
+import { addAdminUserSchema } from '../admin/admin.validator';
+import { onboardShopSchema, publicUserLoginSchema, publicUserRegisterSchema, loginSchema } from './auth.validator';
 import { AuthController } from './auth.controller';
 
 export class AuthRoute implements Routes {
@@ -30,5 +30,10 @@ export class AuthRoute implements Routes {
     // UNIFIED LOGIN - Handles both login and signup
     this.router.post(`${this.path}/login`, ValidationMiddleware(loginSchema, 'body'), this.auth.login);
     this.router.post(`${this.path}/shop-onboard`, [OnboardAuthMiddleware, ValidationMiddleware(onboardShopSchema, 'body')], this.auth.onboardShop);
+
+    // Public user (Redis-backed session, 24h)
+    this.router.post(`${this.path}/public/register`, ValidationMiddleware(publicUserRegisterSchema, 'body'), this.auth.publicUserRegister);
+    this.router.post(`${this.path}/public/login`, ValidationMiddleware(publicUserLoginSchema, 'body'), this.auth.publicUserLogin);
+    this.router.post(`${this.path}/public/logout`, [PublicUserAuthMiddleware], this.auth.publicUserLogOut);
   }
 }
